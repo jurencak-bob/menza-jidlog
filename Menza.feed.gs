@@ -47,14 +47,15 @@
  *
  *  VÝSTUPNÍ KANÁLY (nezávisle konfigurovatelné):
  *  ──────────────────────────────────────────────
- *  Skript má čtyři výstupní kanály, z nichž každý lze samostatně
- *  zapnout nebo vypnout v konfiguraci:
+ *  Skript má pět výstupních kanálů:
  *    - Google Sheet (SHEET_ENABLED) — historie jídelníčku v tabulce
  *    - Google Chat  (CHAT_ENABLED)  — denní menu jako zpráva v chatu
  *      Volba CHAT_SHORTEN_NAMES (výchozí ANO) zkrátí názvy jídel
  *      do první čárky — zobrazí hlavní jídlo bez přílohy.
  *    - E-mail       (EMAIL_MODE)    — notifikace o výsledku stažení
- *    - JídLOG web    (doGet)        — HTML stránka + ICS kalendářový feed
+ *    - JídLOG web   (doGet)         — HTML dashboard + ICS feed + QR kód
+ *    - GitHub Pages ICS             — automatická publikace ICS souboru
+ *      na GitHub Pages po každém stažení (GITHUB_TOKEN ve Script Properties)
  *
  *  VALIDACE KONFIGURACE:
  *  ─────────────────────
@@ -97,9 +98,16 @@
  *  Skript poskytuje webovou verzi jídelníčku (JídLOG) přes doGet().
  *  Na výchozí URL se zobrazí HTML stránka s datepickerem.
  *  S parametrem ?format=ics vrátí ICS kalendářový feed se všemi
- *  dostupnými dny — lze přidat do Google Calendar přes webcal://
- *  nebo „Přidat kalendář z URL". Feed se obnovuje každých 6 hodin.
- *  S parametrem ?format=qr přesměruje na QR kód dashboardu.
+ *  dostupnými dny. S parametrem ?format=qr přesměruje na QR kód.
+ *
+ *  ICS PUBLIKACE NA GITHUB PAGES:
+ *  ──────────────────────────────
+ *  Protože Apps Script doGet() přesměrovává přes googleusercontent.com,
+ *  což Google Calendar neumí sledovat, ICS se automaticky publikuje
+ *  na GitHub Pages (stabilní URL bez přesměrování) po každém úspěšném
+ *  stažení menu. Funkce publikujIcsNaGitHub() nahraje soubor přes
+ *  GitHub Contents API. Vyžaduje GITHUB_TOKEN ve Script Properties
+ *  a konfigurační položky „GitHub repo" a „GitHub ICS cesta".
  *
  *  KONFIGURACE:
  *  ────────────
@@ -120,7 +128,15 @@
  *  6. Automaticky se vytvoří list "⚙️ Konfigurace" s výchozími hodnotami.
  *     Uprav si ho podle potřeby.
  *  7. Pro web dashboard: Nasadit → Nové nasazení → Web App
- *  8. Hotovo — menu se stahuje automaticky a dashboard je dostupný.
+ *  8. Pro ICS kalendář na GitHub Pages:
+ *     a) Vytvoř GitHub Personal Access Token (classic) se scopem "repo"
+ *     b) V Apps Script → Project Settings → Script Properties přidej
+ *        klíč GITHUB_TOKEN s hodnotou tokenu
+ *     c) V konfiguraci vyplň „GitHub repo" (owner/repo) a „GitHub ICS cesta"
+ *     d) Spusť publikujIcsNaGitHub() ručně pro ověření
+ *     e) ICS URL přidej do Google Calendar (Settings → Add by URL)
+ *  9. Hotovo — menu se stahuje automaticky, dashboard je dostupný
+ *     a ICS se publikuje po každém úspěšném stažení.
  *
  *  RUČNÍ TEST:   spusť  spustitRucne()    — okamžitě stáhne a zapíše
  *  RESET:        spusť  smazTriggery() — vypne automatické spouštění
@@ -334,6 +350,8 @@ function loadConfig_() {
     OBEDY_SHEET_URL: txt('URL sheet obědů', 'https://docs.google.com/spreadsheets/d/1KVMtzJoIpkMxiAPgm3qg3o-pSlWsDO9TQWTS_X4GbzE/edit?gid=1704001489#gid=1704001489'),
     DASHBOARD_URL:   txt('URL dashboard', 'https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec'),
     PWA_URL:         txt('URL PWA', 'https://jurencak-bob.github.io/menza-jidlog/'),
+    GITHUB_REPO:     txt('GitHub repo', 'jurencak-bob/menza-jidlog'),
+    GITHUB_ICS_PATH: txt('GitHub ICS cesta', 'menza.ics'),
     LINK_ICON_MENZA:     txt('Ikona — Menza', '🌍'),
     LINK_ICON_OBEDY:     txt('Ikona — Zápis obědů', '✏️'),
     LINK_ICON_DASHBOARD: txt('Ikona — Dashboard', '📋'),
@@ -600,6 +618,8 @@ function vytvorKonfiguraci(ss) {
     { label: 'URL sheet obědů', defaultValue: 'https://docs.google.com/spreadsheets/d/1KVMtzJoIpkMxiAPgm3qg3o-pSlWsDO9TQWTS_X4GbzE/edit?gid=1704001489#gid=1704001489', note: 'Alternativa pro ruční zápis' },
     { label: 'URL dashboard', defaultValue: 'https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec', note: 'Veřejný web s jídelníčkem (Web App)' },
     { label: 'URL PWA', defaultValue: 'https://jurencak-bob.github.io/menza-jidlog/', note: 'PWA wrapper pro Add-to-Home-Screen (QR kód vede sem)' },
+    { label: 'GitHub repo', defaultValue: 'jurencak-bob/menza-jidlog', note: 'GitHub repo (owner/repo) pro publikaci ICS' },
+    { label: 'GitHub ICS cesta', defaultValue: 'menza.ics', note: 'Cesta k ICS souboru v repu (GitHub token → Script Properties)' },
     { label: 'Ikona — Menza', defaultValue: '🌍', note: 'Emoji ikona před odkazem na menzu v Chatu' },
     { label: 'Ikona — Zápis obědů', defaultValue: '✏️', note: 'Emoji ikona před odkazem „Zapiš oběd" v Chatu' },
     { label: 'Ikona — Dashboard', defaultValue: '📋', note: 'Emoji ikona před odkazem „JídLOG" v Chatu' },
@@ -796,6 +816,8 @@ function aktualizujKonfiguraci() {
     { label: 'URL sheet obědů', defaultValue: '', note: 'Alternativa pro ruční zápis' },
     { label: 'URL dashboard', defaultValue: '', note: 'Veřejný web s jídelníčkem (Web App)' },
     { label: 'URL PWA', defaultValue: '', note: 'PWA wrapper pro Add-to-Home-Screen (QR kód vede sem)' },
+    { label: 'GitHub repo', defaultValue: 'jurencak-bob/menza-jidlog', note: 'GitHub repo (owner/repo) pro publikaci ICS' },
+    { label: 'GitHub ICS cesta', defaultValue: 'menza.ics', note: 'Cesta k ICS souboru v repu' },
     { label: 'Ikona — Menza', defaultValue: '🌍', note: 'Emoji ikona před odkazem na menzu v Chatu' },
     { label: 'Ikona — Zápis obědů', defaultValue: '✏️', note: 'Emoji ikona před odkazem „Zapiš oběd" v Chatu' },
     { label: 'Ikona — Dashboard', defaultValue: '📋', note: 'Emoji ikona před odkazem „JídLOG" v Chatu' },
@@ -1161,6 +1183,11 @@ function stahniANotifikuj_(skipNotify) {
     applyDateFormatting_(sheet);
 
     Logger.log('✅ Uloženo ' + menuItems.length + ' položek do sheetu pro ' + todayStr);
+
+    // ── Publikace ICS na GitHub Pages ──
+    try { publikujIcsNaGitHub(); } catch (e) {
+      Logger.log('⚠️ ICS GitHub publish selhal: ' + e.message);
+    }
   } else {
     Logger.log('ℹ️ Zápis do sheetu je vypnutý (SHEET_ENABLED = false).');
   }
@@ -1750,14 +1777,14 @@ function sendDiffToChat_(diff, todayStr, dow) {
   var dayName = INTERNAL.DAY_NAMES[dow];
   var lines = [];
 
-  lines.push(styleChatText_('🔄 Menu se změnilo! (' + dayName + ' ' + todayStr + ')', 'section'));
+  lines.push(styleChatText_('🔄 Menu se změnilo! (' + dayName + ' ' + todayStr + ')', USER.CHAT_STYLE.section));
 
   if (diff.changed.length > 0) {
     lines.push('');
-    lines.push(styleChatText_('Změněno:', 'section'));
+    lines.push(styleChatText_('Změněno:', USER.CHAT_STYLE.section));
     for (var c = 0; c < diff.changed.length; c++) {
       var ch = diff.changed[c];
-      lines.push('• ' + ch.old.cislo + ': ' + shortenName_(ch.old.name.trim()) + ' → ' + styleChatText_(shortenName_(ch.new.name.trim()), 'food'));
+      lines.push('• ' + ch.old.cislo + ': ' + shortenName_(ch.old.name.trim()) + ' → ' + styleChatText_(shortenName_(ch.new.name.trim()), USER.CHAT_STYLE.food));
       if (ch.what.indexOf('cena STU') !== -1) {
         lines.push('  💰 ' + ch.old.cena_stu + ' Kč → ' + ch.new.cena_stu + ' Kč');
       }
@@ -1766,17 +1793,17 @@ function sendDiffToChat_(diff, todayStr, dow) {
 
   if (diff.added.length > 0) {
     lines.push('');
-    lines.push(styleChatText_('➕ Přidáno:', 'section'));
+    lines.push(styleChatText_('➕ Přidáno:', USER.CHAT_STYLE.section));
     for (var a = 0; a < diff.added.length; a++) {
       var ai = diff.added[a];
-      lines.push('• ' + ai.cislo + ': ' + styleChatText_(shortenName_(ai.name), 'food') +
-                 (ai.cena_stu ? ' — ' + styleChatText_(ai.cena_stu + ' Kč', 'price') : ''));
+      lines.push('• ' + ai.cislo + ': ' + styleChatText_(shortenName_(ai.name), USER.CHAT_STYLE.food) +
+                 (ai.cena_stu ? ' — ' + styleChatText_(ai.cena_stu + ' Kč', USER.CHAT_STYLE.price) : ''));
     }
   }
 
   if (diff.removed.length > 0) {
     lines.push('');
-    lines.push(styleChatText_('➖ Odebráno:', 'section'));
+    lines.push(styleChatText_('➖ Odebráno:', USER.CHAT_STYLE.section));
     for (var r = 0; r < diff.removed.length; r++) {
       var ri = diff.removed[r];
       lines.push('• ~' + ri.cislo + ': ' + shortenName_(ri.name) + '~');
@@ -1800,7 +1827,7 @@ function sendDiffToChat_(diff, todayStr, dow) {
     }],
   };
 
-  sendChatPayload_(payload);
+  sendChatPayload_(USER.CHAT_WEBHOOKS, payload, 'diff');
 }
 
 
@@ -2332,7 +2359,7 @@ function formatMenuForChat_(menuItems, todayStr, dow) {
           USER.LINK_ICON_OBEDY + ' <a href="' + USER.OBEDY_SHEET_URL + '">Zapiš oběd</a>' + sep +
           USER.LINK_ICON_DASHBOARD + ' <a href="' + (USER.PWA_URL || USER.DASHBOARD_URL) + '">JídLOG</a>' + sep +
           USER.LINK_ICON_QR + ' <a href="' + USER.DASHBOARD_URL + '?format=qr">QR</a>' + sep +
-          USER.LINK_ICON_ICS + ' <a href="' + USER.DASHBOARD_URL.replace(/^https?:\/\//, 'webcal://') + '?format=ics">.ics</a>' +
+          USER.LINK_ICON_ICS + ' <a href="' + icsUrl_() + '">.ics</a>' +
           '<br><br>' + styleSmallprint_(USER.CHAT_STYLE.smallprint);
 
   return {
@@ -2485,7 +2512,7 @@ function sendNotification_(success, todayStr, menuItems, sheetUrl) {
   body += '🍝  WebKredit:     ' + USER.MENZA_WEB_URL + '\n';
   body += '📋  JídLOG:        ' + (USER.PWA_URL || USER.DASHBOARD_URL) + '\n';
   body += '🔳  QR kód:        ' + USER.DASHBOARD_URL + '?format=qr\n';
-  body += '📆  .ics:          ' + USER.DASHBOARD_URL.replace(/^https?:\/\//, 'webcal://') + '?format=ics\n';
+  body += '📆  .ics:          ' + icsUrl_() + '\n';
 
   // Odešli e-mail
   MailApp.sendEmail({
@@ -2677,10 +2704,16 @@ function getDayOfWeek_(date) {
    Execute as: Me, Who has access: Anyone) získáš URL, kterou
    můžeš sdílet s kolegy.
 
-   Dashboard zobrazuje:
+   Dashboard (JídLOG) zobrazuje:
      - Dnešní jídelníček (zvýrazněný)
-     - Historii předchozích dnů (rozbalovací)
+     - Historii předchozích dnů (slider / datepicker)
      - Přepínač světlý/tmavý režim
+     - QR kód modál pro sdílení
+     - Animované pozadí (canvas s SVG jídelními motivy)
+
+   Speciální URL parametry:
+     ?format=ics → ICS kalendářový feed (text/calendar)
+     ?format=qr  → přesměrování na QR kód obrázek
    ══════════════════════════════════════════════════════════════════ */
 
 /**
@@ -2720,17 +2753,127 @@ function doGet(e) {
 
 
 /**
- * Vygeneruje ICS (iCalendar) feed se všemi dostupnými dny jako celodenní události.
- * Google Calendar / Apple Calendar si feed pravidelně stahuje a aktualizuje.
- * Volá se přes doGet(?format=ics).
+ * Vrátí URL ICS kalendáře — přednostně GitHub Pages (stabilní, bez redirectu),
+ * fallback na Apps Script doGet(?format=ics).
+ */
+function icsUrl_() {
+  var repo = USER.GITHUB_REPO;
+  var path = USER.GITHUB_ICS_PATH;
+  if (repo && path) {
+    var owner = repo.split('/')[0];
+    var repoName = repo.split('/')[1];
+    return 'https://' + owner + '.github.io/' + repoName + '/' + path;
+  }
+  return USER.DASHBOARD_URL.replace(/^https?:\/\//, 'webcal://') + '?format=ics';
+}
+
+
+/**
+ * Vygeneruje ICS (iCalendar) feed a vrátí jako TextOutput s MIME typem text/calendar.
+ * Volá se přes doGet(?format=ics). Deleguje na generateIcsContent_().
  */
 function generateIcs_() {
   loadConfig_();
+  return ContentService.createTextOutput(generateIcsContent_())
+    .setMimeType(ContentService.MimeType.ICAL);
+}
+
+
+/**
+ * Escapuje text pro ICS DESCRIPTION — speciální znaky dle RFC 5545.
+ */
+function icsEscape_(text) {
+  return text
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+
+/**
+ * Publikuje ICS kalendář jako soubor do GitHub repa (přes Contents API).
+ * Díky GitHub Pages je pak ICS dostupný na stabilní URL bez přesměrování,
+ * což řeší problémy Google Calendar s Apps Script redirect.
+ *
+ * Vyžaduje:
+ *   - GitHub Personal Access Token (classic) se scopem "repo"
+ *     uložený ve Script Properties pod klíčem GITHUB_TOKEN
+ *   - Config: "GitHub repo" (owner/repo) a "GitHub ICS cesta" (cesta k souboru)
+ *
+ * Volá se automaticky po úspěšném stažení menu, nebo ručně.
+ */
+function publikujIcsNaGitHub() {
+  loadConfig_();
+
+  var token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  if (!token) {
+    Logger.log('⚠️ GITHUB_TOKEN není nastaven ve Script Properties — ICS se nepublikuje.');
+    return;
+  }
+
+  var repo    = USER.GITHUB_REPO;
+  var path    = USER.GITHUB_ICS_PATH;
+  if (!repo || !path) {
+    Logger.log('⚠️ GitHub repo nebo ICS cesta není nastavena — ICS se nepublikuje.');
+    return;
+  }
+
+  // Vygeneruj ICS obsah (stejná logika jako generateIcs_, ale vrátí string)
+  var icsContent = generateIcsContent_();
+
+  // Zjisti SHA existujícího souboru (potřeba pro update)
+  var apiUrl = 'https://api.github.com/repos/' + repo + '/contents/' + path;
+  var sha = null;
+  try {
+    var getResp = UrlFetchApp.fetch(apiUrl, {
+      method: 'get',
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' },
+      muteHttpExceptions: true
+    });
+    if (getResp.getResponseCode() === 200) {
+      sha = JSON.parse(getResp.getContentText()).sha;
+    }
+  } catch (e) {
+    Logger.log('⚠️ Nepodařilo se zjistit SHA: ' + e.message);
+  }
+
+  // Nahraj/aktualizuj soubor
+  var payload = {
+    message: '🍽️ Aktualizace jídelníčku ' + Utilities.formatDate(new Date(), USER.TIMEZONE, 'yyyy-MM-dd HH:mm'),
+    content: Utilities.base64Encode(icsContent, Utilities.Charset.UTF_8)
+  };
+  if (sha) payload.sha = sha;
+
+  var putResp = UrlFetchApp.fetch(apiUrl, {
+    method: 'put',
+    headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' },
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+
+  var code = putResp.getResponseCode();
+  if (code === 200 || code === 201) {
+    Logger.log('✅ ICS publikován na GitHub: https://' + repo.split('/')[0] + '.github.io/' + repo.split('/')[1] + '/' + path);
+  } else {
+    Logger.log('❌ GitHub API chyba ' + code + ': ' + putResp.getContentText().substring(0, 300));
+  }
+}
+
+
+/**
+ * Vygeneruje ICS obsah jako string (sdílená logika pro doGet i GitHub publish).
+ * Každý den = jedna událost 10:50–11:20 (ne celodenní) s emoji kategoriemi,
+ * HTML formátovaným popisem (X-ALT-DESC) a patičkou s odkazy.
+ *
+ * @return {string} ICS obsah (VCALENDAR s VEVENT pro každý den)
+ */
+function generateIcsContent_() {
+  if (!USER.TIMEZONE) loadConfig_();
 
   var ss    = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(USER.SHEET_NAME);
 
-  // Hlavička kalendáře
   var cal = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -2741,7 +2884,6 @@ function generateIcs_() {
     'X-WR-TIMEZONE:' + USER.TIMEZONE,
     'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
     'X-PUBLISHED-TTL:PT6H',
-    // VTIMEZONE pro Europe/Prague (CET/CEST)
     'BEGIN:VTIMEZONE',
     'TZID:Europe/Prague',
     'BEGIN:STANDARD',
@@ -2761,13 +2903,10 @@ function generateIcs_() {
     'END:VTIMEZONE',
   ];
 
-  // DTSTAMP — povinné pole dle RFC 5545, čas generování feedu
   var dtstamp = Utilities.formatDate(new Date(), 'UTC', "yyyyMMdd'T'HHmmss'Z'");
 
   if (sheet && sheet.getLastRow() > 1) {
     var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, INTERNAL.HEADERS.length).getValues();
-
-    // Seskupení řádků podle data
     var dayMap = {};
     for (var i = 0; i < data.length; i++) {
       var dateVal = data[i][0];
@@ -2778,31 +2917,67 @@ function generateIcs_() {
       dayMap[dateStr].push(data[i]);
     }
 
-    // Pro každý den vytvořit VEVENT
+    // Emoji mapa pro kategorie (sdílená s chatem)
+    var CAT_ICS = {
+      'polévka':       { emoji: '🥣', label: 'Polévky' },
+      'oběd':          { emoji: '🍛', label: 'Obědy' },
+      'oběd ostatní':  { emoji: '🍲', label: 'Obědy ostatní' },
+      'minutky':       { emoji: '⏳', label: 'Minutky' },
+      'pizza':         { emoji: '🍕', label: 'Pizza' },
+    };
+
     var dates = Object.keys(dayMap).sort();
     for (var d = 0; d < dates.length; d++) {
       var ds = dates[d];
       var rows = dayMap[ds];
 
-      // Sestavit popis z řádků menu
+      // Plain-text popis (DESCRIPTION)
       var lines = [];
+      // HTML popis (X-ALT-DESC)
+      var html = ['<html><body style="font-family:sans-serif;font-size:13px;color:#333;">'];
+
       var lastCat = '';
       for (var r = 0; r < rows.length; r++) {
         var cat = String(rows[r][2]);
         if (cat !== lastCat) {
-          if (lines.length > 0) lines.push('');
-          lines.push(cat.toUpperCase() + ':');
+          var ci = CAT_ICS[cat] || { emoji: '▪️', label: cat };
+          if (lines.length > 0) { lines.push(''); html.push('<br>'); }
+          lines.push(ci.emoji + ' ' + ci.label.toUpperCase());
+          html.push('<b style="color:#6b3fa0;">' + ci.emoji + ' ' + ci.label + '</b><br>');
           lastCat = cat;
         }
         var name = String(rows[r][4]);
         var price = rows[r][5] !== '' ? ' — ' + rows[r][5] + ' Kč' : '';
-        lines.push('  ' + rows[r][3] + ': ' + name + price);
+        var num = String(rows[r][3]);
+        lines.push('  ' + num + '. ' + name + price);
+        html.push('<span style="color:#888;">' + num + '.</span> ' + name +
+          (price ? ' <b style="color:#6b3fa0;">' + rows[r][5] + ' Kč</b>' : '') + '<br>');
       }
 
-      var description = icsEscape_(lines.join('\n'));
-      var dayName = String(rows[0][1]); // Den v týdnu (Po, Út, ...)
+      // Patička s odkazy (stejné jako v chatové zprávě)
+      var menzaUrl = USER.MENZA_WEB_URL || '';
+      var obedyUrl = USER.OBEDY_SHEET_URL || '';
+      var pwaUrl   = USER.PWA_URL || USER.DASHBOARD_URL || '';
+      var linkStyle = 'color:#6b3fa0;text-decoration:none;';
 
-      // DTSTART a DTEND — časový blok 10:50–11:20 v lokální zóně
+      html.push('<br><div style="font-size:12px;border-top:1px solid #e0e0e0;padding-top:6px;margin-top:8px;">');
+      if (menzaUrl)  html.push(USER.LINK_ICON_MENZA + ' <a href="' + menzaUrl + '" style="' + linkStyle + '">Menza</a> &nbsp; ');
+      if (obedyUrl)  html.push(USER.LINK_ICON_OBEDY + ' <a href="' + obedyUrl + '" style="' + linkStyle + '">Zapiš oběd</a> &nbsp; ');
+      if (pwaUrl)    html.push(USER.LINK_ICON_DASHBOARD + ' <a href="' + pwaUrl + '" style="' + linkStyle + '">JídLOG</a>');
+      html.push('</div>');
+
+      // Patička do plain textu
+      lines.push('');
+      lines.push('———');
+      if (menzaUrl)  lines.push(USER.LINK_ICON_MENZA + ' Menza: ' + menzaUrl);
+      if (obedyUrl)  lines.push(USER.LINK_ICON_OBEDY + ' Zapiš oběd: ' + obedyUrl);
+      if (pwaUrl)    lines.push(USER.LINK_ICON_DASHBOARD + ' JídLOG: ' + pwaUrl);
+
+      html.push('</body></html>');
+
+      var description = icsEscape_(lines.join('\n'));
+      var htmlDesc = html.join('').replace(/\r?\n/g, '');
+      var dayName = String(rows[0][1]);
       var dtDate = ds.replace(/-/g, '');
 
       cal.push('BEGIN:VEVENT');
@@ -2811,6 +2986,7 @@ function generateIcs_() {
       cal.push('DTEND;TZID=' + USER.TIMEZONE + ':' + dtDate + 'T112000');
       cal.push('SUMMARY:' + icsEscape_('🍽️ Menza — ' + dayName + ' ' + ds));
       cal.push('DESCRIPTION:' + description);
+      cal.push('X-ALT-DESC;FMTTYPE=text/html:' + htmlDesc);
       cal.push('UID:menza-' + ds + '@blogic.cz');
       cal.push('TRANSP:TRANSPARENT');
       cal.push('END:VEVENT');
@@ -2818,22 +2994,9 @@ function generateIcs_() {
   }
 
   cal.push('END:VCALENDAR');
-
-  return ContentService.createTextOutput(cal.join('\r\n'))
-    .setMimeType(ContentService.MimeType.TEXT);
+  return cal.join('\r\n');
 }
 
-
-/**
- * Escapuje text pro ICS DESCRIPTION — speciální znaky dle RFC 5545.
- */
-function icsEscape_(text) {
-  return text
-    .replace(/\\/g, '\\\\')
-    .replace(/;/g, '\\;')
-    .replace(/,/g, '\\,')
-    .replace(/\r?\n/g, '\\n');
-}
 
 /**
  * Vrátí data jídelníčku pro web dashboard.
@@ -2927,5 +3090,6 @@ function nactiMenuProWeb() {
     obedyUrl:    USER.OBEDY_SHEET_URL,
     dashboardUrl: USER.DASHBOARD_URL,
     pwaUrl:       USER.PWA_URL || '',
+    icsUrl:       icsUrl_(),
   };
 }
