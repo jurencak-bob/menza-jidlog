@@ -1,0 +1,32 @@
+{
+  "name": "JídLOG — Jídelníček UTB",
+  "short_name": "JídLOG",
+  "description": "Jídelníček UTB Menza — přehledně, každý den",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#6B2D8B",
+  "background_color": "#F7F7FA",
+  "lang": "cs",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
