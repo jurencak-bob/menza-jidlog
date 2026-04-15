@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>JídLOG</title>
+
+  <!-- ═══ PWA — Add-to-Home-Screen ═══ -->
+  <meta name="theme-color" content="#6B2D8B" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1A1A2E" media="(prefers-color-scheme: dark)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JídLOG">
+  <meta name="application-name" content="JídLOG">
+  <meta name="description" content="Jídelníček UTB Menza — přehledně, každý den">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%236B2D8B'/%3E%3Ctext x='64' y='90' text-anchor='middle' font-size='80'%3E📋%3C/text%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%236B2D8B'/%3E%3Ctext x='90' y='125' text-anchor='middle' font-size='110'%3E📋%3C/text%3E%3C/svg%3E">
+  <script>
+    // Inline Web App Manifest (data URI — obejde omezení GAS HtmlService)
+    (function() {
+      var m = {
+        name: 'JídLOG — Jídelníček UTB',
+        short_name: 'JídLOG',
+        description: 'Jídelníček UTB Menza — přehledně, každý den',
+        start_url: './',
+        display: 'standalone',
+        orientation: 'portrait',
+        theme_color: '#6B2D8B',
+        background_color: '#F7F7FA',
+        icons: [{
+          src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%236B2D8B'/%3E%3Ctext x='256' y='360' text-anchor='middle' font-size='320'%3E📋%3C/text%3E%3C/svg%3E",
+          sizes: '512x512',
+          type: 'image/svg+xml',
+          purpose: 'any maskable'
+        }]
+      };
+      var blob = new Blob([JSON.stringify(m)], {type: 'application/json'});
+      var link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = URL.createObjectURL(blob);
+      document.head.appendChild(link);
+    })();
+  </script>
+  <style>
+    /* ═══════════════════════════════════════════
+       BLOGIC DESIGN SYSTEM — LIGHT / DARK
+       ═══════════════════════════════════════════ */
+    :root {
+      --purple:        #6B2D8B;
+      --purple-light:  #8E44AD;
+      --purple-pale:   #F3EAF8;
+      --purple-dark:   #4A1D6B;
+      --orange:        #E67E22;
+
+      --bg:            #F7F7FA;
+      --bg-card:       #FFFFFF;
+      --bg-card-hover: #FAFAFE;
+      --bg-today:      #F3EAF8;
+      --border:        #E8E4EE;
+      --border-today:  #6B2D8B;
+      --text:          #2D2D3A;
+      --text-secondary:#6E6E80;
+      --text-muted:    #A0A0B0;
+      --accent:        #6B2D8B;
+      --price:         #6B2D8B;
+      --cat-bg:        #F3EAF8;
+      --shadow:        0 2px 12px rgba(107,45,139,0.06);
+      --shadow-today:  0 4px 20px rgba(107,45,139,0.12);
+      --radius:        12px;
+      --header-bg:     #FFFFFF;
+      --header-border: #E8E4EE;
+      --dp-active-bg:  #6B2D8B;
+      --dp-active-text:#FFFFFF;
+      --dp-hover-bg:   #F3EAF8;
+      --toggle-bg:     #E8E4EE;
+      --toggle-knob:   #FFFFFF;
+      --footer-bg:     #F0EDF4;
+    }
+
+    [data-theme="dark"] {
+      --bg:            #1A1A2E;
+      --bg-card:       #1E1E36;
+      --bg-card-hover: #252542;
+      --bg-today:      #2A1D3E;
+      --border:        #2E2E4A;
+      --border-today:  #8E44AD;
+      --text:          #E4E4EC;
+      --text-secondary:#A0A0B8;
+      --text-muted:    #6E6E88;
+      --accent:        #B07DD8;
+      --price:         #B07DD8;
+      --cat-bg:        #2A1D3E;
+      --shadow:        0 2px 12px rgba(0,0,0,0.2);
+      --shadow-today:  0 4px 20px rgba(142,68,173,0.15);
+      --header-bg:     #16162A;
+      --header-border: #2E2E4A;
+      --dp-active-bg:  #8E44AD;
+      --dp-active-text:#FFFFFF;
+      --dp-hover-bg:   #2A1D3E;
+      --toggle-bg:     #3A3A5C;
+      --toggle-knob:   #E4E4EC;
+      --footer-bg:     #16162A;
+    }
+
+    /* ═══════════════════════════════════════════
+       BASE
+       ═══════════════════════════════════════════ */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      /* PWA: safe-area pro notch (iPhone) */
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    /* ═══════════════════════════════════════════
+       HEADER — BLOGIC STYLE
+       ═══════════════════════════════════════════ */
+    .site-header {
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--header-border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    .header-inner {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 20px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .logo-link {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+    }
+
+    .logo-img {
+      height: 32px;
+      width: auto;
+    }
+
+    .header-divider {
+      width: 1px;
+      height: 28px;
+      background: var(--border);
+    }
+
+    .header-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-title .emoji { font-size: 1.2rem; }
+
+    /* Theme toggle */
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .toggle-track {
+      width: 44px;
+      height: 24px;
+      background: var(--toggle-bg);
+      border-radius: 12px;
+      position: relative;
+      transition: background 0.3s;
+    }
+
+    .toggle-knob {
+      width: 20px;
+      height: 20px;
+      background: var(--toggle-knob);
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.3s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+
+    [data-theme="dark"] .toggle-knob {
+      transform: translateX(20px);
+    }
+
+    /* ═══════════════════════════════════════════
+       MAIN CONTENT
+       ═══════════════════════════════════════════ */
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+      flex: 1;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    /* ═══════════════════════════════════════════
+       LOADING STATE
+       ═══════════════════════════════════════════ */
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .loading .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ═══════════════════════════════════════════
+       DATE PICKER — SCROLLABLE ROW
+       ═══════════════════════════════════════════ */
+    .datepicker {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 16px;
+      padding: 8px 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      scroll-behavior: smooth;
+      max-width: 100%;
+    }
+
+    .datepicker::-webkit-scrollbar { display: none; }
+
+    /* ─── Malý den (nevybraný) ─── */
+    .dp-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      width: 48px;
+      padding: 6px 4px;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background: var(--bg-card);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+
+    .dp-item:hover {
+      background: var(--dp-hover-bg);
+      border-color: var(--accent);
+      transform: scale(1.08);
+    }
+
+    .dp-item.today::after {
+      content: '';
+      position: absolute;
+      bottom: 3px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--orange);
+    }
+
+    .dp-day-name {
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: var(--text-muted);
+      margin-bottom: 1px;
+    }
+
+    .dp-day-num {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .dp-month {
+      font-size: 0.55rem;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    /* ─── Velký den (vybraný) ─── */
+    .dp-item.active {
+      width: 88px;
+      padding: 12px 8px;
+      border-radius: 14px;
+      background: var(--dp-active-bg);
+      border-color: var(--dp-active-bg);
+      box-shadow: 0 6px 24px rgba(107,45,139,0.3);
+      z-index: 2;
+    }
+
+    .dp-item.active:hover {
+      transform: none;
+      background: var(--dp-active-bg);
+      border-color: var(--dp-active-bg);
+    }
+
+    .dp-item.active .dp-day-name {
+      font-size: 0.75rem;
+      color: var(--dp-active-text);
+      margin-bottom: 2px;
+      opacity: 0.85;
+    }
+
+    .dp-item.active .dp-day-num {
+      font-size: 1.8rem;
+      color: var(--dp-active-text);
+    }
+
+    .dp-item.active .dp-month {
+      font-size: 0.7rem;
+      color: var(--dp-active-text);
+      opacity: 0.8;
+      margin-top: 2px;
+    }
+
+    .dp-item.active.today::after {
+      background: #FFFFFF;
+      width: 7px;
+      height: 7px;
+      bottom: 6px;
+    }
+
+    /* ─── Zavřeno (víkendy, svátky) ─── */
+    .dp-item.closed {
+      opacity: 0.35;
+      cursor: default;
+      background: var(--bg);
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    .dp-item.closed:hover {
+      transform: none;
+      background: var(--bg);
+      border-color: transparent;
+    }
+
+    .dp-item.closed .dp-day-num {
+      text-decoration: line-through;
+      text-decoration-color: var(--text-muted);
+    }
+
+    /* ─── Slider + Nav buttons ─── */
+    .dp-controls {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .dp-controls.visible {
+      display: flex;
+    }
+
+    .dp-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border);
+      outline: none;
+      transition: background 0.2s;
+    }
+
+    .dp-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(107,45,139,0.3);
+      transition: transform 0.15s;
+    }
+
+    .dp-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .dp-slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 2px 6px rgba(107,45,139,0.3);
+    }
+
+    .dp-slider::-moz-range-track {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border);
+    }
+
+    .btn-nav {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-nav:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-nav.is-active {
+      background: var(--accent);
+      color: white;
+    }
+
+    /* ═══════════════════════════════════════════
+       MENU CARD
+       ═══════════════════════════════════════════ */
+    .menu-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transition: background 0.3s, border-color 0.3s;
+      animation: fadeIn 0.25s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .menu-card.today-card {
+      border-color: var(--border-today);
+      box-shadow: var(--shadow-today);
+    }
+
+    .menu-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .menu-date {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .menu-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: var(--purple);
+      color: white;
+    }
+
+    [data-theme="dark"] .menu-badge {
+      background: var(--accent);
+    }
+
+    .menu-count {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .menu-fetched {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      opacity: 0.6;
+    }
+
+    .menu-body {
+      padding: 20px 24px 24px;
+    }
+
+    /* ═══════════════════════════════════════════
+       CATEGORY
+       ═══════════════════════════════════════════ */
+    .category {
+      margin-bottom: 20px;
+    }
+
+    .category:last-child { margin-bottom: 0; }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--accent);
+      margin-bottom: 8px;
+      padding: 8px 12px;
+      background: var(--cat-bg);
+      border-radius: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .category-header .cat-emoji { font-size: 1.15rem; }
+
+    /* ═══════════════════════════════════════════
+       FOOD ITEM
+       ═══════════════════════════════════════════ */
+    .food-item {
+      display: flex;
+      align-items: baseline;
+      padding: 8px 12px;
+      border-radius: 8px;
+      gap: 12px;
+      transition: background 0.15s;
+    }
+
+    .food-item:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .food-num {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      min-width: 30px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .food-name {
+      flex: 1;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .food-price {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--price);
+      white-space: nowrap;
+    }
+
+    .food-price .price-full {
+      font-weight: 400;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    /* ═══════════════════════════════════════════
+       EMPTY STATE
+       ═══════════════════════════════════════════ */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state .big-emoji { font-size: 3rem; display: block; margin-bottom: 16px; }
+    .empty-state p { font-size: 0.95rem; }
+
+    /* ═══════════════════════════════════════════
+       FOOTER
+       ═══════════════════════════════════════════ */
+    .site-footer {
+      background: var(--footer-bg);
+      border-top: 1px solid var(--border);
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    .footer-inner {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 16px 20px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .site-footer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .site-footer a:hover { text-decoration: underline; }
+
+    .site-footer .sep { margin: 0 2px; }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px 16px;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+    }
+
+    .footer-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .footer-credit {
+      font-size: 0.75rem;
+    }
+
+    /* ═══════════════════════════════════════════
+       QR MODAL
+       ═══════════════════════════════════════════ */
+    .qr-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qr-overlay.open {
+      display: flex;
+    }
+
+    .qr-modal {
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center;
+      max-width: 340px;
+      width: 90%;
+      position: relative;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .qr-modal h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .qr-modal p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .qr-modal img {
+      width: 200px;
+      height: 200px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .qr-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: var(--border);
+      border-radius: 50%;
+      font-size: 1rem;
+      line-height: 28px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.15s;
+    }
+
+    .qr-close:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    /* ═══════════════════════════════════════════
+       RESPONSIVE
+       ═══════════════════════════════════════════ */
+    @media (max-width: 480px) {
+      .site-header { padding: 0 14px; height: 56px; }
+      .header-title { font-size: 0.9rem; }
+      .header-divider { display: none; }
+      .container { padding: 20px 12px 36px; }
+      .dp-item { width: 42px; min-width: 42px; padding: 5px 3px; }
+      .dp-item.active { width: 72px; min-width: 72px; padding: 10px 6px; }
+      .dp-item.active .dp-day-num { font-size: 1.5rem; }
+      .menu-header { padding: 16px 18px 12px; }
+      .menu-body { padding: 16px 18px 20px; }
+      .food-item { padding: 6px 8px; }
+      .theme-toggle span.label { display: none; }
+    }
+
+    /* ═══════════════════════════════════════════
+       ANIMATED POLYGON BACKGROUND
+       ═══════════════════════════════════════════ */
+    #poly-bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .site-header, .container, .site-footer { position: relative; z-index: 1; }
+  </style>
+</head>
+<body>
+<canvas id="poly-bg"></canvas>
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-left">
+        <a href="https://www.blogic.cz" class="logo-link" target="_blank">
+          <img src="https://static.wixstatic.com/media/8c52f2_32593c7afaef45aaa6d5396ffe1358db~mv2.png/v1/fill/w_115,h_47,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/logo_velke_orez.png"
+               alt="Blogic" class="logo-img">
+        </a>
+        <div class="header-divider"></div>
+        <div class="header-title">
+          <span class="emoji">📋</span>
+          JídLOG
+        </div>
+      </div>
+      <div class="theme-toggle" onclick="toggleTheme()" title="Přepnout režim">
+        <span>☀️</span>
+        <div class="toggle-track"><div class="toggle-knob"></div></div>
+        <span>🌙</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN ═══ -->
+  <div class="container">
+    <div class="datepicker" id="datepicker"></div>
+    <div class="dp-controls" id="dp-controls">
+      <button class="btn-nav" id="btn-today" onclick="goToToday()">Dnes</button>
+      <input type="range" class="dp-slider" id="dp-slider" min="0" max="0" value="0">
+      <button class="btn-nav btn-end" id="btn-end" onclick="goToEnd()">Konec</button>
+    </div>
+    <div id="content">
+      <div class="loading">
+        <div class="spinner"></div>
+        Načítám jídelníček…
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ QR MODAL ═══ -->
+  <div class="qr-overlay" id="qr-overlay" onclick="closeQrModal(event)">
+    <div class="qr-modal">
+      <button class="qr-close" onclick="closeQrModal()">&times;</button>
+      <h3>📱 JídLOG na mobilu</h3>
+      <p>Naskenuj QR kód</p>
+      <img id="qr-img" src="" alt="QR kód">
+    </div>
+  </div>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-links" id="footer-links"></div>
+      <div class="footer-credit">Automaticky generováno z <a id="menza-link" href="https://jidelnicek.utb.cz" target="_blank">UTB WebKredit</a> <span class="sep">·</span> spáchal Bob</div>
+    </div>
+  </footer>
+
+  <script>
+    /* ═══ CONSTANTS ═══ */
+    var CAT_EMOJI = { 'polévka':'🥣','oběd':'🍛','oběd ostatní':'🍲','minutky':'⏳','pizza':'🍕' };
+    var CAT_LABELS = { 'polévka':'Polévky','oběd':'Obědy','oběd ostatní':'Obědy ostatní','minutky':'Minutky','pizza':'Pizza' };
+    var MONTHS_GEN = ['','ledna','února','března','dubna','května','června','července','srpna','září','října','listopadu','prosince'];
+    var MONTHS_SHORT = ['','led','úno','bře','dub','kvě','čvn','čvc','srp','zář','říj','lis','pro'];
+    var DAY_FULL = { 'Ne':'Neděle','Po':'Pondělí','Út':'Úterý','St':'Středa','Čt':'Čtvrtek','Pá':'Pátek','So':'Sobota' };
+
+    /* ═══ THEME ═══ */
+    function toggleTheme() {
+      var c = document.documentElement.getAttribute('data-theme') || 'light';
+      var n = c === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', n);
+      try { localStorage.setItem('menza-theme', n); } catch(e) {}
+      // PWA: aktualizuj theme-color pro status bar
+      var tc = document.querySelector('meta[name="theme-color"]:not([media])');
+      if (!tc) { tc = document.createElement('meta'); tc.name = 'theme-color'; document.head.appendChild(tc); }
+      tc.content = n === 'dark' ? '#1A1A2E' : '#6B2D8B';
+    }
+    (function() {
+      var s; try { s = localStorage.getItem('menza-theme'); } catch(e) {}
+      if (s) document.documentElement.setAttribute('data-theme', s);
+      else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+
+    /* ═══ HELPERS ═══ */
+    function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+    function formatCzechDate(dateStr, dayName) {
+      var p = dateStr.split('-');
+      return (DAY_FULL[dayName] || dayName) + ' ' + parseInt(p[2], 10) + '. ' + MONTHS_GEN[parseInt(p[1], 10)];
+    }
+
+    /* ═══ STATE ═══ */
+    var DATA = null;        // data ze serveru
+    var selectedIndex = 0;
+    var todayIndex = -1;
+    var openIndices = [];   // mapování: slider pozice → index v DATA.days
+
+    /* ═══ FIND TODAY INDEX ═══ */
+    function findTodayIndex(data) {
+      for (var i = 0; i < data.days.length; i++) {
+        if (data.days[i].date === data.todayStr) return i;
+      }
+      return -1;
+    }
+
+    function buildOpenIndices(data) {
+      openIndices = [];
+      for (var i = 0; i < data.days.length; i++) {
+        if (!data.days[i].closed) openIndices.push(i);
+      }
+    }
+
+    function openToSlider(dayIdx) {
+      for (var i = 0; i < openIndices.length; i++) {
+        if (openIndices[i] === dayIdx) return i;
+      }
+      return 0;
+    }
+
+    /* ═══ RENDER DATE PICKER ═══ */
+    function renderDatepicker(data) {
+      var dp = document.getElementById('datepicker');
+      var html = '';
+
+      for (var i = 0; i < data.days.length; i++) {
+        var day = data.days[i];
+        var parts = day.date.split('-');
+        var dayNum = parseInt(parts[2], 10);
+        var monthIdx = parseInt(parts[1], 10);
+        var isToday = day.date === data.todayStr;
+        var isActive = i === selectedIndex;
+
+        var isClosed = !!day.closed;
+        var cls = 'dp-item';
+        if (isClosed) cls += ' closed';
+        if (isActive && !isClosed) cls += ' active';
+        if (isToday) cls += ' today';
+
+        var click = isClosed ? '' : ' onclick="selectDay(' + i + ')"';
+        html += '<div class="' + cls + '" data-idx="' + i + '"' + click + '>';
+        html += '<span class="dp-day-name">' + esc(day.dayName) + '</span>';
+        html += '<span class="dp-day-num">' + dayNum + '</span>';
+        html += '<span class="dp-month">' + MONTHS_SHORT[monthIdx] + '</span>';
+        html += '</div>';
+      }
+
+      dp.innerHTML = html;
+      scrollToActive(dp);
+    }
+
+    function scrollToActive(dp) {
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          var active = dp.querySelector('.dp-item.active');
+          if (!active) return;
+          active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        });
+      });
+    }
+
+    /* ═══ RENDER MENU ═══ */
+    function renderMenu(data) {
+      var content = document.getElementById('content');
+      var day = data.days[selectedIndex];
+
+      if (!day || day.closed) {
+        content.innerHTML = '<div class="empty-state"><span class="big-emoji">🍽️</span><p>Žádná data.</p></div>';
+        return;
+      }
+
+      var isToday = day.date === data.todayStr;
+      var dateFormatted = formatCzechDate(day.date, day.dayName);
+
+      var html = '<div class="menu-card' + (isToday ? ' today-card' : '') + '">';
+
+      // Header
+      html += '<div class="menu-header">';
+      html += '<div>';
+      html += '<div class="menu-date">' + esc(dateFormatted) + '</div>';
+      html += '<div class="menu-count">' + day.items.length + ' jídel';
+      if (day.fetchedAt) html += ' <span class="menu-fetched">· načteno ' + esc(day.fetchedAt) + '</span>';
+      html += '</div>';
+      html += '</div>';
+      if (isToday) html += '<span class="menu-badge">Dnes</span>';
+      html += '</div>';
+
+      // Body
+      html += '<div class="menu-body">';
+
+      var lastCat = '';
+      for (var i = 0; i < day.items.length; i++) {
+        var item = day.items[i];
+
+        if (item.kategorie !== lastCat) {
+          if (lastCat) html += '</div>';
+          html += '<div class="category">';
+          html += '<div class="category-header">';
+          html += '<span class="cat-emoji">' + (CAT_EMOJI[item.kategorie] || '▪️') + '</span>';
+          html += esc(CAT_LABELS[item.kategorie] || item.kategorie);
+          html += '</div>';
+          lastCat = item.kategorie;
+        }
+
+        html += '<div class="food-item">';
+        html += '<span class="food-num">' + esc(item.cislo) + '</span>';
+        html += '<span class="food-name">' + esc(item.name) + '</span>';
+
+        if (item.cena_stu) {
+          html += '<span class="food-price">' + esc(item.cena_stu) + ' Kč';
+          if (item.cena_plna && item.cena_plna !== item.cena_stu) {
+            html += ' <span class="price-full">/ ' + esc(item.cena_plna) + '</span>';
+          }
+          html += '</span>';
+        }
+
+        html += '</div>';
+      }
+      if (lastCat) html += '</div>';
+
+      html += '</div>'; // menu-body
+      html += '</div>'; // menu-card
+
+      content.innerHTML = html;
+    }
+
+    /* ═══ SELECT DAY ═══ */
+    function selectDay(idx) {
+      if (!DATA) return;
+      if (idx < 0) idx = 0;
+      if (idx >= DATA.days.length) idx = DATA.days.length - 1;
+      if (DATA.days[idx].closed) return;
+      selectedIndex = idx;
+
+      // Sync slider
+      var slider = document.getElementById('dp-slider');
+      slider.value = openToSlider(idx);
+
+      // Update button highlights
+      var btnToday = document.getElementById('btn-today');
+      var btnEnd = document.getElementById('btn-end');
+      var lastOpen = openIndices[openIndices.length - 1];
+
+      if (todayIndex >= 0 && idx === todayIndex) {
+        btnToday.classList.add('is-active');
+      } else {
+        btnToday.classList.remove('is-active');
+      }
+      if (idx === lastOpen) {
+        btnEnd.classList.add('is-active');
+      } else {
+        btnEnd.classList.remove('is-active');
+      }
+
+      renderDatepicker(DATA);
+      renderMenu(DATA);
+      updateControlsVisibility();
+    }
+
+    /* ═══ SHOW/HIDE CONTROLS BASED ON OVERFLOW ═══ */
+    function updateControlsVisibility() {
+      var dp = document.getElementById('datepicker');
+      var controls = document.getElementById('dp-controls');
+      if (dp.scrollWidth > dp.clientWidth + 2) {
+        controls.classList.add('visible');
+      } else {
+        controls.classList.remove('visible');
+      }
+    }
+
+    /* ═══ GO TO TODAY ═══ */
+    function goToToday() {
+      if (todayIndex >= 0) {
+        selectDay(todayIndex);
+      } else {
+        selectDay(openIndices[0] || 0);
+      }
+    }
+
+    /* ═══ GO TO END (nejstarší otevřený den) ═══ */
+    function goToEnd() {
+      selectDay(openIndices[openIndices.length - 1]);
+    }
+
+    /* ═══ ERROR ═══ */
+    function showError(msg) {
+      document.getElementById('content').innerHTML =
+        '<div class="empty-state">' +
+          '<span class="big-emoji">⚠️</span>' +
+          '<p>Chyba při načítání</p>' +
+          '<p style="font-size:0.85rem;margin-top:8px">' + esc(msg) + '</p>' +
+        '</div>';
+    }
+
+    /* ═══ INIT WITH DATA ═══ */
+    function initWithData(data) {
+      if (!data || !data.days || data.days.length === 0) {
+        document.getElementById('content').innerHTML =
+          '<div class="empty-state">' +
+            '<span class="big-emoji">🍽️</span>' +
+            '<p>Zatím žádný jídelníček.</p>' +
+            '<p style="font-size:0.85rem;margin-top:8px">Skript ještě nestáhl žádná data, nebo byl list smazán.</p>' +
+          '</div>';
+        return;
+      }
+
+      DATA = data;
+
+      // Nastav link na menzu
+      if (data.menzaUrl) {
+        document.getElementById('menza-link').href = data.menzaUrl;
+      }
+
+      // Footer odkazy
+      var baseUrl = data.dashboardUrl || '';
+      var footerLinks = document.getElementById('footer-links');
+      var links = [];
+      if (data.menzaUrl) links.push('🌐 <a href="' + esc(data.menzaUrl) + '" target="_blank">Menza</a>');
+      if (data.obedyUrl) links.push('✏️ <a href="' + esc(data.obedyUrl) + '" target="_blank">Zapiš oběd</a>');
+      if (baseUrl) {
+        links.push('📱 <a href="#" onclick="showQrModal(); return false;">QR kód</a>');
+        var webcalUrl = baseUrl.replace(/^https?:\/\//, 'webcal://') + '?format=ics';
+        links.push('📆 <a href="' + esc(webcalUrl) + '">.ics</a>');
+      }
+      footerLinks.innerHTML = links.join('<span class="sep">·</span>');
+
+      todayIndex = findTodayIndex(data);
+      buildOpenIndices(data);
+
+      // Init slider
+      var slider = document.getElementById('dp-slider');
+      slider.max = openIndices.length - 1;
+      slider.value = 0;
+
+      slider.addEventListener('input', function() {
+        var sliderPos = parseInt(this.value, 10);
+        var dayIdx = openIndices[sliderPos];
+        if (dayIdx !== undefined) selectDay(dayIdx);
+      });
+
+      // Start na dnešku nebo první otevřený den
+      if (todayIndex >= 0) {
+        selectDay(todayIndex);
+      } else {
+        selectDay(openIndices[0] || 0);
+      }
+
+      window.addEventListener('resize', updateControlsVisibility);
+    }
+
+    /* ═══ QR MODAL ═══ */
+    function showQrModal() {
+      var overlay = document.getElementById('qr-overlay');
+      var img = document.getElementById('qr-img');
+      if (DATA && DATA.dashboardUrl) {
+        img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' +
+                  encodeURIComponent(DATA.dashboardUrl);
+      }
+      overlay.classList.add('open');
+    }
+
+    function closeQrModal(e) {
+      // Zavřít kliknutím na overlay (ne na modál) nebo na × tlačítko
+      if (!e || e.target === e.currentTarget) {
+        document.getElementById('qr-overlay').classList.remove('open');
+      }
+    }
+
+    // Escape zavře modál
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeQrModal();
+    });
+
+    /* ═══ LOAD DATA FROM SERVER ═══ */
+    google.script.run
+      .withSuccessHandler(initWithData)
+      .withFailureHandler(function(err) { showError(err.message || String(err)); })
+      .nactiMenuProWeb();
+  </script>
+
+  <!-- ═══ FOOD BACKGROUND ANIMATION ═══ -->
+  <script>
+  (function() {
+    var canvas = document.getElementById('poly-bg');
+    var ctx = canvas.getContext('2d');
+    var W, H;
+    var items = [];
+    var COUNT = 14;
+    var SPEED_MIN = 0.3, SPEED_MAX = 0.9;
+
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+
+    function isDark() {
+      return document.documentElement.getAttribute('data-theme') === 'dark';
+    }
+
+    /* ─── SVG path definice jídel (kreslené do středu 0,0) ─── */
+    var SHAPES = [
+      // 🍴 Vidlička
+      function(ctx, s) {
+        var k = s / 40;
+        ctx.beginPath();
+        ctx.moveTo(-8*k, -20*k); ctx.lineTo(-8*k, -4*k); ctx.lineTo(-3*k, 2*k); ctx.lineTo(-3*k, 20*k);
+        ctx.lineTo(3*k, 20*k); ctx.lineTo(3*k, 2*k); ctx.lineTo(8*k, -4*k); ctx.lineTo(8*k, -20*k);
+        ctx.moveTo(-3*k, -20*k); ctx.lineTo(-3*k, -4*k);
+        ctx.moveTo(3*k, -20*k); ctx.lineTo(3*k, -4*k);
+        ctx.stroke();
+      },
+      // 🥄 Lžíce
+      function(ctx, s) {
+        var k = s / 40;
+        ctx.beginPath();
+        ctx.ellipse(0, -10*k, 7*k, 10*k, 0, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-2*k, 0); ctx.lineTo(-2*k, 20*k);
+        ctx.lineTo(2*k, 20*k); ctx.lineTo(2*k, 0);
+        ctx.fill(); ctx.stroke();
+      },
+      // 🍕 Pizza (trojúhelník s kolečky)
+      function(ctx, s) {
+        var k = s / 40;
+        ctx.beginPath();
+        ctx.moveTo(0, -18*k);
+        ctx.lineTo(-16*k, 16*k);
+        ctx.arc(0, 16*k, 16*k, Math.PI, 0, true);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // salámky
+        ctx.beginPath(); ctx.arc(-2*k, 2*k, 3*k, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(4*k, 9*k, 2.5*k, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(-5*k, 10*k, 2*k, 0, Math.PI*2); ctx.stroke();
+      },
+      // 🍎 Jablko
+      function(ctx, s) {
+        var k = s / 40;
+        ctx.beginPath();
+        ctx.moveTo(0, -14*k);
+        ctx.bezierCurveTo(-16*k, -14*k, -16*k, 8*k, -8*k, 16*k);
+        ctx.quadraticCurveTo(0, 20*k, 0, 16*k);
+        ctx.quadraticCurveTo(0, 20*k, 8*k, 16*k);
+        ctx.bezierCurveTo(16*k, 8*k, 16*k, -14*k, 0, -14*k);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // stopka
+        ctx.beginPath();
+        ctx.moveTo(0, -14*k); ctx.quadraticCurveTo(2*k, -22*k, 6*k, -20*k);
+        ctx.stroke();
+      },
+      // 🥐 Croissant (srpek)
+      function(ctx, s) {
+        var k = s / 40;
+        ctx.beginPath();
+        ctx.moveTo(-18*k, 8*k);
+        ctx.quadraticCurveTo(-10*k, -16*k, 0, -14*k);
+        ctx.quadraticCurveTo(10*k, -16*k, 18*k, 8*k);
+        ctx.quadraticCurveTo(10*k, -4*k, 0, -2*k);
+        ctx.quadraticCurveTo(-10*k, -4*k, -18*k, 8*k);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // pruhy
+        ctx.beginPath();
+        ctx.moveTo(-8*k, 0); ctx.quadraticCurveTo(-4*k, -8*k, 0, -6*k);
+        ctx.moveTo(0, -6*k); ctx.quadraticCurveTo(4*k, -8*k, 8*k, 0);
+        ctx.stroke();
+      },
+      // 🍰 Dort (řez)
+      function(ctx, s) {
+        var k = s / 40;
+        ctx.beginPath();
+        ctx.moveTo(-14*k, 6*k); ctx.lineTo(-14*k, 16*k); ctx.lineTo(14*k, 16*k);
+        ctx.lineTo(14*k, 6*k); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // vrch — trojúhelník
+        ctx.beginPath();
+        ctx.moveTo(-14*k, 6*k); ctx.lineTo(0, -14*k); ctx.lineTo(14*k, 6*k);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // třešnička
+        ctx.beginPath(); ctx.arc(0, -14*k, 3*k, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      },
+      // 🥣 Miska (polévka)
+      function(ctx, s) {
+        var k = s / 40;
+        ctx.beginPath();
+        ctx.ellipse(0, 2*k, 16*k, 6*k, 0, 0, Math.PI);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // horní okraj
+        ctx.beginPath();
+        ctx.ellipse(0, 2*k, 16*k, 4*k, 0, Math.PI, 0);
+        ctx.stroke();
+        // pára
+        ctx.beginPath();
+        ctx.moveTo(-5*k, -4*k); ctx.quadraticCurveTo(-3*k, -10*k, -5*k, -16*k);
+        ctx.moveTo(3*k, -4*k); ctx.quadraticCurveTo(5*k, -10*k, 3*k, -16*k);
+        ctx.stroke();
+      },
+      // 🍞 Chleba
+      function(ctx, s) {
+        var k = s / 40;
+        ctx.beginPath();
+        ctx.moveTo(-12*k, 14*k); ctx.lineTo(-12*k, -4*k);
+        ctx.quadraticCurveTo(-12*k, -16*k, 0, -16*k);
+        ctx.quadraticCurveTo(12*k, -16*k, 12*k, -4*k);
+        ctx.lineTo(12*k, 14*k); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // linka kůrky
+        ctx.beginPath();
+        ctx.moveTo(-12*k, 2*k); ctx.lineTo(12*k, 2*k);
+        ctx.stroke();
+      },
+      // 🧀 Sýr (trojúhelník s dírami)
+      function(ctx, s) {
+        var k = s / 40;
+        ctx.beginPath();
+        ctx.moveTo(-16*k, 14*k); ctx.lineTo(0, -14*k); ctx.lineTo(16*k, 14*k);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(-2*k, 6*k, 3.5*k, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(6*k, 10*k, 2*k, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(-6*k, 12*k, 1.5*k, 0, Math.PI*2); ctx.stroke();
+      },
+      // ☕ Hrnek
+      function(ctx, s) {
+        var k = s / 40;
+        // tělo
+        ctx.beginPath();
+        ctx.moveTo(-10*k, -8*k); ctx.lineTo(-10*k, 12*k);
+        ctx.quadraticCurveTo(-10*k, 16*k, -6*k, 16*k);
+        ctx.lineTo(6*k, 16*k);
+        ctx.quadraticCurveTo(10*k, 16*k, 10*k, 12*k);
+        ctx.lineTo(10*k, -8*k); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // ouško
+        ctx.beginPath();
+        ctx.moveTo(10*k, -2*k);
+        ctx.quadraticCurveTo(18*k, -2*k, 18*k, 5*k);
+        ctx.quadraticCurveTo(18*k, 12*k, 10*k, 10*k);
+        ctx.stroke();
+        // pára
+        ctx.beginPath();
+        ctx.moveTo(-4*k, -10*k); ctx.quadraticCurveTo(-2*k, -16*k, -4*k, -20*k);
+        ctx.moveTo(4*k, -10*k); ctx.quadraticCurveTo(6*k, -16*k, 4*k, -20*k);
+        ctx.stroke();
+      },
+      // 🥕 Mrkev
+      function(ctx, s) {
+        var k = s / 40;
+        ctx.beginPath();
+        ctx.moveTo(0, 20*k);
+        ctx.lineTo(-8*k, -6*k);
+        ctx.quadraticCurveTo(-8*k, -12*k, 0, -10*k);
+        ctx.quadraticCurveTo(8*k, -12*k, 8*k, -6*k);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // nať
+        ctx.beginPath();
+        ctx.moveTo(-2*k, -10*k); ctx.quadraticCurveTo(-8*k, -20*k, -4*k, -22*k);
+        ctx.moveTo(2*k, -10*k); ctx.quadraticCurveTo(8*k, -20*k, 4*k, -22*k);
+        ctx.stroke();
+      },
+      // 🍩 Donut
+      function(ctx, s) {
+        var k = s / 40;
+        ctx.beginPath(); ctx.arc(0, 0, 14*k, 0, Math.PI*2); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // díra — vyřízni (stroke)
+        ctx.beginPath(); ctx.arc(0, 0, 5*k, 0, Math.PI*2); ctx.stroke();
+      }
+    ];
+
+    function makeItem() {
+      var size  = 28 + Math.random() * 50;
+      var angle = Math.random() * Math.PI * 2;
+      var speed = SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN);
+      return {
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.006,
+        size: size,
+        shape: Math.floor(Math.random() * SHAPES.length),
+        alpha: 0.05 + Math.random() * 0.07
+      };
+    }
+
+    function init() {
+      resize();
+      items = [];
+      for (var i = 0; i < COUNT; i++) items.push(makeItem());
+    }
+
+    function update() {
+      for (var i = 0; i < items.length; i++) {
+        var p = items[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.rotSpeed;
+        var margin = p.size;
+        if (p.x - margin < 0) { p.x = margin;     p.vx = Math.abs(p.vx); }
+        if (p.x + margin > W) { p.x = W - margin;  p.vx = -Math.abs(p.vx); }
+        if (p.y - margin < 0) { p.y = margin;     p.vy = Math.abs(p.vy); }
+        if (p.y + margin > H) { p.y = H - margin;  p.vy = -Math.abs(p.vy); }
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      var dark = isDark();
+      var strokeRgb = dark ? '180,160,220' : '107,45,139';
+      var fillRgb   = dark ? '140,100,200' : '107,45,139';
+
+      for (var i = 0; i < items.length; i++) {
+        var p = items[i];
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle   = 'rgba(' + fillRgb + ',' + (p.alpha * 0.4) + ')';
+        ctx.strokeStyle = 'rgba(' + strokeRgb + ',' + p.alpha + ')';
+        ctx.lineWidth   = 1.3;
+        ctx.lineJoin    = 'round';
+        ctx.lineCap     = 'round';
+        SHAPES[p.shape](ctx, p.size);
+        ctx.restore();
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener('resize', resize);
+    init();
+    loop();
+  })();
+  </script>
+</body>
+</html>
