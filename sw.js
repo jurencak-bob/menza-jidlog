@@ -1,5 +1,5 @@
 // JídLOG — Service Worker (PWA shell cache)
-var CACHE_NAME = 'jidlog-shell-v1';
+var CACHE_NAME = 'jidlog-shell-v2';
 var SHELL_URLS = ['./', 'index.html', 'manifest.json', 'icon.svg'];
 
 // Install — cache shell

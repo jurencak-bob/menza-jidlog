@@ -761,6 +761,7 @@
       <div class="loading">
         <div class="spinner"></div>
         Načítám jídelníček…
+        <p style="font-size:0.75rem;margin-top:12px;opacity:0.6">Přístupné pouze pro BL přihlášené (GWS)</p>
       </div>
     </div>
   </div>
@@ -1042,8 +1043,10 @@
       if (data.obedyUrl) links.push('✏️ <a href="' + esc(data.obedyUrl) + '" target="_blank">Zapiš oběd</a>');
       if (baseUrl) {
         links.push('📱 <a href="#" onclick="showQrModal(); return false;">QR kód</a>');
-        var webcalUrl = baseUrl.replace(/^https?:\/\//, 'webcal://') + '?format=ics';
-        links.push('📆 <a href="' + esc(webcalUrl) + '">.ics</a>');
+      }
+      var icsLink = data.icsUrl || (baseUrl ? baseUrl.replace(/^https?:\/\//, 'webcal://') + '?format=ics' : '');
+      if (icsLink) {
+        links.push('📆 <a href="' + esc(icsLink) + '">.ics</a>');
       }
       footerLinks.innerHTML = links.join('<span class="sep">·</span>');
 
