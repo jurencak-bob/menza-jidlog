@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Chat – náhled zpráv</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+    background: #f8f9fa;
+    padding: 32px;
+    color: #202124;
+  }
+  h2 {
+    font-size: 14px;
+    color: #5f6368;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 32px 0 16px;
+  }
+  h2:first-child { margin-top: 0; }
+
+  .chat-bg {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 560px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+
+  .card {
+    max-width: 440px;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .card-header {
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 500;
+    border-bottom: 1px solid #dadce0;
+    color: #202124;
+  }
+  .card-body {
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: #3c4043;
+  }
+  .card-body a {
+    color: #1a73e8;
+    text-decoration: none;
+  }
+  .card-body a:hover { text-decoration: underline; }
+
+  .msg-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: #34a853;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .bot-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #5f6368;
+    margin-bottom: 4px;
+  }
+
+  .divider {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 24px 0;
+  }
+
+  .label {
+    display: inline-block;
+    background: #e6f4ea;
+    color: #137333;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+  .label.warn {
+    background: #fef7e0;
+    color: #b06000;
+  }
+
+  /* CHAT_STYLE konfigurace */
+  .section-name {
+    font-family: 'Proxima Nova', 'Roboto', Arial, sans-serif;
+    color: #000000;
+    font-weight: bold;
+  }
+  .food-name {
+    font-family: 'Proxima Nova', 'Roboto', Arial, sans-serif;
+    color: #000000;
+    font-weight: bold;
+  }
+  .price {
+    color: #5D4037;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<h2>✅ Úspěch – denní menu (card zpráva s hyperlinky)</h2>
+
+<div class="chat-bg">
+  <div class="msg-row">
+    <div class="avatar">🍽</div>
+    <div>
+      <div class="bot-name">Menza Bot</div>
+      <div class="label">Příchozí webhook</div>
+      <div class="card">
+        <div class="card-header">🍽️ Jídelníček – Po 14. dubna</div>
+        <div class="card-body">
+          🥣 <span class="section-name">Polévky</span><br>
+          &nbsp; po1 – <span class="food-name">Gulášová polévka</span> · <span class="price">28 Kč</span><br>
+          &nbsp; po2 – <span class="food-name">Hovězí vývar s nudlemi</span> · <span class="price">22 Kč</span><br>
+          <br>
+          🍛 <span class="section-name">Obědy</span><br>
+          &nbsp; 1 – <span class="food-name">Smažený kuřecí řízek, bramborový salát</span> · <span class="price">84 Kč</span><br>
+          &nbsp; 2 – <span class="food-name">Vepřové medailonky, dušená rýže</span> · <span class="price">79 Kč</span><br>
+          &nbsp; 3 – <span class="food-name">Cizrnové kari s kokosovým mlékem</span> · <span class="price">72 Kč</span><br>
+          <br>
+          🍲 <span class="section-name">Obědy ostatní</span><br>
+          &nbsp; o1 – <span class="food-name">Zeleninový bulgur s fetou</span> · <span class="price">68 Kč</span><br>
+          <br>
+          ⏳ <span class="section-name">Minutky</span><br>
+          &nbsp; m1 – <span class="food-name">Svíčková na smetaně, houskový knedlík</span> · <span class="price">92 Kč</span><br>
+          &nbsp; m2 – <span class="food-name">Grilovaný losos, špenátové rizoto</span> · <span class="price">115 Kč</span><br>
+          <br>
+          🍕 <span class="section-name">Pizza</span><br>
+          &nbsp; pz1 – <span class="food-name">Margherita</span> · <span class="price">65 Kč</span><br>
+          &nbsp; pz2 – <span class="food-name">Šunková s kukuřicí</span> · <span class="price">75 Kč</span><br>
+          <br>
+          📋 <a href="https://jidelnicek.utb.cz/webkredit/Ordering/Menu?canteen=3">Menza</a> &nbsp; ✏️ <a href="https://docs.google.com/spreadsheets/d/1KVMtzJoIpkMxiAPgm3qg3o-pSlWsDO9TQWTS_X4GbzE/edit">Zápis obědů</a>
+          <br><br>
+          <span style="font-size: 11px; color: #9aa0a6; font-style: italic;">Za správnost jídelníčku a cen nikdo neručí. Za zápis obědů odpovídá každý jedlík sám — cenu si prosím ověř.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<h2>⚠️ Neúspěch – jídelníček se nepodařilo stáhnout (card zpráva)</h2>
+
+<div class="chat-bg">
+  <div class="msg-row">
+    <div class="avatar">🍽</div>
+    <div>
+      <div class="bot-name">Menza Bot</div>
+      <div class="label warn">Příchozí webhook</div>
+      <div class="card">
+        <div class="card-header">⚠️ Jídelníček na Po 14. dubna se nepodařilo stáhnout</div>
+        <div class="card-body">
+          Jídelníček: na <a href="https://jidelnicek.utb.cz/webkredit/Ordering/Menu?canteen=3">webu menzy</a> a oběd si zapiš do <a href="https://docs.google.com/spreadsheets/d/1KVMtzJoIpkMxiAPgm3qg3o-pSlWsDO9TQWTS_X4GbzE/edit">Google sheetu</a>.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
