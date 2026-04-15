@@ -1075,9 +1075,10 @@
     function showQrModal() {
       var overlay = document.getElementById('qr-overlay');
       var img = document.getElementById('qr-img');
-      if (DATA && DATA.dashboardUrl) {
+      var qrTarget = (DATA && DATA.pwaUrl) || (DATA && DATA.dashboardUrl) || '';
+      if (qrTarget) {
         img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' +
-                  encodeURIComponent(DATA.dashboardUrl);
+                  encodeURIComponent(qrTarget);
       }
       overlay.classList.add('open');
     }

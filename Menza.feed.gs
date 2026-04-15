@@ -268,6 +268,8 @@ function loadConfig_() {
     if (!row) return {};
     var cell = configSheet.getRange(row, 2);
     return {
+      text: cell.getValue() || '',
+      fontSize: cell.getFontSize() || 10,
       bg: cell.getBackground() || '',
       fontColor: cell.getFontColor() || '',
       fontWeight: cell.getFontWeight() || 'normal',
@@ -331,6 +333,7 @@ function loadConfig_() {
     MENZA_WEB_URL:  txt('URL jídelníčku', 'https://jidelnicek.utb.cz/webkredit/Ordering/Menu?canteen=3'),
     OBEDY_SHEET_URL: txt('URL sheet obědů', 'https://docs.google.com/spreadsheets/d/1KVMtzJoIpkMxiAPgm3qg3o-pSlWsDO9TQWTS_X4GbzE/edit?gid=1704001489#gid=1704001489'),
     DASHBOARD_URL:   txt('URL dashboard', 'https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec'),
+    PWA_URL:         txt('URL PWA', 'https://jurencak-bob.github.io/menza-jidlog/'),
     LINK_ICON_MENZA:     txt('Ikona — Menza', '🌍'),
     LINK_ICON_OBEDY:     txt('Ikona — Zápis obědů', '✏️'),
     LINK_ICON_DASHBOARD: txt('Ikona — Dashboard', '📋'),
@@ -373,8 +376,8 @@ function loadConfig_() {
         font:   priceStyle.fontFamily || '',
       },
       smallprint: {
-        text:   txt('Smallprint text', 'Za správnost jídelníčku a cen nikdo neručí. Za zápis obědů odpovídá každý jedlík sám — cenu si prosím ověř.'),
-        size:   num('Smallprint velikost', 1),
+        text:   smallprintStyle.text || 'Za správnost jídelníčku a cen nikdo neručí. Za zápis obědů odpovídá každý jedlík sám — cenu si prosím ověř.',
+        size:   smallprintStyle.fontSize || 10,
         color:  smallprintStyle.fontColor || '#9aa0a6',
         weight: smallprintStyle.fontWeight || 'normal',
         italic: smallprintStyle.fontStyle === 'italic',
@@ -596,6 +599,7 @@ function vytvorKonfiguraci(ss) {
     { label: 'URL jídelníčku', defaultValue: 'https://jidelnicek.utb.cz/webkredit/Ordering/Menu?canteen=3', note: 'Odkaz do notifikací' },
     { label: 'URL sheet obědů', defaultValue: 'https://docs.google.com/spreadsheets/d/1KVMtzJoIpkMxiAPgm3qg3o-pSlWsDO9TQWTS_X4GbzE/edit?gid=1704001489#gid=1704001489', note: 'Alternativa pro ruční zápis' },
     { label: 'URL dashboard', defaultValue: 'https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec', note: 'Veřejný web s jídelníčkem (Web App)' },
+    { label: 'URL PWA', defaultValue: 'https://jurencak-bob.github.io/menza-jidlog/', note: 'PWA wrapper pro Add-to-Home-Screen (QR kód vede sem)' },
     { label: 'Ikona — Menza', defaultValue: '🌍', note: 'Emoji ikona před odkazem na menzu v Chatu' },
     { label: 'Ikona — Zápis obědů', defaultValue: '✏️', note: 'Emoji ikona před odkazem „Zapiš oběd" v Chatu' },
     { label: 'Ikona — Dashboard', defaultValue: '📋', note: 'Emoji ikona před odkazem „JídLOG" v Chatu' },
@@ -603,8 +607,6 @@ function vytvorKonfiguraci(ss) {
     { label: 'Ikona — Kalendář', defaultValue: '📆', note: 'Emoji ikona před odkazem „.ics" v Chatu' },
     { label: 'Oddělovač odkazů', defaultValue: '  ', note: 'Oddělovač mezi odkazy v patičce Chat zprávy (výchozí: 2 mezery)' },
     { label: 'Písmo', defaultValue: 'Proxima Nova', note: 'Písmo pro celý list (Proxima Nova, Arial, Roboto…)' },
-    { label: 'Smallprint text', defaultValue: 'Za správnost jídelníčku a cen nikdo neručí. Za zápis obědů odpovídá každý jedlík sám — cenu si prosím ověř.', note: 'Disclaimer text pod patičkou Chat zprávy' },
-    { label: 'Smallprint velikost', type: 'number', defaultValue: 1, note: 'Velikost písma smallprintu (HTML font size: 1–7, výchozí 1 = nejmenší)' },
   ]);
 
   addSection('📧 E-MAIL', [
@@ -724,7 +726,7 @@ function vytvorKonfiguraci(ss) {
     { label: 'Názvy kategorií', text: 'Polévky', font: 'Proxima Nova', weight: 'bold' },
     { label: 'Názvy jídel', text: 'Svíčková na smetaně', font: 'Proxima Nova', weight: 'normal' },
     { label: 'Ceny', text: '84 Kč', font: 'Proxima Nova', weight: 'normal', italic: true, color: '#5D4037' },
-    { label: 'Smallprint', text: 'Ukázkový disclaimer', font: '', weight: 'normal', italic: true, color: '#9aa0a6' },
+    { label: 'Smallprint', text: 'Za správnost jídelníčku a cen nikdo neručí. Za zápis obědů odpovídá každý jedlík sám.', font: 'Proxima Nova', weight: 'normal', italic: true, color: '#9aa0a6', size: 14 },
   ].forEach(function(styleItem) {
     var labelCell = sheet.getRange(row, 1);
     var valueCell = sheet.getRange(row, 2);
@@ -740,6 +742,9 @@ function vytvorKonfiguraci(ss) {
     }
     if (styleItem.font) {
       valueCell.setFontFamily(styleItem.font);
+    }
+    if (styleItem.size) {
+      valueCell.setFontSize(styleItem.size);
     }
 
     sheet.setRowHeight(row, 20);
@@ -790,6 +795,7 @@ function aktualizujKonfiguraci() {
     { label: 'URL jídelníčku', defaultValue: 'https://jidelnicek.utb.cz/webkredit/Ordering/Menu?canteen=3', note: 'Odkaz do notifikací' },
     { label: 'URL sheet obědů', defaultValue: '', note: 'Alternativa pro ruční zápis' },
     { label: 'URL dashboard', defaultValue: '', note: 'Veřejný web s jídelníčkem (Web App)' },
+    { label: 'URL PWA', defaultValue: '', note: 'PWA wrapper pro Add-to-Home-Screen (QR kód vede sem)' },
     { label: 'Ikona — Menza', defaultValue: '🌍', note: 'Emoji ikona před odkazem na menzu v Chatu' },
     { label: 'Ikona — Zápis obědů', defaultValue: '✏️', note: 'Emoji ikona před odkazem „Zapiš oběd" v Chatu' },
     { label: 'Ikona — Dashboard', defaultValue: '📋', note: 'Emoji ikona před odkazem „JídLOG" v Chatu' },
@@ -797,8 +803,6 @@ function aktualizujKonfiguraci() {
     { label: 'Ikona — Kalendář', defaultValue: '📆', note: 'Emoji ikona před odkazem „.ics" v Chatu' },
     { label: 'Oddělovač odkazů', defaultValue: '  ', note: 'Oddělovač mezi odkazy v patičce Chat zprávy (výchozí: 2 mezery)' },
     { label: 'Písmo', defaultValue: 'Proxima Nova', note: 'Písmo pro celý list' },
-    { label: 'Smallprint text', defaultValue: 'Za správnost jídelníčku a cen nikdo neručí. Za zápis obědů odpovídá každý jedlík sám — cenu si prosím ověř.', note: 'Disclaimer text pod patičkou Chat zprávy' },
-    { label: 'Smallprint velikost', defaultValue: 1, note: 'HTML font size (1–7, výchozí 1 = nejmenší)' },
     // 📧 E-MAIL
     { label: 'Příjemci', defaultValue: '', note: 'Odděleno čárkou' },
     { label: 'Režim', defaultValue: 'none', note: 'both/success/failure/none' },
@@ -2092,7 +2096,10 @@ function styleSmallprint_(sp) {
   if (sp.italic) html = '<i>' + html + '</i>';
   var fontAttr = sp.font ? ' face="' + sp.font + '"' : '';
   var colorAttr = sp.color ? ' color="' + sp.color + '"' : '';
-  return '<font size="' + sp.size + '"' + colorAttr + fontAttr + '>' + html + '</font>';
+  // Převod font size v pt na HTML <font size="1-7"> (Google Chat nepodporuje CSS)
+  var ptSize = sp.size || 10;
+  var htmlSize = ptSize <= 8 ? 1 : ptSize <= 10 ? 2 : ptSize <= 12 ? 3 : ptSize <= 14 ? 4 : ptSize <= 18 ? 5 : ptSize <= 24 ? 6 : 7;
+  return '<font size="' + htmlSize + '"' + colorAttr + fontAttr + '>' + html + '</font>';
 }
 
 /**
@@ -2323,7 +2330,7 @@ function formatMenuForChat_(menuItems, todayStr, dow) {
   html += '<br>' +
           USER.LINK_ICON_MENZA + ' <a href="' + USER.MENZA_WEB_URL + '">Menza</a>' + sep +
           USER.LINK_ICON_OBEDY + ' <a href="' + USER.OBEDY_SHEET_URL + '">Zapiš oběd</a>' + sep +
-          USER.LINK_ICON_DASHBOARD + ' <a href="' + USER.DASHBOARD_URL + '">JídLOG</a>' + sep +
+          USER.LINK_ICON_DASHBOARD + ' <a href="' + (USER.PWA_URL || USER.DASHBOARD_URL) + '">JídLOG</a>' + sep +
           USER.LINK_ICON_QR + ' <a href="' + USER.DASHBOARD_URL + '?format=qr">QR</a>' + sep +
           USER.LINK_ICON_ICS + ' <a href="' + USER.DASHBOARD_URL.replace(/^https?:\/\//, 'webcal://') + '?format=ics">.ics</a>' +
           '<br><br>' + styleSmallprint_(USER.CHAT_STYLE.smallprint);
@@ -2476,7 +2483,7 @@ function sendNotification_(success, todayStr, menuItems, sheetUrl) {
   body += '\n────────────────────\n';
   body += '📊  Google Sheet:  ' + sheetUrl + '\n';
   body += '🍝  WebKredit:     ' + USER.MENZA_WEB_URL + '\n';
-  body += '📋  JídLOG:        ' + USER.DASHBOARD_URL + '\n';
+  body += '📋  JídLOG:        ' + (USER.PWA_URL || USER.DASHBOARD_URL) + '\n';
   body += '🔳  QR kód:        ' + USER.DASHBOARD_URL + '?format=qr\n';
   body += '📆  .ics:          ' + USER.DASHBOARD_URL.replace(/^https?:\/\//, 'webcal://') + '?format=ics\n';
 
@@ -2694,8 +2701,9 @@ function doGet(e) {
   // ?format=qr → přesměruje na QR obrázek dashboardu
   if (params.format === 'qr') {
     loadConfig_();
+    var qrTarget = USER.PWA_URL || USER.DASHBOARD_URL;
     var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' +
-                encodeURIComponent(USER.DASHBOARD_URL);
+                encodeURIComponent(qrTarget);
     return HtmlService.createHtmlOutput(
       '<html><head><meta http-equiv="refresh" content="0;url=' + qrUrl + '"></head>' +
       '<body><a href="' + qrUrl + '">QR kód</a></body></html>'
@@ -2733,6 +2741,24 @@ function generateIcs_() {
     'X-WR-TIMEZONE:' + USER.TIMEZONE,
     'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
     'X-PUBLISHED-TTL:PT6H',
+    // VTIMEZONE pro Europe/Prague (CET/CEST)
+    'BEGIN:VTIMEZONE',
+    'TZID:Europe/Prague',
+    'BEGIN:STANDARD',
+    'DTSTART:19701025T030000',
+    'RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10',
+    'TZOFFSETFROM:+0200',
+    'TZOFFSETTO:+0100',
+    'TZNAME:CET',
+    'END:STANDARD',
+    'BEGIN:DAYLIGHT',
+    'DTSTART:19700329T020000',
+    'RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=3',
+    'TZOFFSETFROM:+0100',
+    'TZOFFSETTO:+0200',
+    'TZNAME:CEST',
+    'END:DAYLIGHT',
+    'END:VTIMEZONE',
   ];
 
   // DTSTAMP — povinné pole dle RFC 5545, čas generování feedu
@@ -2773,20 +2799,17 @@ function generateIcs_() {
         lines.push('  ' + rows[r][3] + ': ' + name + price);
       }
 
-      var description = icsEscape_(lines.join('\\n'));
+      var description = icsEscape_(lines.join('\n'));
       var dayName = String(rows[0][1]); // Den v týdnu (Po, Út, ...)
 
-      // DTSTART a DTEND (celodenní událost — DTEND = následující den dle RFC 5545)
-      var dtStart = ds.replace(/-/g, '');
-      var nextDay = new Date(ds + 'T12:00:00');
-      nextDay.setDate(nextDay.getDate() + 1);
-      var dtEnd = Utilities.formatDate(nextDay, 'UTC', 'yyyyMMdd');
+      // DTSTART a DTEND — časový blok 10:50–11:20 v lokální zóně
+      var dtDate = ds.replace(/-/g, '');
 
       cal.push('BEGIN:VEVENT');
       cal.push('DTSTAMP:' + dtstamp);
-      cal.push('DTSTART;VALUE=DATE:' + dtStart);
-      cal.push('DTEND;VALUE=DATE:' + dtEnd);
-      cal.push('SUMMARY:🍽️ Menza — ' + dayName + ' ' + ds);
+      cal.push('DTSTART;TZID=' + USER.TIMEZONE + ':' + dtDate + 'T105000');
+      cal.push('DTEND;TZID=' + USER.TIMEZONE + ':' + dtDate + 'T112000');
+      cal.push('SUMMARY:' + icsEscape_('🍽️ Menza — ' + dayName + ' ' + ds));
       cal.push('DESCRIPTION:' + description);
       cal.push('UID:menza-' + ds + '@blogic.cz');
       cal.push('TRANSP:TRANSPARENT');
@@ -2808,7 +2831,8 @@ function icsEscape_(text) {
   return text
     .replace(/\\/g, '\\\\')
     .replace(/;/g, '\\;')
-    .replace(/,/g, '\\,');
+    .replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
 }
 
 /**
@@ -2902,5 +2926,6 @@ function nactiMenuProWeb() {
     menzaUrl:    USER.MENZA_WEB_URL,
     obedyUrl:    USER.OBEDY_SHEET_URL,
     dashboardUrl: USER.DASHBOARD_URL,
+    pwaUrl:       USER.PWA_URL || '',
   };
 }
