@@ -1,0 +1,54 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Menza Feed//CS
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:🍽️ UTB Menza
+X-WR-TIMEZONE:Europe/Prague
+REFRESH-INTERVAL;VALUE=DURATION:PT6H
+X-PUBLISHED-TTL:PT6H
+BEGIN:VTIMEZONE
+TZID:Europe/Prague
+BEGIN:STANDARD
+DTSTART:19701025T030000
+RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+TZNAME:CET
+END:STANDARD
+BEGIN:DAYLIGHT
+DTSTART:19700329T020000
+RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=3
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0200
+TZNAME:CEST
+END:DAYLIGHT
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTAMP:20260415T145915Z
+DTSTART;TZID=Europe/Prague:20260413T105000
+DTEND;TZID=Europe/Prague:20260413T112000
+SUMMARY:🍽️ Menza — Po 2026-04-13
+DESCRIPTION:POLÉVKA:\n  po1: Pórková s bramborami a vejci — 16 Kč\n\nOBĚD:\n  1: Zapečené kuřecí prso se šunkou a sýrem\, přírodní šťáva\, jasmínová rýže — 84 Kč\n  2: Myslivecká hovězí pečeně se zeleninou\, smetanou a slaninou\, houskový knedlík — 114 Kč\n  3: Ragú z francouzské čočky se zeleninou a bylinkami\, bramborové gnocchi — 81 Kč\n  4: Pečené rybí filé s bylinkovou omáčkou\, smetanová bramborová kaše — 103 Kč\n  5: Bramborový guláš s klobásou a kápií\, kmínový chléb — 85 Kč\n\nOBĚD OSTATNÍ:\n  o1: Smažený řízek z vepřové kotlety\, bramborový salát s jablky — 93 Kč\n  o2: Zvěřinový guláš z dančího a srnčího masa\, špekové knedlíky — 124 Kč\n  o3: Zapečené palačinky s tvarohem\, rozinkami a skořicí — 87 Kč\n\nMINUTKY:\n  m1: Smažený sýr\, bramborové hranolky\, tatarská omáčka — 98 Kč\n\nPIZZA:\n  pz1: Pizza AL CAPONE tomat\, šunka\, feferonky-ber.rohy\, z.olivy\, mozzarella — 107 Kč\n  pz2: Pizza AL FUNGHI tomat\, žampiony\,mozzarella — 93 Kč
+UID:menza-2026-04-13@blogic.cz
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260415T145915Z
+DTSTART;TZID=Europe/Prague:20260414T105000
+DTEND;TZID=Europe/Prague:20260414T112000
+SUMMARY:🍽️ Menza — Út 2026-04-14
+DESCRIPTION:POLÉVKA:\n  po1: Francouzská s mušličkami — 16 Kč\n\nOBĚD:\n  1: Plněný paprikový lusk v rajské omáčce\, těstoviny fusilli — 83 Kč\n  2: Steak z vepřové krkovičky s pepřovou omáčkou\, opékané brambory — 95 Kč\n  3: Zeleninový smetanový perkelt s paprikami a robi masem\, bylinkové gnocchi — 87 Kč\n  4: Pečený filet z mořského pstruha s bylinkami\, restovanou zeleninou a grenaille bramborami — 134 Kč\n  5: Zeleninová směs s dýní\, uzeným tofu\, fazolemi a cherry rajčaty\, jasmínová rýže\, bez lepku — 82 Kč\n\nOBĚD OSTATNÍ:\n  o1: Pečené rybí filé s bylinkovou omáčkou\, smetanová bramborová kaše — 103 Kč\n  o2: Bramborový guláš s klobásou a kápií\, kmínový chléb — 85 Kč\n  o3: Myslivecká hovězí pečeně\, houskový knedlík — 114 Kč\n\nMINUTKY:\n  m1: Kuřecí směs po čínsku\, bramborové hranolky — 116 Kč\n  m2: Gratinované gnochi s kuřecím masem\, rajčatovou omáčkou a sýrem — 112 Kč\n\nPIZZA:\n  pz1: Pizza JULIA tomat\, šunka\, kukuřice\, smetana\, uzený sýr — 107 Kč\n  pz2: Pizza QUATTRO FORMAGGI uzený sýr\,mozzarella\, niva\, hermelín — 109 Kč\n  pz3: Pizza AL CAPONE tomat\, šunka\, feferonky-ber.rohy\, z.olivy\, mozzarella — 102 Kč\n  pz4: Pizza AL FUNGHI tomat\, žampiony\,mozzarella — 96 Kč
+UID:menza-2026-04-14@blogic.cz
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260415T145915Z
+DTSTART;TZID=Europe/Prague:20260415T105000
+DTEND;TZID=Europe/Prague:20260415T112000
+SUMMARY:🍽️ Menza — St 2026-04-15
+DESCRIPTION:POLÉVKA:\n  po1: Masová polévka se zeleninou — 17 Kč\n\nOBĚD:\n  1: Smetanové krůtí ragú se slaninou\, pórkem a sušenými rajčaty\, jasmínová rýže — 100 Kč\n  2: Čočka na kyselo s opékaným párkem\, cibulkou\, chléb\, sterilovaný okurek — 89 Kč\n  3: Smažené cuketové medailonky\, karotkové pyré — 87 Kč\n  4: Fetuciny s tuňákem\, bazalkou a rajčatovou omáčkou\, parmazánová salsa — 97 Kč\n  5: Veganské chilli concarne s fazolemi\, sojovým masem a rajčaty\, rýžový pilaf\, bez lepku — 80 Kč\n\nOBĚD OSTATNÍ:\n  o1: Myslivecká hovězí pečeně se zeleninou\, smetanou a slaninou\, houskový knedlík — 114 Kč\n  o2: Zeleninový smetanový perkelt s paprikami a robi masem\, bylinkové gnocchi — 87 Kč\n  o3: Pečený filet z mořského pstruha s bylinkami\, restovanou zeleninou a grenaille bramborami — 134 Kč\n\nMINUTKY:\n  m1: Ciabatta s trhaným vepřovým masem\, bramborové hranolky\, salát Coleslaw — 124 Kč\n  m2: POKE BOWL s uzeným lososem — 95 Kč\n\nPIZZA:\n  pz1: Pizza SALAMI tomat\, salám\, feferonky- kozí rohy\,mozzarella\, oregáno — 111 Kč\n  pz2: Pizza SÝROVÁ s bylinkami\,mozzarella\, hermelín\, uzený sýr — 104 Kč\n  pz3: Pizza QUATTRO FORMAGGI uzený sýr\,mozzarella\, niva\, hermelín — 109 Kč
+UID:menza-2026-04-15@blogic.cz
+TRANSP:TRANSPARENT
+END:VEVENT
+END:VCALENDAR
