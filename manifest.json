@@ -1,7 +1,7 @@
 {
-  "name": "JídLOG — Jídelníček UTB",
-  "short_name": "JídLOG",
-  "description": "Jídelníček UTB Menza — přehledně, každý den",
+  "name": "Jídlogic — Jídelníček UTB",
+  "short_name": "Jídlogic",
+  "description": "Jídelníček UTB Menza + zápis obědů",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
