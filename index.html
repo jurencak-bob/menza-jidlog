@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>JídLOG</title>
+  <title>Jídlogic</title>
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
@@ -11,9 +11,9 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="JídLOG">
-  <meta name="application-name" content="JídLOG">
-  <meta name="description" content="Jídelníček UTB Menza — přehledně, každý den">
+  <meta name="apple-mobile-web-app-title" content="Jídlogic">
+  <meta name="application-name" content="Jídlogic">
+  <meta name="description" content="Jídelníček UTB Menza + zápis obědů">
 
   <!-- Icons -->
   <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -64,14 +64,14 @@
   <!-- Loader -->
   <div class="loader" id="loader">
     <div class="loader-icon">📋</div>
-    <div class="loader-text">JídLOG se načítá…</div>
+    <div class="loader-text">Jídlogic se načítá…</div>
     <div class="loader-note">Pouze pro BL.</div>
   </div>
 
-  <!-- GAS Dashboard v iframe -->
+  <!-- GAS Jídlogic v iframe (?app=obedy explicitně — nezávisle na výchozím routingu doGet) -->
   <iframe
     id="app"
-    src="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec"
+    src="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy"
     allow="clipboard-write"
     loading="eager"
   ></iframe>
