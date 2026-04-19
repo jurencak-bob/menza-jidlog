@@ -1,5 +1,6 @@
-// JídLOG — Service Worker (PWA shell cache)
-var CACHE_NAME = 'jidlog-shell-v2';
+// Jídlogic — Service Worker (PWA shell cache)
+// Pozn.: bumpnuto na v3 kvůli přechodu z JídLOG na Jídlogic (title, manifest, iframe src).
+var CACHE_NAME = 'jidlogic-shell-v3';
 var SHELL_URLS = ['./', 'index.html', 'manifest.json', 'icon.svg'];
 
 // Install — cache shell
