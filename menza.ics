@@ -25,7 +25,7 @@ TZNAME:CEST
 END:DAYLIGHT
 END:VTIMEZONE
 BEGIN:VEVENT
-DTSTAMP:20260420T050402Z
+DTSTAMP:20260420T084804Z
 DTSTART;TZID=Europe/Prague:20260413T105000
 DTEND;TZID=Europe/Prague:20260413T112000
 SUMMARY:🍽️ Menza — Po 2026-04-13
@@ -35,7 +35,7 @@ UID:menza-2026-04-13@blogic.cz
 TRANSP:TRANSPARENT
 END:VEVENT
 BEGIN:VEVENT
-DTSTAMP:20260420T050402Z
+DTSTAMP:20260420T084804Z
 DTSTART;TZID=Europe/Prague:20260414T105000
 DTEND;TZID=Europe/Prague:20260414T112000
 SUMMARY:🍽️ Menza — Út 2026-04-14
@@ -45,7 +45,7 @@ UID:menza-2026-04-14@blogic.cz
 TRANSP:TRANSPARENT
 END:VEVENT
 BEGIN:VEVENT
-DTSTAMP:20260420T050402Z
+DTSTAMP:20260420T084804Z
 DTSTART;TZID=Europe/Prague:20260415T105000
 DTEND;TZID=Europe/Prague:20260415T112000
 SUMMARY:🍽️ Menza — St 2026-04-15
@@ -55,7 +55,7 @@ UID:menza-2026-04-15@blogic.cz
 TRANSP:TRANSPARENT
 END:VEVENT
 BEGIN:VEVENT
-DTSTAMP:20260420T050402Z
+DTSTAMP:20260420T084804Z
 DTSTART;TZID=Europe/Prague:20260416T105000
 DTEND;TZID=Europe/Prague:20260416T112000
 SUMMARY:🍽️ Menza — Čt 2026-04-16
@@ -65,7 +65,7 @@ UID:menza-2026-04-16@blogic.cz
 TRANSP:TRANSPARENT
 END:VEVENT
 BEGIN:VEVENT
-DTSTAMP:20260420T050402Z
+DTSTAMP:20260420T084804Z
 DTSTART;TZID=Europe/Prague:20260417T105000
 DTEND;TZID=Europe/Prague:20260417T112000
 SUMMARY:🍽️ Menza — Pá 2026-04-17
@@ -75,12 +75,12 @@ UID:menza-2026-04-17@blogic.cz
 TRANSP:TRANSPARENT
 END:VEVENT
 BEGIN:VEVENT
-DTSTAMP:20260420T050402Z
+DTSTAMP:20260420T084804Z
 DTSTART;TZID=Europe/Prague:20260420T105000
 DTEND;TZID=Europe/Prague:20260420T112000
 SUMMARY:🍽️ Menza — Po 2026-04-20
-DESCRIPTION:🥣 POLÉVKY\n  po1. Bramboračka — 16 Kč\n\n🍛 OBĚDY\n  1. Zapečená vepřová kotleta se zeleninovou směsí a sýrem\, mačkané brambory — 97 Kč\n  2. Vídeňská roštěná s restovanou cibulí\, jasmínová rýže — 122 Kč\n  3. Míchané tofu se zeleninou\, bulgurem a peperonátou\, sýr gran biraghi — 99 Kč\n  4. Pečený filet z duhového pstruha na kmíně a česneku\, pyré z mrkve\, zázvoru a brambor\, máslová omáčka — 125 Kč\n  5. Proteinové krůtí ragů s luštěninami a zeleninou\, rýžový pilaf\, bez lepku — 106 Kč\n\n⏳ MINUTKY\n  m1. Hermelín na grilu\, trhaný salát\, brusinkový dip — 105 Kč\n\n———\n🌍 Menza: https://jidelnicek.utb.cz/webkredit/Ordering/Menu?canteen=3\n✏️ Zapiš oběd: https://docs.google.com/spreadsheets/d/1KVMtzJoIpkMxiAPgm3qg3o-pSlWsDO9TQWTS_X4GbzE/edit?gid=1704001489#gid=1704001489\n📋 Jídlogic: https://jurencak-bob.github.io/menza-jidlog/
-X-ALT-DESC;FMTTYPE=text/html:<html><body style="font-family:sans-serif;font-size:13px;color:#333;"><b style="color:#6b3fa0;">🥣 Polévky</b><br><span style="color:#888;">po1.</span> Bramboračka <b style="color:#6b3fa0;">16 Kč</b><br><br><b style="color:#6b3fa0;">🍛 Obědy</b><br><span style="color:#888;">1.</span> Zapečená vepřová kotleta se zeleninovou směsí a sýrem, mačkané brambory <b style="color:#6b3fa0;">97 Kč</b><br><span style="color:#888;">2.</span> Vídeňská roštěná s restovanou cibulí, jasmínová rýže <b style="color:#6b3fa0;">122 Kč</b><br><span style="color:#888;">3.</span> Míchané tofu se zeleninou, bulgurem a peperonátou, sýr gran biraghi <b style="color:#6b3fa0;">99 Kč</b><br><span style="color:#888;">4.</span> Pečený filet z duhového pstruha na kmíně a česneku, pyré z mrkve, zázvoru a brambor, máslová omáčka <b style="color:#6b3fa0;">125 Kč</b><br><span style="color:#888;">5.</span> Proteinové krůtí ragů s luštěninami a zeleninou, rýžový pilaf, bez lepku <b style="color:#6b3fa0;">106 Kč</b><br><br><b style="color:#6b3fa0;">⏳ Minutky</b><br><span style="color:#888;">m1.</span> Hermelín na grilu, trhaný salát, brusinkový dip <b style="color:#6b3fa0;">105 Kč</b><br><br><div style="font-size:12px;border-top:1px solid #e0e0e0;padding-top:6px;margin-top:8px;">🌍 <a href="https://jidelnicek.utb.cz/webkredit/Ordering/Menu?canteen=3" style="color:#6b3fa0;text-decoration:none;">Menza</a> &nbsp; ✏️ <a href="https://docs.google.com/spreadsheets/d/1KVMtzJoIpkMxiAPgm3qg3o-pSlWsDO9TQWTS_X4GbzE/edit?gid=1704001489#gid=1704001489" style="color:#6b3fa0;text-decoration:none;">Zapiš oběd</a> &nbsp; 📋 <a href="https://jurencak-bob.github.io/menza-jidlog/" style="color:#6b3fa0;text-decoration:none;">Jídlogic</a></div></body></html>
+DESCRIPTION:🥣 POLÉVKY\n  po1. Bramboračka — 16 Kč\n\n🍛 OBĚDY\n  1. Zapečená vepřová kotleta se zeleninovou směsí a sýrem\, mačkané brambory — 97 Kč\n  2. Vídeňská roštěná s restovanou cibulí\, jasmínová rýže — 122 Kč\n  3. Míchané tofu se zeleninou\, bulgurem a peperonátou\, sýr gran biraghi — 99 Kč\n  4. Pečený filet z duhového pstruha na kmíně a česneku\, pyré z mrkve\, zázvoru a brambor\, máslová omáčka — 125 Kč\n  5. Proteinové krůtí ragů s luštěninami a zeleninou\, rýžový pilaf\, bez lepku — 106 Kč\n\n🍲 OBĚDY OSTATNÍ\n  o1. Výpečky z divočáka\, červené zelí s vínem a jablky\, bramborový knedlík — 121 Kč\n  o2. Nudle s mákem\, vanilkovým cukrem a přepuštěným máslem — 78 Kč\n\n⏳ MINUTKY\n  m1. Hermelín na grilu\, opečená bageta\, trhaný salát\, brusinkový dip — 110 Kč\n\n🍕 PIZZA\n  pz1. Pizza CATANI zakysaná smetana\, šunka\, pórek\, vejce\,mozzarella — 109 Kč\n  pz2. Pizza MARGHERITA tomat\, eidam\,mozzarella — 101 Kč\n\n———\n🌍 Menza: https://jidelnicek.utb.cz/webkredit/Ordering/Menu?canteen=3\n✏️ Zapiš oběd: https://docs.google.com/spreadsheets/d/1KVMtzJoIpkMxiAPgm3qg3o-pSlWsDO9TQWTS_X4GbzE/edit?gid=1704001489#gid=1704001489\n📋 Jídlogic: https://jurencak-bob.github.io/menza-jidlog/
+X-ALT-DESC;FMTTYPE=text/html:<html><body style="font-family:sans-serif;font-size:13px;color:#333;"><b style="color:#6b3fa0;">🥣 Polévky</b><br><span style="color:#888;">po1.</span> Bramboračka <b style="color:#6b3fa0;">16 Kč</b><br><br><b style="color:#6b3fa0;">🍛 Obědy</b><br><span style="color:#888;">1.</span> Zapečená vepřová kotleta se zeleninovou směsí a sýrem, mačkané brambory <b style="color:#6b3fa0;">97 Kč</b><br><span style="color:#888;">2.</span> Vídeňská roštěná s restovanou cibulí, jasmínová rýže <b style="color:#6b3fa0;">122 Kč</b><br><span style="color:#888;">3.</span> Míchané tofu se zeleninou, bulgurem a peperonátou, sýr gran biraghi <b style="color:#6b3fa0;">99 Kč</b><br><span style="color:#888;">4.</span> Pečený filet z duhového pstruha na kmíně a česneku, pyré z mrkve, zázvoru a brambor, máslová omáčka <b style="color:#6b3fa0;">125 Kč</b><br><span style="color:#888;">5.</span> Proteinové krůtí ragů s luštěninami a zeleninou, rýžový pilaf, bez lepku <b style="color:#6b3fa0;">106 Kč</b><br><br><b style="color:#6b3fa0;">🍲 Obědy ostatní</b><br><span style="color:#888;">o1.</span> Výpečky z divočáka, červené zelí s vínem a jablky, bramborový knedlík <b style="color:#6b3fa0;">121 Kč</b><br><span style="color:#888;">o2.</span> Nudle s mákem, vanilkovým cukrem a přepuštěným máslem <b style="color:#6b3fa0;">78 Kč</b><br><br><b style="color:#6b3fa0;">⏳ Minutky</b><br><span style="color:#888;">m1.</span> Hermelín na grilu, opečená bageta, trhaný salát, brusinkový dip <b style="color:#6b3fa0;">110 Kč</b><br><br><b style="color:#6b3fa0;">🍕 Pizza</b><br><span style="color:#888;">pz1.</span> Pizza CATANI zakysaná smetana, šunka, pórek, vejce,mozzarella <b style="color:#6b3fa0;">109 Kč</b><br><span style="color:#888;">pz2.</span> Pizza MARGHERITA tomat, eidam,mozzarella <b style="color:#6b3fa0;">101 Kč</b><br><br><div style="font-size:12px;border-top:1px solid #e0e0e0;padding-top:6px;margin-top:8px;">🌍 <a href="https://jidelnicek.utb.cz/webkredit/Ordering/Menu?canteen=3" style="color:#6b3fa0;text-decoration:none;">Menza</a> &nbsp; ✏️ <a href="https://docs.google.com/spreadsheets/d/1KVMtzJoIpkMxiAPgm3qg3o-pSlWsDO9TQWTS_X4GbzE/edit?gid=1704001489#gid=1704001489" style="color:#6b3fa0;text-decoration:none;">Zapiš oběd</a> &nbsp; 📋 <a href="https://jurencak-bob.github.io/menza-jidlog/" style="color:#6b3fa0;text-decoration:none;">Jídlogic</a></div></body></html>
 UID:menza-2026-04-20@blogic.cz
 TRANSP:TRANSPARENT
 END:VEVENT
