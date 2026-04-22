@@ -23,7 +23,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; overflow: hidden; background: #F7F7FA; }
 
-    /* Loader — zobrazí se než se načte iframe -->  */
+    /* Loader — zobrazí se než se načte iframe */
     .loader {
       position: fixed;
       inset: 0;
@@ -41,12 +41,67 @@
     .loader-note { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #A0A0B0; font-size: 0.8rem; margin-top: 12px; }
     @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.7; } }
 
-    /* Dark mode loader */
+    /* Auth gate — zobrazí se pokud Jídlogic nepošle ready handshake.
+       Typicky user nemá @blogic.cz účet nebo není přihlášen → GAS vrací
+       Google login page uvnitř iframe, naše Obedy.html se nezavede a
+       postMessage nikdy nedorazí. (v20260422.13) */
+    .auth-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #F7F7FA;
+      padding: 24px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      text-align: center;
+    }
+    .auth-gate.show { display: flex; }
+    .auth-gate .gate-lock {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: #6B2D8B; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; margin-bottom: 18px;
+    }
+    .auth-gate h1 {
+      font-size: 1.3rem; color: #1a1a2e; font-weight: 700; margin-bottom: 8px;
+    }
+    .auth-gate p {
+      color: #555; font-size: 0.92rem; line-height: 1.5;
+      max-width: 380px; margin-bottom: 10px;
+    }
+    .auth-gate p.small {
+      font-size: 0.8rem; color: #888; margin-top: 8px;
+    }
+    .auth-gate .btn {
+      display: inline-block;
+      padding: 10px 22px; margin-top: 16px;
+      background: #6B2D8B; color: #fff;
+      text-decoration: none;
+      border-radius: 10px; font-weight: 600; font-size: 0.92rem;
+    }
+    .auth-gate .btn:hover { background: #5A2276; }
+    .auth-gate .retry {
+      margin-top: 8px; background: transparent; color: #6B2D8B;
+      border: 1px solid #6B2D8B; padding: 8px 20px; border-radius: 10px;
+      font-weight: 500; font-size: 0.85rem; cursor: pointer;
+    }
+
+    /* Dark mode */
     @media (prefers-color-scheme: dark) {
       html, body { background: #1A1A2E; }
       .loader { background: #1A1A2E; }
       .loader-text { color: #B07DD8; }
       .loader-note { color: #6E6E88; }
+      .auth-gate { background: #1A1A2E; }
+      .auth-gate h1 { color: #F1F5F9; }
+      .auth-gate p { color: #AAB; }
+      .auth-gate .gate-lock { background: #B07DD8; color: #1A1A2E; }
+      .auth-gate .btn { background: #B07DD8; color: #1A1A2E; }
+      .auth-gate .btn:hover { background: #C89DE8; }
+      .auth-gate .retry { color: #B07DD8; border-color: #B07DD8; }
     }
 
     iframe {
@@ -61,11 +116,25 @@
 </head>
 <body>
 
-  <!-- Loader -->
+  <!-- Loader (viditelný do přijetí postMessage jidlogic-ready z iframe) -->
   <div class="loader" id="loader">
     <div class="loader-icon">📋</div>
     <div class="loader-text">Jídlogic se načítá…</div>
-    <div class="loader-note">Pouze pro BL.</div>
+    <div class="loader-note">Pouze pro <strong>@blogic.cz</strong> účty</div>
+  </div>
+
+  <!-- Auth gate — fallback pokud Jídlogic nepošle ready message do 1.2 s
+       po onload (typicky: user nemá @blogic.cz účet, nebo není přihlášen) -->
+  <div class="auth-gate" id="auth-gate">
+    <div class="gate-lock">🔒</div>
+    <h1>Jídlogic je jen pro Blogic</h1>
+    <p>Aplikace funguje pouze v prohlížeči, kde jsi přihlášen svým Google účtem <strong>@blogic.cz</strong>.</p>
+    <p class="small">Pokud vidíš tuto obrazovku, pravděpodobně:</p>
+    <p class="small">• Nejsi přihlášen žádným Google účtem<br>
+    • Jsi přihlášen jiným než <strong>@blogic.cz</strong> účtem<br>
+    • V prohlížeči máš problém se soubory cookie nebo iframe</p>
+    <a class="btn" href="https://accounts.google.com/AccountChooser" target="_blank" rel="noopener">Přihlásit / přepnout Google účet</a>
+    <button class="retry" onclick="location.reload()">Načíst znovu</button>
   </div>
 
   <!-- GAS Jídlogic v iframe (?app=obedy explicitně — nezávisle na výchozím routingu doGet) -->
@@ -84,14 +153,42 @@
       });
     }
 
-    // Hide loader when iframe loads
     var iframe = document.getElementById('app');
     var loader = document.getElementById('loader');
-    iframe.addEventListener('load', function() {
-      setTimeout(function() { loader.classList.add('hidden'); }, 300);
+    var gate = document.getElementById('auth-gate');
+
+    // Primární signál: iframe úspěšně načetl Jídlogic → schová loader + gate.
+    // Obedy.html `initUI()` posílá postMessage({type:'jidlogic-ready', ...})
+    // těsně před renderem UI. Tady na to reagujeme.
+    var readyReceived = false;
+    window.addEventListener('message', function(ev) {
+      var data = ev.data || {};
+      if (data.type === 'jidlogic-ready') {
+        readyReceived = true;
+        loader.classList.add('hidden');
+        gate.classList.remove('show');
+      }
     });
-    // Fallback — hide loader after 8s even if load event didn't fire
-    setTimeout(function() { loader.classList.add('hidden'); }, 8000);
+
+    // Sekundární signál: iframe.onload (zpráva „něco se načetlo", ale nevíme
+    // co). Pokud přijde postMessage 'jidlogic-ready' do 1.2 s po onload, jsme
+    // v pořádku. Jinak to znamená, že iframe zobrazuje Google auth stránku
+    // (non-blogic user) → ukážeme auth gate.
+    iframe.addEventListener('load', function() {
+      setTimeout(function() {
+        if (readyReceived) return;
+        loader.classList.add('hidden');
+        gate.classList.add('show');
+      }, 1200);
+    });
+
+    // Tvrdý timeout 8 s — pokud ani iframe onload neproběhl (síťový problém),
+    // ukaž auth gate. Lepší mít vždy něco než bílou obrazovku.
+    setTimeout(function() {
+      if (readyReceived) return;
+      loader.classList.add('hidden');
+      gate.classList.add('show');
+    }, 8000);
   </script>
 </body>
 </html>
