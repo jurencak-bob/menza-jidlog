@@ -159,9 +159,16 @@
     </div>
     <h1>Jídlogic se nenačetl</h1>
     <p><strong>Nejčastější příčina:</strong> Chrome / Safari blokuje cookies pro <code>script.google.com</code> v iframe („Tracking Protection"). Jsi přihlášen do svého <strong>@blogic.cz</strong> účtu, ale iframe tu cookie nedostane.</p>
-    <p class="small"><strong>Řešení:</strong> otevři Jídlogic přímo v novém tabu — bude fungovat bez iframe-wrapperu. PWA instalace na ploše by měla fungovat jako předtím.</p>
+
+    <!-- Primární řešení pokud browser podporuje requestStorageAccessFor() — kliknutí
+         vyvolá OS prompt pro povolení cookies a iframe se reloaduje. Fallback níže. -->
+    <p class="small" id="gate-saa-hint" style="display:none"><strong>Řešení v tomto prohlížeči:</strong> Klikni „Povolit cookies v iframe" — prohlížeč se zeptá, jestli pro tenhle web můžou být cookies <code>script.google.com</code> použité uvnitř iframe. Po povolení se Jídlogic načte v rámci PWA.</p>
+    <button class="btn" id="gate-saa-btn" style="display:none" onclick="tryStorageAccessFor()">Povolit cookies v iframe</button>
+
+    <p class="small" id="gate-direct-hint"><strong>Alternativa:</strong> otevři Jídlogic přímo v novém tabu — bude fungovat bez iframe-wrapperu.</p>
     <a class="btn" id="gate-open-direct" href="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy" target="_blank" rel="noopener">Otevřít Jídlogic přímo</a>
-    <p class="small" style="margin-top:16px"><em>Další možné příčiny (pokud přímý odkaz nefunguje):</em><br>
+
+    <p class="small" style="margin-top:16px"><em>Další možné příčiny:</em><br>
     • Nejsi přihlášen žádným Google účtem<br>
     • Jsi přihlášen jiným než <strong>@blogic.cz</strong> účtem</p>
     <a class="btn" style="background:#A0A0B0;margin-top:4px" href="https://accounts.google.com/AccountChooser" target="_blank" rel="noopener">Přepnout Google účet</a>
@@ -187,6 +194,51 @@
     var iframe = document.getElementById('app');
     var loader = document.getElementById('loader');
     var gate = document.getElementById('auth-gate');
+
+    // Feature detect Storage Access API — pokud prohlížeč podporuje
+    // `document.requestStorageAccessFor`, nabídneme v auth-gate button
+    // pro povolení cookies pro script.google.com uvnitř našeho iframe.
+    // Chrome 120+ (experimental/enterprise), ostatní prohlížeče padají
+    // do fallbacku „Otevřít přímo" (nezávisle na tomto).
+    if (typeof document.requestStorageAccessFor === 'function') {
+      document.addEventListener('DOMContentLoaded', function() {
+        var hint = document.getElementById('gate-saa-hint');
+        var btn  = document.getElementById('gate-saa-btn');
+        if (hint) hint.style.display = '';
+        if (btn)  btn.style.display = '';
+      });
+    }
+
+    /** Zkusí získat storage access pro script.google.com.
+     *  Pokud user potvrdí v prompt dialogu, reload iframe (cookies teď
+     *  jdou skrz). Pokud odmítne nebo API nefunguje, stav beze změny
+     *  (user může použít „Otevřít přímo"). */
+    function tryStorageAccessFor() {
+      var btn = document.getElementById('gate-saa-btn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Čekám na povolení…'; }
+      try {
+        document.requestStorageAccessFor('https://script.google.com/')
+          .then(function() {
+            if (btn) btn.textContent = 'Povoleno, načítám…';
+            // Reload iframe — cookies by teď měly projít
+            readyReceived = false;
+            loader.classList.remove('hidden');
+            gate.classList.remove('show');
+            iframe.src = iframe.src;  // force reload
+            setTimeout(function() {
+              if (btn) { btn.disabled = false; btn.textContent = 'Povolit cookies v iframe'; }
+            }, 4000);
+          })
+          .catch(function(err) {
+            if (btn) { btn.disabled = false; btn.textContent = 'Povolit cookies v iframe'; }
+            var reason = (err && err.name) ? err.name : 'odmítnuto';
+            alert('Povolení selhalo (' + reason + '). Zkus „Otevřít Jídlogic přímo".');
+          });
+      } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Povolit cookies v iframe'; }
+        alert('Tvůj prohlížeč tuhle funkci nepodporuje. Použij „Otevřít Jídlogic přímo".');
+      }
+    }
 
     // Primární signál: iframe úspěšně načetl Jídlogic → schová loader + gate.
     // Obedy.html `initUI()` posílá postMessage({type:'jidlogic-ready', ...})
