@@ -1,7 +1,18 @@
 // Jídlogic — Service Worker (PWA shell cache)
-// Pozn.: bumpnuto na v3 kvůli přechodu z JídLOG na Jídlogic (title, manifest, iframe src).
-var CACHE_NAME = 'jidlogic-shell-v3';
-var SHELL_URLS = ['./', 'index.html', 'manifest.json', 'icon.svg'];
+// v5 — 2026-04-22: nová ikona (koncept F: talíř s quick-pick pillem) — musí
+// refresh shell cache aby se PNG/SVG stáhly z nového URL s ?v=20260422 query.
+var CACHE_NAME = 'jidlogic-shell-v5';
+var SHELL_URLS = [
+  './',
+  'index.html',
+  'manifest.json',
+  'icon.svg?v=20260422',
+  'icon-192.png?v=20260422',
+  'icon-512.png?v=20260422',
+  'apple-touch-icon.png?v=20260422',
+  'favicon-32.png?v=20260422',
+  'favicon-16.png?v=20260422',
+];
 
 // Install — cache shell
 self.addEventListener('install', function(e) {
