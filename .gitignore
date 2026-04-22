@@ -1,0 +1,35 @@
+# GAS soubory — pushují se přes clasp, NE do GitHub Pages repa
+Obedy.html
+Obedy-preview.html
+obedy.js
+obedy.tests.js
+Menza.feed.js
+Help.html
+menza_historie.js
+appsscript.json
+.clasp.json
+.claspignore
+
+# Prototypy (lokální)
+*-preview.html
+*-prototyp.html
+
+# Dokumentace (lokální)
+*.md
+.auto-memory/
+.claude/
+
+# Spreadsheet předlohy
+*.xlsx
+*.xls
+
+# Office lock soubory
+.~lock.*
+
+# Záloha rozbitého .git
+.git-corrupted-backup/
+
+# Systémové / IDE
+node_modules/
+.DS_Store
+.vscode/
