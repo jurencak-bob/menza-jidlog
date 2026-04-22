@@ -10,6 +10,9 @@ appsscript.json
 .clasp.json
 .claspignore
 
+# Staré .gs exporty (před clasp setupem) — lokální backup, nepatří do gitu
+*.gs
+
 # Prototypy (lokální)
 *-preview.html
 *-prototyp.html
