@@ -15,7 +15,7 @@
   <meta name="application-name" content="Jídlogic">
   <meta name="description" content="Jídelníček UTB Menza + zápis obědů">
 
-  <!-- Icons (v20260422 — F koncept, talíř s quick-pick pillem) -->
+  <!-- Icons -->
   <link rel="icon" type="image/svg+xml" href="icon.svg?v=20260422">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=20260422">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=20260422">
@@ -25,96 +25,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; overflow: hidden; background: #F7F7FA; }
-
-    /* Loader — zobrazí se než se načte iframe */
-    .loader {
-      position: fixed;
-      inset: 0;
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #F7F7FA;
-      transition: opacity 0.4s;
-    }
-    .loader.hidden { opacity: 0; pointer-events: none; }
-    .loader-icon { width: 72px; height: 72px; margin-bottom: 16px; animation: pulse 1.5s ease-in-out infinite; }
-    .loader-icon svg { width: 100%; height: 100%; display: block; }
-    .loader-text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #6B2D8B; font-size: 1.1rem; font-weight: 600; }
-    .loader-note { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #A0A0B0; font-size: 0.8rem; margin-top: 12px; }
-    @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.7; } }
-
-    /* Auth gate — zobrazí se pokud Jídlogic nepošle ready handshake.
-       Typicky user nemá @blogic.cz účet nebo není přihlášen → GAS vrací
-       Google login page uvnitř iframe, naše Obedy.html se nezavede a
-       postMessage nikdy nedorazí. (v20260422.13) */
-    .auth-gate {
-      position: fixed;
-      inset: 0;
-      z-index: 20;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #F7F7FA;
-      padding: 24px 20px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      text-align: center;
-    }
-    .auth-gate.show { display: flex; }
-    .auth-gate .gate-lock {
-      width: 64px; height: 64px; border-radius: 50%;
-      background: #6B2D8B; color: #fff;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 18px;
-    }
-    .auth-gate .gate-lock svg {
-      width: 32px; height: 32px;
-      stroke: currentColor;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      fill: none;
-    }
-    .auth-gate h1 {
-      font-size: 1.3rem; color: #1a1a2e; font-weight: 700; margin-bottom: 8px;
-    }
-    .auth-gate p {
-      color: #555; font-size: 0.92rem; line-height: 1.5;
-      max-width: 380px; margin-bottom: 10px;
-    }
-    .auth-gate p.small {
-      font-size: 0.8rem; color: #888; margin-top: 8px;
-    }
-    .auth-gate .btn {
-      display: inline-block;
-      padding: 10px 22px; margin-top: 16px;
-      background: #6B2D8B; color: #fff;
-      text-decoration: none;
-      border-radius: 10px; font-weight: 600; font-size: 0.92rem;
-    }
-    .auth-gate .btn:hover { background: #5A2276; }
-    .auth-gate .retry {
-      margin-top: 8px; background: transparent; color: #6B2D8B;
-      border: 1px solid #6B2D8B; padding: 8px 20px; border-radius: 10px;
-      font-weight: 500; font-size: 0.85rem; cursor: pointer;
-    }
-
-    /* Dark mode */
-    @media (prefers-color-scheme: dark) {
-      html, body { background: #1A1A2E; }
-      .loader { background: #1A1A2E; }
-      .loader-text { color: #B07DD8; }
-      .loader-note { color: #6E6E88; }
-      .auth-gate { background: #1A1A2E; }
-      .auth-gate h1 { color: #F1F5F9; }
-      .auth-gate p { color: #AAB; }
-      .auth-gate .gate-lock { background: #B07DD8; color: #1A1A2E; }
-      .auth-gate .btn { background: #B07DD8; color: #1A1A2E; }
-      .auth-gate .btn:hover { background: #C89DE8; }
-      .auth-gate .retry { color: #B07DD8; border-color: #B07DD8; }
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 
     iframe {
       width: 100%;
@@ -124,16 +35,141 @@
       inset: 0;
       z-index: 1;
     }
+
+    /* ─── Welcome modal (first-run only) ────────────────────────────
+       Zobrazí se jen při prvním otevření PWA (localStorage flag).
+       Jakmile user klikne „Rozumím", flag se nastaví a modál se už
+       nikdy neukáže. Uvnitř je vysvětlení, co user potřebuje a co
+       dělat při problému s načítáním (cookie blocking v iframe). */
+    .welcome-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(26, 26, 46, 0.5);
+      padding: 20px;
+    }
+    .welcome-overlay.show { display: flex; }
+    .welcome-box {
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 28px 24px;
+      max-width: 440px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    }
+    .welcome-logo {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      display: block;
+    }
+    .welcome-box h1 {
+      font-size: 1.3rem;
+      color: #6B2D8B;
+      text-align: center;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+    .welcome-box p {
+      color: #333;
+      font-size: 0.92rem;
+      line-height: 1.55;
+      margin-bottom: 12px;
+    }
+    .welcome-box p.small {
+      font-size: 0.82rem;
+      color: #666;
+    }
+    .welcome-box code {
+      background: #F3F0F8;
+      color: #6B2D8B;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 0.85em;
+    }
+    .welcome-box ul {
+      padding-left: 22px;
+      margin-bottom: 12px;
+    }
+    .welcome-box ul li {
+      color: #333;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+      line-height: 1.5;
+    }
+    .welcome-box .fallback-note {
+      background: #FEF3C7;
+      border-left: 3px solid #F59E0B;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin: 14px 0;
+    }
+    .welcome-box .fallback-note p {
+      margin: 0 0 6px 0;
+      font-size: 0.85rem;
+    }
+    .welcome-box .fallback-note a {
+      color: #6B2D8B;
+      font-weight: 600;
+      text-decoration: underline;
+      word-break: break-all;
+    }
+    .welcome-btn {
+      display: block;
+      width: 100%;
+      padding: 12px 24px;
+      margin-top: 20px;
+      background: #6B2D8B;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .welcome-btn:hover { background: #5A2276; }
+
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      html, body { background: #1A1A2E; }
+      .welcome-overlay { background: rgba(0, 0, 0, 0.7); }
+      .welcome-box { background: #252545; }
+      .welcome-box h1 { color: #B07DD8; }
+      .welcome-box p, .welcome-box ul li { color: #E0E0E8; }
+      .welcome-box p.small { color: #AAB; }
+      .welcome-box code { background: #1A1A2E; color: #B07DD8; }
+      .welcome-box .fallback-note { background: #3d2a15; border-left-color: #F59E0B; }
+      .welcome-btn { background: #B07DD8; color: #1A1A2E; }
+      .welcome-btn:hover { background: #C89DE8; }
+    }
   </style>
 </head>
 <body>
 
-  <!-- Loader (viditelný do přijetí postMessage jidlogic-ready z iframe).
-       Ikona: koncept F — talíř s quick-pick pillem (stejná jako PWA ikona
-       a hlavička Jídlogicu, brand konzistence). 2026-04-22 — nahradilo 📋. -->
-  <div class="loader" id="loader">
-    <div class="loader-icon" aria-hidden="true">
-      <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- GAS Jídlogic v iframe (?app=obedy explicitně) — vždy se načte,
+       Obedy.html má vlastní loading overlay + auth logiku uvnitř iframe.
+       PWA wrapper je čistě brand shell + welcome modál při prvním spuštění. -->
+  <iframe
+    id="app"
+    src="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy"
+    allow="clipboard-write"
+    loading="eager"
+  ></iframe>
+
+  <!-- Welcome modal — zobrazí se POUZE při prvním spuštění PWA.
+       Jakmile user klikne „Rozumím", localStorage.jidlogic-welcomed=1
+       a modál se už nikdy neukáže (při příštím otevření PWA se načte
+       iframe rovnou). -->
+  <div class="welcome-overlay" id="welcome-overlay">
+    <div class="welcome-box">
+      <svg class="welcome-logo" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
         <rect width="512" height="512" rx="112" fill="#F7F7FA"/>
         <circle cx="256" cy="256" r="196" fill="#FFFFFF" stroke="#6B2D8B" stroke-width="22"/>
         <circle cx="256" cy="256" r="126" fill="#E9D5F4"/>
@@ -142,140 +178,47 @@
               font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
               font-size="116" font-weight="900" fill="#6B2D8B">1</text>
       </svg>
+      <h1>Vítej v Jídlogic!</h1>
+      <p>Interní appka pro výběr obědů ve <strong>UTB Menze</strong>, určená pro zaměstnance <strong>Blogicu</strong>.</p>
+      <p><strong>Co potřebuješ:</strong></p>
+      <ul>
+        <li>Být v prohlížeči přihlášen Google účtem <code>@blogic.cz</code></li>
+        <li>Mít povolené cookies pro Google služby</li>
+      </ul>
+      <div class="fallback-note">
+        <p><strong>Když Jídlogic nejde načíst:</strong></p>
+        <p>Některé prohlížeče (Chrome Mobile s Tracking Protection) blokují cookies pro Google uvnitř iframe. Pokud místo jídelníčku vidíš Google přihlašovací obrazovku, otevři Jídlogic přímo:</p>
+        <p><a href="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy" target="_blank" rel="noopener">Otevřít Jídlogic přímo v novém tabu →</a></p>
+      </div>
+      <button class="welcome-btn" onclick="dismissWelcome()">Rozumím, pokračovat</button>
     </div>
-    <div class="loader-text">Jídlogic se načítá…</div>
-    <div class="loader-note">Pouze pro <strong>@blogic.cz</strong> účty</div>
   </div>
-
-  <!-- Auth gate — fallback pokud Jídlogic nepošle ready message do 1.2 s
-       po onload (typicky: user nemá @blogic.cz účet, nebo není přihlášen).
-       Lucide `lock` SVG nahradilo 🔒 emoji pro konzistentní vizuální jazyk. -->
-  <div class="auth-gate" id="auth-gate">
-    <div class="gate-lock" aria-hidden="true">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-      </svg>
-    </div>
-    <h1>Jídlogic se nenačetl</h1>
-    <p><strong>Nejčastější příčina:</strong> Chrome / Safari blokuje cookies pro <code>script.google.com</code> v iframe („Tracking Protection"). Jsi přihlášen do svého <strong>@blogic.cz</strong> účtu, ale iframe tu cookie nedostane.</p>
-
-    <!-- Primární řešení pokud browser podporuje requestStorageAccessFor() — kliknutí
-         vyvolá OS prompt pro povolení cookies a iframe se reloaduje. Fallback níže. -->
-    <p class="small" id="gate-saa-hint" style="display:none"><strong>Řešení v tomto prohlížeči:</strong> Klikni „Povolit cookies v iframe" — prohlížeč se zeptá, jestli pro tenhle web můžou být cookies <code>script.google.com</code> použité uvnitř iframe. Po povolení se Jídlogic načte v rámci PWA.</p>
-    <button class="btn" id="gate-saa-btn" style="display:none" onclick="tryStorageAccessFor()">Povolit cookies v iframe</button>
-
-    <p class="small" id="gate-direct-hint"><strong>Alternativa:</strong> otevři Jídlogic přímo v novém tabu — bude fungovat bez iframe-wrapperu.</p>
-    <a class="btn" id="gate-open-direct" href="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy" target="_blank" rel="noopener">Otevřít Jídlogic přímo</a>
-
-    <p class="small" style="margin-top:16px"><em>Další možné příčiny:</em><br>
-    • Nejsi přihlášen žádným Google účtem<br>
-    • Jsi přihlášen jiným než <strong>@blogic.cz</strong> účtem</p>
-    <a class="btn" style="background:#A0A0B0;margin-top:4px" href="https://accounts.google.com/AccountChooser" target="_blank" rel="noopener">Přepnout Google účet</a>
-    <button class="retry" onclick="location.reload()">Zkusit znovu</button>
-  </div>
-
-  <!-- GAS Jídlogic v iframe (?app=obedy explicitně — nezávisle na výchozím routingu doGet) -->
-  <iframe
-    id="app"
-    src="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy"
-    allow="clipboard-write"
-    loading="eager"
-  ></iframe>
 
   <script>
-    // Service Worker registration
+    // Service Worker registration — PWA offline cache pro wrapper assety.
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function(err) {
         console.warn('SW registration failed:', err);
       });
     }
 
-    var iframe = document.getElementById('app');
-    var loader = document.getElementById('loader');
-    var gate = document.getElementById('auth-gate');
-
-    // Feature detect Storage Access API — pokud prohlížeč podporuje
-    // `document.requestStorageAccessFor`, nabídneme v auth-gate button
-    // pro povolení cookies pro script.google.com uvnitř našeho iframe.
-    // Chrome 120+ (experimental/enterprise), ostatní prohlížeče padají
-    // do fallbacku „Otevřít přímo" (nezávisle na tomto).
-    if (typeof document.requestStorageAccessFor === 'function') {
-      document.addEventListener('DOMContentLoaded', function() {
-        var hint = document.getElementById('gate-saa-hint');
-        var btn  = document.getElementById('gate-saa-btn');
-        if (hint) hint.style.display = '';
-        if (btn)  btn.style.display = '';
-      });
-    }
-
-    /** Zkusí získat storage access pro script.google.com.
-     *  Pokud user potvrdí v prompt dialogu, reload iframe (cookies teď
-     *  jdou skrz). Pokud odmítne nebo API nefunguje, stav beze změny
-     *  (user může použít „Otevřít přímo"). */
-    function tryStorageAccessFor() {
-      var btn = document.getElementById('gate-saa-btn');
-      if (btn) { btn.disabled = true; btn.textContent = 'Čekám na povolení…'; }
+    // Welcome modal jen při prvním otevření PWA. localStorage flag persistuje
+    // napříč zavřením/otevřením appky. Vyčištění site data → modál se zase ukáže.
+    (function checkWelcome() {
       try {
-        document.requestStorageAccessFor('https://script.google.com/')
-          .then(function() {
-            if (btn) btn.textContent = 'Povoleno, načítám…';
-            // Reload iframe — cookies by teď měly projít
-            readyReceived = false;
-            loader.classList.remove('hidden');
-            gate.classList.remove('show');
-            iframe.src = iframe.src;  // force reload
-            setTimeout(function() {
-              if (btn) { btn.disabled = false; btn.textContent = 'Povolit cookies v iframe'; }
-            }, 4000);
-          })
-          .catch(function(err) {
-            if (btn) { btn.disabled = false; btn.textContent = 'Povolit cookies v iframe'; }
-            var reason = (err && err.name) ? err.name : 'odmítnuto';
-            alert('Povolení selhalo (' + reason + '). Zkus „Otevřít Jídlogic přímo".');
-          });
+        if (!localStorage.getItem('jidlogic-welcomed')) {
+          document.getElementById('welcome-overlay').classList.add('show');
+        }
       } catch (e) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Povolit cookies v iframe'; }
-        alert('Tvůj prohlížeč tuhle funkci nepodporuje. Použij „Otevřít Jídlogic přímo".');
+        // localStorage může být blokované v privacy módu — raději modál neukaž
+        // (lepší UX pro user než problém, info najdou v help v rámci Obedy.html)
       }
+    })();
+
+    function dismissWelcome() {
+      try { localStorage.setItem('jidlogic-welcomed', '1'); } catch (e) {}
+      document.getElementById('welcome-overlay').classList.remove('show');
     }
-
-    // Primární signál: iframe úspěšně načetl Jídlogic → schová loader + gate.
-    // Obedy.html `initUI()` posílá postMessage({type:'jidlogic-ready', ...})
-    // těsně před renderem UI. Tady na to reagujeme.
-    var readyReceived = false;
-    window.addEventListener('message', function(ev) {
-      var data = ev.data || {};
-      if (data.type === 'jidlogic-ready') {
-        readyReceived = true;
-        loader.classList.add('hidden');
-        gate.classList.remove('show');
-      }
-    });
-
-    // Sekundární signál: iframe.onload (zpráva „něco se načetlo", ale nevíme
-    // co). Pokud přijde postMessage 'jidlogic-ready' do 3 s po onload, jsme
-    // v pořádku. Jinak to znamená, že iframe zobrazuje Google auth stránku
-    // (non-blogic user nebo zablokované cookies v PWA iframe) → auth-gate.
-    //
-    // 1,2 s z v20260422.13 bylo moc agresivní — Obedy.html script se spustí
-    // hned (early handshake od .20), ale na pomalejších sítích/zařízeních může
-    // být delay mezi iframe onload a script execution. 3 s pokrývá 99 % případů.
-    iframe.addEventListener('load', function() {
-      setTimeout(function() {
-        if (readyReceived) return;
-        loader.classList.add('hidden');
-        gate.classList.add('show');
-      }, 3000);
-    });
-
-    // Tvrdý timeout 8 s — pokud ani iframe onload neproběhl (síťový problém),
-    // ukaž auth gate. Lepší mít vždy něco než bílou obrazovku.
-    setTimeout(function() {
-      if (readyReceived) return;
-      loader.classList.add('hidden');
-      gate.classList.add('show');
-    }, 8000);
   </script>
 </body>
 </html>
