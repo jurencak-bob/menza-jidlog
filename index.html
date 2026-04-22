@@ -155,11 +155,16 @@
 
   <!-- GAS Jídlogic v iframe (?app=obedy explicitně) — vždy se načte,
        Obedy.html má vlastní loading overlay + auth logiku uvnitř iframe.
-       PWA wrapper je čistě brand shell + welcome modál při prvním spuštění. -->
+       PWA wrapper je čistě brand shell + welcome modál při prvním spuštění.
+
+       allow="microphone" — delegace mic permission do iframe pro Web Speech
+       API v Kontrola karty modalu (idea #33). Bez tohoto atributu prohlížeč
+       automaticky zamítne mic request z iframe a vrátí 'not-allowed' error
+       bez ohledu na OS / browser settings. (v20260422.22) -->
   <iframe
     id="app"
     src="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy"
-    allow="clipboard-write"
+    allow="clipboard-write; microphone"
     loading="eager"
   ></iframe>
 
