@@ -2,7 +2,7 @@
 // v6 — 2026-04-22: Loader a auth-gate v index.html mají místo emoji 📋/🔒
 // SVG ikony (brand koncept F + Lucide lock). Bump nutný, aby se nová
 // index.html stáhla při dalším otevření PWA.
-var CACHE_NAME = 'jidlogic-shell-v7';
+var CACHE_NAME = 'jidlogic-shell-v8';
 var SHELL_URLS = [
   './',
   'index.html',
