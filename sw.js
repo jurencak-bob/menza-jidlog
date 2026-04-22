@@ -1,7 +1,8 @@
 // Jídlogic — Service Worker (PWA shell cache)
-// v5 — 2026-04-22: nová ikona (koncept F: talíř s quick-pick pillem) — musí
-// refresh shell cache aby se PNG/SVG stáhly z nového URL s ?v=20260422 query.
-var CACHE_NAME = 'jidlogic-shell-v5';
+// v6 — 2026-04-22: Loader a auth-gate v index.html mají místo emoji 📋/🔒
+// SVG ikony (brand koncept F + Lucide lock). Bump nutný, aby se nová
+// index.html stáhla při dalším otevření PWA.
+var CACHE_NAME = 'jidlogic-shell-v7';
 var SHELL_URLS = [
   './',
   'index.html',

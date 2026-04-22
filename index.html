@@ -39,7 +39,8 @@
       transition: opacity 0.4s;
     }
     .loader.hidden { opacity: 0; pointer-events: none; }
-    .loader-icon { font-size: 3rem; margin-bottom: 16px; animation: pulse 1.5s ease-in-out infinite; }
+    .loader-icon { width: 72px; height: 72px; margin-bottom: 16px; animation: pulse 1.5s ease-in-out infinite; }
+    .loader-icon svg { width: 100%; height: 100%; display: block; }
     .loader-text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #6B2D8B; font-size: 1.1rem; font-weight: 600; }
     .loader-note { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #A0A0B0; font-size: 0.8rem; margin-top: 12px; }
     @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.7; } }
@@ -66,7 +67,15 @@
       width: 64px; height: 64px; border-radius: 50%;
       background: #6B2D8B; color: #fff;
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.8rem; margin-bottom: 18px;
+      margin-bottom: 18px;
+    }
+    .auth-gate .gate-lock svg {
+      width: 32px; height: 32px;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
     }
     .auth-gate h1 {
       font-size: 1.3rem; color: #1a1a2e; font-weight: 700; margin-bottom: 8px;
@@ -119,17 +128,35 @@
 </head>
 <body>
 
-  <!-- Loader (viditelný do přijetí postMessage jidlogic-ready z iframe) -->
+  <!-- Loader (viditelný do přijetí postMessage jidlogic-ready z iframe).
+       Ikona: koncept F — talíř s quick-pick pillem (stejná jako PWA ikona
+       a hlavička Jídlogicu, brand konzistence). 2026-04-22 — nahradilo 📋. -->
   <div class="loader" id="loader">
-    <div class="loader-icon">📋</div>
+    <div class="loader-icon" aria-hidden="true">
+      <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+        <rect width="512" height="512" rx="112" fill="#F7F7FA"/>
+        <circle cx="256" cy="256" r="196" fill="#FFFFFF" stroke="#6B2D8B" stroke-width="22"/>
+        <circle cx="256" cy="256" r="126" fill="#E9D5F4"/>
+        <ellipse cx="256" cy="256" rx="90" ry="78" fill="#FFFFFF" stroke="#6B2D8B" stroke-width="17"/>
+        <text x="256" y="295" text-anchor="middle"
+              font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+              font-size="116" font-weight="900" fill="#6B2D8B">1</text>
+      </svg>
+    </div>
     <div class="loader-text">Jídlogic se načítá…</div>
     <div class="loader-note">Pouze pro <strong>@blogic.cz</strong> účty</div>
   </div>
 
   <!-- Auth gate — fallback pokud Jídlogic nepošle ready message do 1.2 s
-       po onload (typicky: user nemá @blogic.cz účet, nebo není přihlášen) -->
+       po onload (typicky: user nemá @blogic.cz účet, nebo není přihlášen).
+       Lucide `lock` SVG nahradilo 🔒 emoji pro konzistentní vizuální jazyk. -->
   <div class="auth-gate" id="auth-gate">
-    <div class="gate-lock">🔒</div>
+    <div class="gate-lock" aria-hidden="true">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
     <h1>Jídlogic je jen pro Blogic</h1>
     <p>Aplikace funguje pouze v prohlížeči, kde jsi přihlášen svým Google účtem <strong>@blogic.cz</strong>.</p>
     <p class="small">Pokud vidíš tuto obrazovku, pravděpodobně:</p>
@@ -174,15 +201,19 @@
     });
 
     // Sekundární signál: iframe.onload (zpráva „něco se načetlo", ale nevíme
-    // co). Pokud přijde postMessage 'jidlogic-ready' do 1.2 s po onload, jsme
+    // co). Pokud přijde postMessage 'jidlogic-ready' do 3 s po onload, jsme
     // v pořádku. Jinak to znamená, že iframe zobrazuje Google auth stránku
-    // (non-blogic user) → ukážeme auth gate.
+    // (non-blogic user nebo zablokované cookies v PWA iframe) → auth-gate.
+    //
+    // 1,2 s z v20260422.13 bylo moc agresivní — Obedy.html script se spustí
+    // hned (early handshake od .20), ale na pomalejších sítích/zařízeních může
+    // být delay mezi iframe onload a script execution. 3 s pokrývá 99 % případů.
     iframe.addEventListener('load', function() {
       setTimeout(function() {
         if (readyReceived) return;
         loader.classList.add('hidden');
         gate.classList.add('show');
-      }, 1200);
+      }, 3000);
     });
 
     // Tvrdý timeout 8 s — pokud ani iframe onload neproběhl (síťový problém),
