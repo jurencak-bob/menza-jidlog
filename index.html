@@ -157,14 +157,15 @@
         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
       </svg>
     </div>
-    <h1>Jídlogic je jen pro Blogic</h1>
-    <p>Aplikace funguje pouze v prohlížeči, kde jsi přihlášen svým Google účtem <strong>@blogic.cz</strong>.</p>
-    <p class="small">Pokud vidíš tuto obrazovku, pravděpodobně:</p>
-    <p class="small">• Nejsi přihlášen žádným Google účtem<br>
-    • Jsi přihlášen jiným než <strong>@blogic.cz</strong> účtem<br>
-    • V prohlížeči máš problém se soubory cookie nebo iframe</p>
-    <a class="btn" href="https://accounts.google.com/AccountChooser" target="_blank" rel="noopener">Přihlásit / přepnout Google účet</a>
-    <button class="retry" onclick="location.reload()">Načíst znovu</button>
+    <h1>Jídlogic se nenačetl</h1>
+    <p><strong>Nejčastější příčina:</strong> Chrome / Safari blokuje cookies pro <code>script.google.com</code> v iframe („Tracking Protection"). Jsi přihlášen do svého <strong>@blogic.cz</strong> účtu, ale iframe tu cookie nedostane.</p>
+    <p class="small"><strong>Řešení:</strong> otevři Jídlogic přímo v novém tabu — bude fungovat bez iframe-wrapperu. PWA instalace na ploše by měla fungovat jako předtím.</p>
+    <a class="btn" id="gate-open-direct" href="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy" target="_blank" rel="noopener">Otevřít Jídlogic přímo</a>
+    <p class="small" style="margin-top:16px"><em>Další možné příčiny (pokud přímý odkaz nefunguje):</em><br>
+    • Nejsi přihlášen žádným Google účtem<br>
+    • Jsi přihlášen jiným než <strong>@blogic.cz</strong> účtem</p>
+    <a class="btn" style="background:#A0A0B0;margin-top:4px" href="https://accounts.google.com/AccountChooser" target="_blank" rel="noopener">Přepnout Google účet</a>
+    <button class="retry" onclick="location.reload()">Zkusit znovu</button>
   </div>
 
   <!-- GAS Jídlogic v iframe (?app=obedy explicitně — nezávisle na výchozím routingu doGet) -->
