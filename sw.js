@@ -1,4 +1,8 @@
 // Jídlogic — Service Worker (PWA shell cache)
+// v13 — 2026-04-23: obousměrný handshake — wrapper posílá ACK 'wrapper-hidden'
+// do iframe po dokončení fade, Obedy.html čeká na ACK před spuštěním loading
+// animation (jinak kroky 0-2 běžely skryté pod wrapperem). Fallback timeout
+// zkrácen 12s → 3s. Bump pro re-cache index.html.
 // v12 — 2026-04-23: wrapper loading overlay přidán do index.html (brand SVG +
 // pulsující tečky, fade-out na postMessage 'jidlogic-ready' z Obedy.html nebo
 // 12s fallback timeout). Pokrývá hluchý interval mezi OS splash a GAS
@@ -11,7 +15,7 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v12';
+var CACHE_NAME = 'jidlogic-shell-v13';
 var CORE_SHELL = [
   './',
   'index.html',

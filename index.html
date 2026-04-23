@@ -310,20 +310,26 @@
       document.getElementById('welcome-overlay').classList.remove('show');
     }
 
-    /* Wrapper loading overlay fade-out (v20260423.02).
+    /* Wrapper loading overlay fade-out + ACK handshake (v20260423.03).
        Trigger: postMessage('jidlogic-ready') z Obedy.html — fireEarlyHandshake
        v Obedy.html posílá message s type='jidlogic-ready' hned jak začne script
        exekvovat (tzn. iframe úspěšně doručil Obedy.html z GAS, prohlížeč ho
-       parsuje). V tu chvíli už Obedy.html renderuje vlastní loading-overlay
-       se stejnou brand estetikou, takže fade-out 400 ms je plynulý přechod.
+       parsuje).
 
-       Fallback timeout 12 s: pokud handshake nedorazí (cookie blocking, GAS
-       5xx, Google sign-in page místo naší Obedy.html), overlay zmizí sám
-       aby user viděl, co v iframe je, a mohl reagovat (sign-in, retry).
-       12 s je se safety margin pro pomalá zařízení/sítě — typicky GAS cold
-       start je 1–3 s.
+       Po dokončení fade animace (450 ms) posíláme **ACK zprávu zpět do iframe**
+       (type='wrapper-hidden'), aby Obedy.html věděl, že je opravdu vidět, a
+       mohl **teď** spustit loading animation od kroku 0. Bez tohohle ACK-u
+       spouští Obedy.html animaci hned v init() a kroky 0-2 proběhnou skryté
+       pod wrapperem — user vidí overlay až od kroku 2-3.
 
-       Idempotence: fadeOutWrapperLoading() má guard přes classList.contains. */
+       Fallback timeout 3 s (zkráceno z 12 s): pokud handshake nedorazí
+       (cookie blocking, GAS 5xx, Google sign-in page místo naší Obedy.html),
+       overlay zmizí, user vidí iframe content (Google error / sign-in) a
+       může reagovat. 3 s je dost pro GAS warm start, cold start může trvat
+       déle ale wrapper fade je stejně triggered postMessage hned jak Obedy
+       začne běžet — timeout je čistě safety pro selhání.
+
+       Idempotence: fadeOutWrapperLoading() má guard přes `faded` flag. */
     (function setupWrapperLoadingFadeOut() {
       var faded = false;
       function fadeOutWrapperLoading(reason) {
@@ -332,8 +338,18 @@
         var el = document.getElementById('wrapper-loading');
         if (!el) return;
         el.classList.add('fade-out');
-        // Po dokončení fade animace el skryj úplně (pointer-events + DOM)
-        setTimeout(function() { el.style.display = 'none'; }, 450);
+        // Po dokončení fade animace el skryj úplně + pošli ACK do iframe
+        setTimeout(function() {
+          el.style.display = 'none';
+          // ACK zpět do iframe — Obedy.html teď spustí loading animation
+          // od kroku 0 (bez ACK-u by běžela na pozadí zatímco wrapper visí).
+          try {
+            var iframe = document.getElementById('app');
+            if (iframe && iframe.contentWindow) {
+              iframe.contentWindow.postMessage({ type: 'wrapper-hidden' }, '*');
+            }
+          } catch (e) { /* no-op — iframe může být v blocked stavu */ }
+        }, 450);
       }
 
       window.addEventListener('message', function(e) {
@@ -344,9 +360,10 @@
         }
       });
 
-      // Fallback — iframe nedorazil / nereaguje. Nechceme nechat user viset
-      // na brand overlay donekonečna.
-      setTimeout(function() { fadeOutWrapperLoading('timeout'); }, 12000);
+      // Fallback — iframe nedorazil / nereaguje. Zkráceno z 12 s na 3 s,
+      // protože fade je obvykle triggered postMessage skoro hned (<1 s po
+      // GAS response), 12 s byla zbytečně dlouhá čekačka při selhání.
+      setTimeout(function() { fadeOutWrapperLoading('timeout'); }, 3000);
     })();
   </script>
 </body>
