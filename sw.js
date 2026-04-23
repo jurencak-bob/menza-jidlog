@@ -1,4 +1,9 @@
 // Jídlogic — Service Worker (PWA shell cache)
+// v12 — 2026-04-23: wrapper loading overlay přidán do index.html (brand SVG +
+// pulsující tečky, fade-out na postMessage 'jidlogic-ready' z Obedy.html nebo
+// 12s fallback timeout). Pokrývá hluchý interval mezi OS splash a GAS
+// iframe response. Bump pro re-cache nového index.html.
+// v11 — 2026-04-22: allow="microphone" přidán na iframe (Web Speech API).
 // v10 — 2026-04-22: index.html zjednodušen (welcome modal jednorázově místo
 // auth-gate/postMessage handshake). SW shell drží jen minimum — index.html +
 // manifest + hlavní ikony. Ostatní PNG ikony se cachují on-demand v fetch
@@ -6,7 +11,7 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v11';
+var CACHE_NAME = 'jidlogic-shell-v12';
 var CORE_SHELL = [
   './',
   'index.html',
