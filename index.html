@@ -36,6 +36,70 @@
       z-index: 1;
     }
 
+    /* ─── Wrapper loading overlay (v20260423.02) ────────────────────
+       Překrývá iframe v prvních ~2 s, než GAS vrátí Obedy.html a ten
+       odrenderuje vlastní loading-overlay. Bez tohoto wrapperu user
+       po zavření OS splash videl 2 s prázdný #F7F7FA (nic se neděje).
+       Fade-out se spouští postMessage 'jidlogic-ready' z iframe
+       (fireEarlyHandshake v Obedy.html pálí hned jak začne script
+       exekvovat). Fallback timeout 12 s pro případ, že iframe selže
+       (cookie blocking, GAS 5xx) — overlay zmizí a user vidí iframe
+       obsah (typicky Google sign-in / error), může reagovat.
+
+       Stejná estetika jako Obedy.html loading-overlay: stejný brand
+       SVG, stejná plate-wobble animace, stejné barvy — přechod je
+       pro user nepostřehnutelný (dva překryvy, jeden scema). */
+    .wrapper-loading {
+      position: fixed;
+      inset: 0;
+      z-index: 10;              /* nad iframe (1), pod welcome (20) */
+      background: #F7F7FA;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.4s ease;
+    }
+    .wrapper-loading.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .wrapper-loading-plate {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 28px;
+      animation: wrapper-plate-wobble 1.4s ease-in-out infinite;
+    }
+    .wrapper-loading-plate svg { width: 100%; height: 100%; display: block; }
+    @keyframes wrapper-plate-wobble {
+      0%, 100% { transform: rotate(-8deg) scale(1); }
+      30%      { transform: rotate(6deg)  scale(1.08); }
+      60%      { transform: rotate(-4deg) scale(1.02); }
+    }
+    .wrapper-loading-text {
+      font-size: 1.1rem;
+      color: #666;
+      font-weight: 500;
+    }
+    .wrapper-loading-text::after {
+      content: '';
+      display: inline-block;
+      width: 1.2em;
+      text-align: left;
+      animation: wrapper-dots 1.4s steps(4, end) infinite;
+    }
+    @keyframes wrapper-dots {
+      0%   { content: ''; }
+      25%  { content: '.'; }
+      50%  { content: '..'; }
+      75%  { content: '...'; }
+      100% { content: ''; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wrapper-loading-plate { animation: none; }
+      .wrapper-loading-text::after { animation: none; content: '…'; }
+    }
+
     /* ─── Welcome modal (first-run only) ────────────────────────────
        Zobrazí se jen při prvním otevření PWA (localStorage flag).
        Jakmile user klikne „Rozumím", flag se nastaví a modál se už
@@ -139,6 +203,8 @@
     /* Dark mode */
     @media (prefers-color-scheme: dark) {
       html, body { background: #1A1A2E; }
+      .wrapper-loading { background: #1A1A2E; }
+      .wrapper-loading-text { color: #AAB; }
       .welcome-overlay { background: rgba(0, 0, 0, 0.7); }
       .welcome-box { background: #252545; }
       .welcome-box h1 { color: #B07DD8; }
@@ -167,6 +233,25 @@
     allow="clipboard-write; microphone"
     loading="eager"
   ></iframe>
+
+  <!-- Wrapper loading overlay — pokrývá hluchých ~2 s mezi tím, co OS splash
+       zmizí a GAS iframe doručí Obedy.html. Brand SVG + text „Otevírám
+       Jídlogic" (pulsující tečky). Fade-out triggered postMessage handshake
+       z Obedy.html nebo fallback timeout 12 s. (v20260423.02) -->
+  <div class="wrapper-loading" id="wrapper-loading">
+    <div class="wrapper-loading-plate" aria-hidden="true">
+      <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+        <rect width="512" height="512" rx="112" fill="#F7F7FA"/>
+        <circle cx="256" cy="256" r="196" fill="#FFFFFF" stroke="#6B2D8B" stroke-width="22"/>
+        <circle cx="256" cy="256" r="126" fill="#E9D5F4"/>
+        <ellipse cx="256" cy="256" rx="90" ry="78" fill="#FFFFFF" stroke="#6B2D8B" stroke-width="17"/>
+        <text x="256" y="295" text-anchor="middle"
+              font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+              font-size="116" font-weight="900" fill="#6B2D8B">1</text>
+      </svg>
+    </div>
+    <div class="wrapper-loading-text">Otevírám Jídlogic</div>
+  </div>
 
   <!-- Welcome modal — zobrazí se POUZE při prvním spuštění PWA.
        Jakmile user klikne „Rozumím", localStorage.jidlogic-welcomed=1
@@ -224,6 +309,45 @@
       try { localStorage.setItem('jidlogic-welcomed', '1'); } catch (e) {}
       document.getElementById('welcome-overlay').classList.remove('show');
     }
+
+    /* Wrapper loading overlay fade-out (v20260423.02).
+       Trigger: postMessage('jidlogic-ready') z Obedy.html — fireEarlyHandshake
+       v Obedy.html posílá message s type='jidlogic-ready' hned jak začne script
+       exekvovat (tzn. iframe úspěšně doručil Obedy.html z GAS, prohlížeč ho
+       parsuje). V tu chvíli už Obedy.html renderuje vlastní loading-overlay
+       se stejnou brand estetikou, takže fade-out 400 ms je plynulý přechod.
+
+       Fallback timeout 12 s: pokud handshake nedorazí (cookie blocking, GAS
+       5xx, Google sign-in page místo naší Obedy.html), overlay zmizí sám
+       aby user viděl, co v iframe je, a mohl reagovat (sign-in, retry).
+       12 s je se safety margin pro pomalá zařízení/sítě — typicky GAS cold
+       start je 1–3 s.
+
+       Idempotence: fadeOutWrapperLoading() má guard přes classList.contains. */
+    (function setupWrapperLoadingFadeOut() {
+      var faded = false;
+      function fadeOutWrapperLoading(reason) {
+        if (faded) return;
+        faded = true;
+        var el = document.getElementById('wrapper-loading');
+        if (!el) return;
+        el.classList.add('fade-out');
+        // Po dokončení fade animace el skryj úplně (pointer-events + DOM)
+        setTimeout(function() { el.style.display = 'none'; }, 450);
+      }
+
+      window.addEventListener('message', function(e) {
+        // Cross-origin message — data může být cokoliv. Ověř strukturu.
+        var d = e && e.data;
+        if (d && typeof d === 'object' && d.type === 'jidlogic-ready') {
+          fadeOutWrapperLoading('handshake');
+        }
+      });
+
+      // Fallback — iframe nedorazil / nereaguje. Nechceme nechat user viset
+      // na brand overlay donekonečna.
+      setTimeout(function() { fadeOutWrapperLoading('timeout'); }, 12000);
+    })();
   </script>
 </body>
 </html>
