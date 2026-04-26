@@ -1,0 +1,28 @@
+# Soubory, které se NEPUSHUJÍ do Apps Script projektu Meníčka.
+# clasp push nahraje vše z rootDir, co tady NENÍ uvedeno. GAS akceptuje jen
+# .gs (servr.JS) + .html (HtmlService) + appsscript.json (manifest).
+
+# PWA artefakt — GAS s ním neumí pracovat (příští-day featura)
+manifest.json
+
+# OS / editor junk
+.DS_Store
+.vscode/**
+.idea/**
+
+# Git a clasp config
+.git/**
+.gitignore
+.clasp.json
+.claspignore
+
+# Node / build artefakty (kdyby někdy přibyly)
+node_modules/**
+package*.json
+
+# Tooling skripty (deploy.sh atd.)
+*.sh
+
+# Dokumentace a poznámky
+*.md
+.claude/**

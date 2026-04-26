@@ -1,0 +1,257 @@
+/**
+ * Init.gs — inicializace sheetu, nastavení triggerů.
+ *
+ * Spusť `initializeMenicka` jednou ručně z editoru po prvním otevření projektu.
+ */
+
+function initializeMenicka() {
+  var ss = _ss_();
+
+  Object.keys(SHEETS).forEach(function(key) {
+    _ensureSheet_(ss, SHEETS[key], SHEET_HEADERS[key]);
+  });
+
+  Config_seedDefaults_();
+  setupTriggers_();
+
+  Logger.log('Menicka inicializována. URL: ' + ss.getUrl());
+  return { url: ss.getUrl() };
+}
+
+function _ensureSheet_(ss, name, requiredHeaders) {
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.getRange(1, 1, 1, requiredHeaders.length)
+      .setValues([requiredHeaders])
+      .setFontWeight('bold');
+    sheet.setFrozenRows(1);
+    return sheet;
+  }
+
+  // Migrace — doplní chybějící sloupce na konec, existující data zachová
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  var existing = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var existingMap = {};
+  existing.forEach(function(h, i) { if (h) existingMap[h] = i + 1; });
+
+  requiredHeaders.forEach(function(h) {
+    if (!existingMap[h]) {
+      var nextCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, nextCol).setValue(h).setFontWeight('bold');
+    }
+  });
+
+  if (sheet.getFrozenRows() < 1) sheet.setFrozenRows(1);
+  return sheet;
+}
+
+/**
+ * Vymaže CacheService klíče. Spusť ručně po změně listů `⚙️ Konfigurace`
+ * nebo `Restaurace`, pokud nechceš čekat ~10 min na expiraci.
+ */
+function clearAllCaches() {
+  var cache = CacheService.getScriptCache();
+  var dnes = _today_();
+  var vcera = Utilities.formatDate(new Date(Date.now() - 86400000), TZ, 'yyyy-MM-dd');
+
+  cache.removeAll([
+    'config_v1',
+    'restaurants_active_v1',
+    'restaurants_active_v2',
+    'menu_map_' + dnes,
+    'menu_map_' + vcera
+  ]);
+
+  Logger.log('Cache vyčištěna (config, restaurace, menu pro ' + dnes + ' a ' + vcera + ')');
+  return { ok: true };
+}
+
+/**
+ * One-shot migrace: pro každý řádek v listu Restaurace, kde název má tvar
+ * "Restaurace <číslo>" (placeholder z předchozí verze), se pokusí stáhnout
+ * info z `url` sloupce. Pokud `url` není validní profile URL z menicka.cz,
+ * řádek smaže (uživatel ho přidá znovu přes UI).
+ *
+ * Spusť ručně po nasazení nové verze.
+ */
+function repairRestaurants() {
+  var rows = _readAll_(SHEETS.RESTAURACE);
+  var sheet = _sheet_(SHEETS.RESTAURACE);
+  var opraveno = 0, smazano = 0, prozatkano = 0;
+  var deleteRows = [];
+  var deletedIds = [];
+
+  rows.forEach(function(r) {
+    var nazev = String(r['název'] || '').trim();
+    var isPlaceholder = /^Restaurace\s+\d+$/i.test(nazev) || !nazev;
+    if (!isPlaceholder) {
+      prozatkano++;
+      return;
+    }
+
+    var url = String(r.url || '').trim();
+    var parsed = _parseMenickaUrl_(url);
+
+    if (!parsed) {
+      deleteRows.push(r._row);
+      deletedIds.push(String(r.id));
+      smazano++;
+      Logger.log('Mazání: id=' + r.id + ', url="' + url + '" není profile URL');
+      return;
+    }
+
+    try {
+      var info = Scraper_fetchRestaurantInfo_(parsed.url);
+      _setRowFields_(SHEETS.RESTAURACE, r._row, {
+        'název': info.nazev,
+        'město': info.mesto,
+        url: parsed.url
+      });
+      opraveno++;
+      Logger.log('Opraveno: id=' + r.id + ' → ' + info.nazev + ' (' + info.mesto + ')');
+    } catch (e) {
+      deleteRows.push(r._row);
+      deletedIds.push(String(r.id));
+      smazano++;
+      Logger.log('Mazání: id=' + r.id + ', fetch profilu selhal: ' + e.message);
+    }
+  });
+
+  // Smaž řádky od konce, aby se neposouvaly indexy
+  deleteRows.sort(function(a, b) { return b - a; });
+  deleteRows.forEach(function(rowNum) { sheet.deleteRow(rowNum); });
+
+  // Vyčisti ta ID i ze sledovane_restaurace všech uživatelů
+  var orphansClean = 0;
+  deletedIds.forEach(function(id) {
+    orphansClean += _removeRestaurantFromAllUsers_(id);
+  });
+  if (orphansClean > 0) {
+    Logger.log('Cleanup orphan subscriptions: dotčeno ' + orphansClean + ' řádků v Uživatelé');
+  }
+
+  Restaurants_invalidate_();
+
+  Logger.log('repairRestaurants hotovo: opraveno=' + opraveno + ', smazáno=' + smazano + ', ponecháno=' + prozatkano);
+  return { opraveno: opraveno, smazano: smazano, ponechano: prozatkano, orphansClean: orphansClean };
+}
+
+/**
+ * Admin utility: hromadně přidá sledované restaurace pro daný email.
+ * Použij když si uživatel nedopatřením smazal vše a chceš mu to obnovit.
+ *
+ * Před spuštěním uprav konstanty EMAIL a URLS níže (přímo v editoru)
+ * a uloží se před spuštěním (Cmd+S).
+ */
+function bulkAddRestaurantsForUser() {
+  var EMAIL = 'bohumil.jurencak@blogic.cz';
+  var URLS = [
+    // Přidej sem URLs restaurací, které chceš obnovit, např.:
+    // 'https://www.menicka.cz/3538-radegastovna-rex.html',
+  ];
+
+  if (!URLS.length) {
+    Logger.log('Edituj URLS array v menicka_Init.gs:bulkAddRestaurantsForUser a spusť znovu.');
+    return;
+  }
+
+  var ok = 0, fail = [];
+  URLS.forEach(function(url) {
+    try {
+      Restaurants_addToUser_(EMAIL, url);
+      ok++;
+      Logger.log('OK: ' + url);
+    } catch (e) {
+      fail.push({ url: url, chyba: e.message });
+      Logger.log('CHYBA: ' + url + ' — ' + e.message);
+    }
+  });
+
+  Logger.log('bulkAddRestaurantsForUser hotovo: ok=' + ok + ', chyby=' + fail.length);
+  return { ok: ok, chyby: fail };
+}
+
+/**
+ * Pro každého uživatele v listu Uživatelé odstraní ze `sledovane_restaurace`
+ * ID, která neodpovídají žádné aktuální restauraci v listu Restaurace.
+ * Spusť ručně, pokud máš podezření na orphan IDs (např. po manuálním smazání
+ * řádku v Restaurace).
+ */
+function cleanupOrphanSubscriptions() {
+  var registered = {};
+  Restaurants_listActive_().forEach(function(r) { registered[r.id] = true; });
+
+  var users = _readAll_(SHEETS.UZIVATELE);
+  var changed = 0;
+
+  users.forEach(function(u) {
+    var ids = _parseIdList_(u.sledovane_restaurace);
+    var filtered = ids.filter(function(id) { return registered[id]; });
+    if (filtered.length !== ids.length) {
+      _setRowFields_(SHEETS.UZIVATELE, u._row, {
+        sledovane_restaurace: filtered.join(',')
+      });
+      Users_invalidate_(u.email);
+      changed++;
+      Logger.log('Cleanup ' + u.email + ': ' + ids.join(',') + ' → ' + filtered.join(','));
+    }
+  });
+
+  Logger.log('cleanupOrphanSubscriptions hotovo: dotčeno ' + changed + ' uživatelů');
+  return { changed: changed };
+}
+
+/**
+ * One-shot migrace: vezme klíč `default_restaurace` z `⚙️ Konfigurace` a pro
+ * každé v něm uvedené ID nastaví v listu Restaurace `výchozí=1`. Pokud ID
+ * v Restaurace neexistuje, ID se ignoruje.
+ *
+ * Spusť ručně po `repairRestaurants` pokud chceš zachovat výchozí restaurace
+ * z předchozí verze.
+ */
+function migrateDefaultsFromConfig() {
+  var configIds = Config_defaultRestauraceIds_();
+  if (configIds.length === 0) {
+    Logger.log('default_restaurace v Konfiguraci je prázdná, nic k migraci.');
+    return { migrated: 0 };
+  }
+
+  var rows = _readAll_(SHEETS.RESTAURACE);
+  var migrated = 0;
+
+  rows.forEach(function(r) {
+    if (configIds.indexOf(String(r.id)) !== -1) {
+      _setRowFields_(SHEETS.RESTAURACE, r._row, { 'výchozí': 1 });
+      migrated++;
+      Logger.log('výchozí=1 pro id=' + r.id);
+    }
+  });
+
+  Restaurants_invalidate_();
+  Logger.log('migrateDefaultsFromConfig hotovo: migrated=' + migrated);
+  return { migrated: migrated };
+}
+
+function setupTriggers_() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'refreshAllMenus') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+
+  var config = Config_get_();
+  var hours = [parseInt(config.trigger_cas_1, 10), parseInt(config.trigger_cas_2, 10)]
+    .filter(function(h) { return !isNaN(h) && h >= 0 && h <= 23; });
+
+  hours.forEach(function(h) {
+    ScriptApp.newTrigger('refreshAllMenus')
+      .timeBased()
+      .atHour(h)
+      .everyDays(1)
+      .inTimezone(TZ)
+      .create();
+  });
+
+  Logger.log('Triggery refreshAllMenus nastaveny pro hodiny: ' + JSON.stringify(hours));
+}
