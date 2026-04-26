@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Meníčka</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="menicka-manifest.json">
+  <meta name="theme-color" content="#6B2D8B">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Meníčka">
+  <meta name="application-name" content="Meníčka">
+  <meta name="description" content="Jídelníčky restaurací z menicka.cz + UTB Menza">
+
+  <!-- Sdílené ikony s Jídlogic (stejné brand) -->
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=20260422">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=20260422">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=20260422">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20260422">
+  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=20260422">
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; background: #F7F7FA; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    iframe {
+      width: 100%; height: 100%;
+      border: none;
+      position: fixed; inset: 0; z-index: 1;
+    }
+
+    /* Wrapper loading overlay — překryje iframe v prvních ~1-3 s, než
+       GAS doručí menicka_view.html. Fade-out se spouští buď postMessage
+       'jidlogic-ready' (menicka_view.html ji posílá hned po načtení),
+       nebo fallback timeout 3 s pro případy, kdy iframe selže (CSP,
+       cookie blocking, GAS 5xx). */
+    .wrapper-loading {
+      position: fixed; inset: 0; z-index: 10;
+      background: #F7F7FA;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      transition: opacity 0.4s ease;
+    }
+    .wrapper-loading.fade-out { opacity: 0; pointer-events: none; }
+    .wrapper-loading-emoji {
+      font-size: 64px;
+      margin-bottom: 24px;
+      animation: plate-wobble 1.4s ease-in-out infinite;
+    }
+    @keyframes plate-wobble {
+      0%, 100% { transform: rotate(-8deg) scale(1); }
+      30%      { transform: rotate(6deg)  scale(1.08); }
+      60%      { transform: rotate(-4deg) scale(1.02); }
+    }
+    .wrapper-loading-text {
+      font-size: 1.05rem;
+      color: #6E6E80;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wrapper-loading-emoji { animation: none; }
+    }
+
+    /* Fallback panel — zobrazí se po timeoutu, pokud iframe nenajede.
+       Některé prohlížeče (Chrome Mobile s Tracking Protection) blokují
+       cookies pro Google uvnitř iframe. */
+    .fallback-panel {
+      display: none;
+      max-width: 460px; padding: 20px 24px;
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      margin: 24px;
+    }
+    .fallback-panel.show { display: block; }
+    .fallback-panel h2 {
+      font-size: 1rem; color: #2D2D3A; margin-bottom: 8px;
+    }
+    .fallback-panel p {
+      font-size: 0.9rem; color: #6E6E80; line-height: 1.4;
+      margin-bottom: 12px;
+    }
+    .fallback-panel a {
+      display: inline-block; padding: 10px 16px;
+      background: #6B2D8B; color: #fff;
+      border-radius: 8px; text-decoration: none; font-weight: 500;
+    }
+    .fallback-panel a:hover { background: #8E44AD; }
+  </style>
+</head>
+<body>
+  <!-- GAS Meníčka v iframe — vlastní deploy AKfycbw4… -->
+  <iframe
+    id="app-iframe"
+    src="https://script.google.com/a/macros/blogic.cz/s/AKfycbw4_Y3RRfN4KXfQTeL2eS_fpyZmzpWtHBDQrCm8YAiVfycWi6_xKvVPke4o2Ipoi9vt8Q/exec"
+    title="Meníčka"
+  ></iframe>
+
+  <div class="wrapper-loading" id="wrapper-loading">
+    <div class="wrapper-loading-emoji" aria-hidden="true">🍽️</div>
+    <div class="wrapper-loading-text">Otevírám Meníčka…</div>
+    <div class="fallback-panel" id="fallback-panel">
+      <h2>Načítání trvá příliš dlouho</h2>
+      <p>Některé prohlížeče (Chrome Mobile s Tracking Protection) blokují cookies pro Google uvnitř iframe. Pokud místo jídelníčku vidíš Google přihlašovací obrazovku, otevři Meníčka přímo:</p>
+      <a href="https://script.google.com/a/macros/blogic.cz/s/AKfycbw4_Y3RRfN4KXfQTeL2eS_fpyZmzpWtHBDQrCm8YAiVfycWi6_xKvVPke4o2Ipoi9vt8Q/exec" target="_blank" rel="noopener">Otevřít v novém tabu →</a>
+    </div>
+  </div>
+
+  <script>
+    // Service Worker registration — PWA shell cache
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(function(err) {
+        console.warn('SW registration failed:', err);
+      });
+    }
+
+    var loadingEl = document.getElementById('wrapper-loading');
+    var fallbackEl = document.getElementById('fallback-panel');
+    var iframeEl = document.getElementById('app-iframe');
+    var faded = false;
+
+    function fadeOut() {
+      if (faded) return;
+      faded = true;
+      loadingEl.classList.add('fade-out');
+      setTimeout(function() { loadingEl.style.display = 'none'; }, 450);
+    }
+
+    // menicka_view.html posílá window.parent.postMessage('jidlogic-ready', '*')
+    // hned po načtení — fade out wrapper overlay.
+    window.addEventListener('message', function(e) {
+      var data = e.data;
+      var msg = (data && data.type) ? data.type : data;
+      if (msg === 'jidlogic-ready' || msg === 'menicka-ready') fadeOut();
+    });
+
+    // Fallback: pokud handshake nedorazí do 3 s, ukázat fallback panel a
+    // po dalších 5 s fade-out, ať user vidí iframe content (sign-in, error).
+    setTimeout(function() {
+      if (!faded) fallbackEl.classList.add('show');
+    }, 3000);
+    setTimeout(function() {
+      if (!faded) fadeOut();
+    }, 8000);
+  </script>
+</body>
+</html>
