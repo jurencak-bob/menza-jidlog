@@ -146,6 +146,66 @@ function Restaurants_addToUser_(email, input) {
   }
 }
 
+var REFRESH_MIN_AGE_MS = 15 * 60 * 1000;
+var REFRESH_LOCK_TTL_S = 30;
+
+/**
+ * Vynucené stažení menu pro jednu restauraci (ruční refresh z FE).
+ * Respektuje 15-min cooldown — pokud bylo menu stažené před méně než 15 min,
+ * vrátí existující data s flagem `tooEarly`.
+ *
+ * Soft-lock přes CacheService zabrání paralelním fetchům té samé restaurace
+ * z více klientů. Pokud je lock obsazený, vrátí flag `locked`.
+ */
+function Restaurants_refreshMenuFor_(restauraceId) {
+  var rid = String(restauraceId);
+  var dnes = _today_();
+
+  var menuMap = Cache_getMenuMap_(dnes);
+  var existing = menuMap[rid];
+
+  // Mimo refresh okno (před prvním triggerem / po cleanupu) nedává smysl
+  // stahovat — cache je stejně prázdná nebo se chystá k smazání.
+  if (_isOutsideRefreshWindow_()) {
+    return {
+      id: rid,
+      menu: existing,
+      outsideHours: true,
+      firstHour: _scheduleHours_()[0],
+      endHour: _scheduleEndHour_()
+    };
+  }
+
+  if (existing && existing.aktualizovano) {
+    var ageMs = Date.now() - new Date(existing.aktualizovano).getTime();
+    if (ageMs < REFRESH_MIN_AGE_MS) {
+      return {
+        id: rid,
+        menu: existing,
+        tooEarly: true,
+        ageMin: Math.floor(ageMs / 60000)
+      };
+    }
+  }
+
+  var cache = CacheService.getScriptCache();
+  var lockKey = 'refresh_lock_' + rid;
+  if (cache.get(lockKey)) {
+    return { id: rid, menu: existing, locked: true };
+  }
+  cache.put(lockKey, '1', REFRESH_LOCK_TTL_S);
+
+  try {
+    var menu = _fetchMenuByDataSource_(rid);
+    Cache_storeMenu_(dnes, rid, menu);
+    return { id: rid, menu: menu, refreshed: true };
+  } catch (e) {
+    return { id: rid, menu: existing, chyba: e.message };
+  } finally {
+    cache.remove(lockKey);
+  }
+}
+
 /**
  * Stáhne dnešní menu pro jednu restauraci a uloží do cache. Volá se z FE
  * po přidání restaurace, aby uživatel viděl menu hned. Pokud cache už

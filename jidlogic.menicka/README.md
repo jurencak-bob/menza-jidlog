@@ -10,13 +10,13 @@ Web app pro agregaci denních menu z restaurací (zdroje: [menicka.cz](https://w
 
 ## Architektura v jedné větě
 
-Container-bound Apps Script projekt nad Google Sheetem. Cron-trigger 2× denně stáhne menu pro všechny aktivně sledované restaurace, JSON cache uloží do listu `Menu Cache`. UI je samostatná HtmlService šablona, která se přes `google.script.run` napojuje na server-side veřejné funkce.
+Container-bound Apps Script projekt nad Google Sheetem. Cron-trigger každou hodinu od 9:00 do 14:00 stáhne menu pro všechny aktivně sledované restaurace, JSON cache uloží do listu `Menu Cache`. V 17:00 cleanup trigger smaže dnešní řádky (večer už menu nikdo nepotřebuje, navíc by mátla zítřejší ráno). UI je samostatná HtmlService šablona, která se přes `google.script.run` napojuje na server-side veřejné funkce.
 
 ### Datový model (4 listy v jednom sheetu)
 
 | List | Účel | Klíčové sloupce |
 |---|---|---|
-| `⚙️ Konfigurace` | Globální settings | `klíč`, `hodnota` |
+| `⚙️ Konfigurace` | Globální settings | `klíč`, `hodnota` (klíče: `trigger_casy` CSV např. `9,10,11,12,13,14`, `cache_konec_hodina` např. `17`, `debug_id`, …) |
 | `Restaurace` | Globální katalog | `id`, `název`, `město`, `url`, `aktivní`, `výchozí` |
 | `Uživatelé` | Per-user state | `email`, `sledovane_restaurace`, `skryte_restaurace`, `oblibena_jidla`, `dieta`, `vytvoreno`, `posledni_pristup`, `pocet_navstev`, `rss_drive_id`, `restaurace_overrides` |
 | `Menu Cache` | JSON snapshoty menu | `datum`, `restaurace_id`, `data`, `aktualizovano` |
@@ -76,9 +76,11 @@ jidlogic.menicka/
 
 ### Bootstrap
 
-`doGet` server-renderuje JSON do HTML šablony jako `BOOTSTRAP` proměnnou — žádný extra round-trip pro startup data. JSON obsahuje: user, restaurace (s aplikovanými per-user overrides), menu (cache pro dnešek), datum.
+`doGet` server-renderuje JSON do HTML šablony jako `BOOTSTRAP` proměnnou — žádný extra round-trip pro startup data. JSON obsahuje: user, restaurace (s aplikovanými per-user overrides), menu (cache pro dnešek), datum, **schedule** (`triggerHours`, `cacheClearHour` z Konfigurace).
 
-### Refresh menu (cron 9:00 a 11:00 Europe/Prague)
+### Refresh menu (cron každou hodinu 9:00–14:00 Europe/Prague)
+
+Hodiny jsou v `trigger_casy` v listu `⚙️ Konfigurace` (CSV, default `9,10,11,12,13,14`). Po změně klíče spusť ručně `setupTriggers` — `setupTriggers_` ([menicka_Init.gs:247](menicka_Init.gs#L247)) smaže staré triggery a zaregistruje nové.
 
 `refreshAllMenus()` ([menicka_Scraper.gs:75](menicka_Scraper.gs#L75)):
 1. `Scraper_collectIds_` sjednotí ID napříč všemi `sledovane_restaurace` + výchozími.
@@ -86,8 +88,30 @@ jidlogic.menicka/
 3. Pro každé ID:
    - Pokud `id === "menza"` → `Menza_fetchTodayMenu_()` (UTB JSON API).
    - Jinak → `Scraper_fetchHtml_` (iframe HTML) + `Parser_parseMenu_`.
-4. `Cache_storeMenu_` zapíše JSON.
+4. `Cache_storeMenu_` zapíše JSON (a do něj `aktualizovano` ISO timestamp pro FE).
 5. Volitelně `Rss_publishAll_` regeneruje XML feedy (skrytá feature).
+
+### Cleanup v 17:00
+
+Trigger `clearTodaysCache` ([menicka_Cache.gs:122](menicka_Cache.gs#L122)) v hodinu `cache_konec_hodina` (default 17) smaže všechny dnešní řádky z listu `Menu Cache`. Důvod: po obědě už nikdo data nepotřebuje a ráno by stará data mátla uživatele.
+
+### Manuální refresh per karta
+
+🔄 ikona uvnitř každé karty volá `refreshMenuFor` ([menicka_Restaurants.gs:160](menicka_Restaurants.gs#L160)). Server-side ochrana:
+- **Mimo refresh okno** (před `triggerHours[0]` / od `cache_konec_hodina`) → `outsideHours: true`. FE zobrazí toast „Aktualizace je možná jen mezi X:00 a Y:00."
+- **15-min cooldown** od posledního stažení → `tooEarly` flag s `ageMin`.
+- **Soft-lock** přes CacheService 30 s → `locked` flag (zabrání paralelnímu fetchi téže restaurace z více klientů).
+- Jinak → fetch + `Cache_storeMenu_` + `refreshed: true`.
+
+FE má symetrický check (`canRefreshMenu` + `isOutsideRefreshWindow` v menicka_view.html). Ikona je purple když lze, šedá s tooltipem jinak.
+
+### Schedule banner
+
+Když je `STATE.menu` prázdné a hodina je mimo refresh okno, FE místo „Žádná data" ukáže panel s Lucide ikonou:
+- `sun` + „Dnešní jídelníčky se zatím nestahovaly..." pokud `hour < triggerHours[0]`.
+- `moon` + „Čas oběda už je za námi..." pokud `hour >= cacheClearHour`.
+
+Texty obsahují konkrétní hodiny z Konfigurace, takže reagují na změnu schedulu bez code change.
 
 ### Stahování menicka.cz
 
@@ -156,12 +180,14 @@ Spouštět ručně z Apps Script editoru:
 | Funkce | Soubor:řádek | Účel |
 |---|---|---|
 | `initializeMenicka` | [menicka_Init.gs:7](menicka_Init.gs#L7) | Vytvořit / migrovat listy + nastavit triggery |
-| `clearAllCaches` | [menicka_Init.gs:53](menicka_Init.gs#L53) | Vyčistit CacheService klíče (config, restaurace, menu_map) |
+| `setupTriggers` | [menicka_Init.gs:243](menicka_Init.gs#L243) | Re-registrovat refresh + cleanup triggery podle aktuální Konfigurace (volej po změně `trigger_casy` / `cache_konec_hodina`) |
+| `clearAllCaches` | [menicka_Init.gs:53](menicka_Init.gs#L53) | Vyčistit CacheService klíče **a smazat všechny řádky z listu `Menu Cache`** |
+| `clearTodaysCache` | [menicka_Cache.gs:122](menicka_Cache.gs#L122) | Smaže jen dnešní řádky z `Menu Cache` (volá ho denní cleanup trigger v 17:00) |
 | `repairRestaurants` | [menicka_Init.gs:78](menicka_Init.gs#L78) | Pro placeholder řádky v Restaurace zkusit doplnit info nebo smazat |
-| `cleanupOrphanSubscriptions` | [menicka_Init.gs:146](menicka_Init.gs#L146) | Odebrat IDs z user.sledovane_restaurace, které nejsou v katalogu |
-| `bulkAddRestaurantsForUser` | [menicka_Init.gs:78cca](menicka_Init.gs) | Hromadné přidání URL pro daný email (po havárii) |
-| `migrateDefaultsFromConfig` | [menicka_Init.gs:178cca](menicka_Init.gs) | Z `default_restaurace` v config nastav `výchozí=1` v Restaurace |
-| `refreshAllMenus` | [menicka_Scraper.gs:75](menicka_Scraper.gs#L75) | Stáhne menu pro aktivní restaurace (volá ho cron trigger) |
+| `cleanupOrphanSubscriptions` | [menicka_Init.gs:181](menicka_Init.gs#L181) | Odebrat IDs z user.sledovane_restaurace, které nejsou v katalogu |
+| `bulkAddRestaurantsForUser` | [menicka_Init.gs:147](menicka_Init.gs#L147) | Hromadné přidání URL pro daný email (po havárii) |
+| `migrateDefaultsFromConfig` | [menicka_Init.gs:213](menicka_Init.gs#L213) | Z `default_restaurace` v config nastav `výchozí=1` v Restaurace |
+| `refreshAllMenus` | [menicka_Scraper.gs:75](menicka_Scraper.gs#L75) | Stáhne menu pro aktivní restaurace (volá ho cron trigger každou hodinu 9–14) |
 | `debugFetch` | [menicka_Debug.gs](menicka_Debug.gs) | Vypíše raw HTML + parser výstup pro `debug_id` z config |
 
 ---
@@ -188,6 +214,9 @@ Profile stránka má v sobě i menu, ale je 100+ KB (vs. iframe 14–28 KB). Ifr
 
 ### Studentské ceny z Menzy
 Bob: *"Stahuj zásadně plné ceny."* Tj. `item.price2`, ne `item.price`.
+
+### External-link ikona Menzy → menicka.cz / oficiální web
+Bob řekl: *„odkaz z ikony odkazující na menzu nepovede na ofiko web menzy, ale na vlastní obědy app."* Karta s `id === 'menza'` má v [menicka_view.html:1107](menicka_view.html#L1107) hardcoded URL parent Jídlogic appky `…?app=obedy` (tam má Bob pohodlnější objednávání) místo `MENZA_INFO.url`.
 
 ---
 

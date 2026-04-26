@@ -38,7 +38,11 @@ function _bootstrap_(email) {
     user: _userPublic_(user),
     restaurace: restaurace,
     menu: menu,
-    datum: dnes
+    datum: dnes,
+    schedule: {
+      triggerHours: _scheduleHours_(),
+      cacheClearHour: _scheduleEndHour_()
+    }
   };
 }
 
@@ -101,6 +105,15 @@ function updateRestaurant(restauraceId, payload) {
 function fetchMenuForRestaurant(restauraceId) {
   currentUser_();
   return Restaurants_fetchMenuFor_(restauraceId);
+}
+
+/**
+ * Ruční refresh menu pro jednu restauraci. Klient volá kliknutím na 🔄 ikonu.
+ * Server respektuje 15-min cooldown a soft-lock.
+ */
+function refreshMenuFor(restauraceId) {
+  currentUser_();
+  return Restaurants_refreshMenuFor_(restauraceId);
 }
 
 /**

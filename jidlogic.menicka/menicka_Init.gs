@@ -47,8 +47,10 @@ function _ensureSheet_(ss, name, requiredHeaders) {
 }
 
 /**
- * Vymaže CacheService klíče. Spusť ručně po změně listů `⚙️ Konfigurace`
- * nebo `Restaurace`, pokud nechceš čekat ~10 min na expiraci.
+ * Vymaže CacheService klíče (config, restaurace, dnešní + včerejší menu mapy)
+ * a zároveň smaže všechny řádky z listu `Menu Cache`. Spusť ručně po změně
+ * listů `⚙️ Konfigurace` / `Restaurace`, nebo když chceš začít s čistým
+ * stavem (např. po zásadní změně parsovače).
  */
 function clearAllCaches() {
   var cache = CacheService.getScriptCache();
@@ -63,8 +65,17 @@ function clearAllCaches() {
     'menu_map_' + vcera
   ]);
 
-  Logger.log('Cache vyčištěna (config, restaurace, menu pro ' + dnes + ' a ' + vcera + ')');
-  return { ok: true };
+  var sheet = _sheet_(SHEETS.MENU_CACHE);
+  var lastRow = sheet.getLastRow();
+  var smazano = 0;
+  if (lastRow >= 2) {
+    sheet.deleteRows(2, lastRow - 1);
+    smazano = lastRow - 1;
+  }
+
+  Logger.log('Cache vyčištěna: CacheService klíče (config, restaurace, menu '
+    + dnes + ' + ' + vcera + ') + ' + smazano + ' řádků v Menu Cache listu');
+  return { ok: true, smazanoRadku: smazano };
 }
 
 /**
@@ -233,16 +244,43 @@ function migrateDefaultsFromConfig() {
   return { migrated: migrated };
 }
 
+/**
+ * Public wrapper — aby šel `setupTriggers_` spustit ručně z dropdownu Apps
+ * Script editoru. Funkce s podtržítkem na konci jsou totiž v GAS považované
+ * za privátní a editor je nezobrazí.
+ *
+ * Volej po každé úpravě klíče `trigger_casy` v listu `⚙️ Konfigurace`.
+ */
+function setupTriggers() {
+  return setupTriggers_();
+}
+
 function setupTriggers_() {
   ScriptApp.getProjectTriggers().forEach(function(t) {
-    if (t.getHandlerFunction() === 'refreshAllMenus') {
+    var f = t.getHandlerFunction();
+    if (f === 'refreshAllMenus' || f === 'clearTodaysCache') {
       ScriptApp.deleteTrigger(t);
     }
   });
 
   var config = Config_get_();
-  var hours = [parseInt(config.trigger_cas_1, 10), parseInt(config.trigger_cas_2, 10)]
-    .filter(function(h) { return !isNaN(h) && h >= 0 && h <= 23; });
+  var hours = [];
+
+  if (config.trigger_casy) {
+    String(config.trigger_casy).split(',').forEach(function(s) {
+      var h = parseInt(s.trim(), 10);
+      if (!isNaN(h) && h >= 0 && h <= 23) hours.push(h);
+    });
+  }
+
+  if (hours.length === 0) {
+    [config.trigger_cas_1, config.trigger_cas_2].forEach(function(v) {
+      var h = parseInt(v, 10);
+      if (!isNaN(h) && h >= 0 && h <= 23) hours.push(h);
+    });
+  }
+
+  hours = hours.filter(function(h, i) { return hours.indexOf(h) === i; }).sort(function(a, b) { return a - b; });
 
   hours.forEach(function(h) {
     ScriptApp.newTrigger('refreshAllMenus')
@@ -253,5 +291,17 @@ function setupTriggers_() {
       .create();
   });
 
-  Logger.log('Triggery refreshAllMenus nastaveny pro hodiny: ' + JSON.stringify(hours));
+  // Cleanup trigger po obědě — `cache_konec_hodina` v Konfiguraci (default 17).
+  var endHour = parseInt(config.cache_konec_hodina, 10);
+  if (isNaN(endHour) || endHour < 0 || endHour > 23) endHour = 17;
+  ScriptApp.newTrigger('clearTodaysCache')
+    .timeBased()
+    .atHour(endHour)
+    .everyDays(1)
+    .inTimezone(TZ)
+    .create();
+
+  Logger.log('Triggery: refreshAllMenus pro hodiny ' + JSON.stringify(hours) +
+             ', clearTodaysCache v ' + endHour + ':00');
+  return { refreshHours: hours, cleanupHour: endHour };
 }

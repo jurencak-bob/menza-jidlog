@@ -138,6 +138,40 @@ function _slugToName_(slug) {
     .join(' ');
 }
 
+/**
+ * Vrátí seřazený seznam hodin, ve kterých má refresh trigger běhat.
+ * Bere `trigger_casy` z Konfigurace (CSV formát), fallback na defaultní hodnoty.
+ */
+function _scheduleHours_() {
+  var config = Config_get_();
+  var hours = [];
+  if (config.trigger_casy) {
+    String(config.trigger_casy).split(',').forEach(function(s) {
+      var h = parseInt(s.trim(), 10);
+      if (!isNaN(h) && h >= 0 && h <= 23) hours.push(h);
+    });
+  }
+  if (hours.length === 0) hours = [9, 10, 11, 12, 13, 14];
+  hours = hours.filter(function(h, i) { return hours.indexOf(h) === i; }).sort(function(a, b) { return a - b; });
+  return hours;
+}
+
+function _scheduleEndHour_() {
+  var h = parseInt(Config_get_().cache_konec_hodina, 10);
+  return (isNaN(h) || h < 0 || h > 23) ? 17 : h;
+}
+
+/**
+ * Vrátí true pokud aktuální hodina je mimo refresh okno — tj. před prvním
+ * triggerem dne nebo po cleanup hodině. V tom čase se ručně ani automaticky
+ * nestahuje, protože cache stejně bude vymazána / ještě se nezačala plnit.
+ */
+function _isOutsideRefreshWindow_() {
+  var hour = new Date().getHours();
+  var hours = _scheduleHours_();
+  return hour < hours[0] || hour >= _scheduleEndHour_();
+}
+
 function _xmlEscape_(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;')

@@ -9,6 +9,8 @@
 
   <!-- Sortable.js — drag-and-drop reorder s podporou touch (mobil) -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+  <!-- Lucide — ikon set pro UI prvky -->
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 
   <style>
     :root {
@@ -89,13 +91,24 @@
     main { max-width: 800px; margin: 0 auto; padding: 16px; }
 
 
-    .restaurants { display: grid; gap: 16px; grid-template-columns: 1fr; }
-    .restaurants[data-cols="2"] { grid-template-columns: repeat(2, 1fr); }
-    .restaurants[data-cols="3"] { grid-template-columns: repeat(3, 1fr); }
-    .restaurants[data-cols="4"] { grid-template-columns: repeat(4, 1fr); }
+    /* Wrapper kolem .restaurants — defaultně 800px (sjednocený s main),
+       pokud je body.wide-restaurants aktivní, roztáhne se na celý viewport. */
+    .restaurants-wrap {
+      max-width: 800px; margin: 0 auto; padding: 0 16px 24px;
+    }
+    body.wide-restaurants .restaurants-wrap {
+      max-width: none;
+      padding: 0 16px 24px;
+    }
+
+    /* Počet sloupců + měřítko písma se nastaví dynamicky přes inline styly. */
+    .restaurants {
+      display: grid; gap: 16px;
+      grid-template-columns: repeat(var(--cols, 1), 1fr);
+      font-size: calc(1rem * var(--menu-font-scale, 1));
+    }
     @media (max-width: 700px) {
       .restaurants { grid-template-columns: 1fr !important; }
-      #cols-row { display: none; }
     }
 
     .toggle-row {
@@ -109,45 +122,209 @@
       padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
       background: var(--bg-card); color: var(--text); font-size: 0.9rem; cursor: pointer;
     }
+    .slider-wrap {
+      flex: 1;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .slider-wrap input[type="range"] {
+      width: 100%; accent-color: var(--accent); cursor: pointer; margin: 0;
+    }
+    .slider-ticks {
+      display: flex; justify-content: space-between;
+      font-size: 0.75rem; color: var(--text-muted);
+      padding: 0 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .slider-ticks span { min-width: 1ch; text-align: center; }
+    .slider-ticks span.active { color: var(--accent); font-weight: 700; }
+
+    .font-btn {
+      width: 32px; height: 32px;
+      border: 1px solid var(--border); background: var(--bg-card);
+      border-radius: 6px; cursor: pointer;
+      font-size: 1.05rem; font-weight: 600;
+      color: var(--text); font-family: inherit;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .font-btn:hover:not(:disabled) {
+      border-color: var(--accent); color: var(--accent);
+    }
+    .font-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .font-value {
+      min-width: 3em; text-align: center;
+      font-variant-numeric: tabular-nums;
+      color: var(--accent); font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .settings-group {
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 4px 14px 10px;
+      margin: 12px 0 0;
+    }
+    .settings-group legend {
+      font-size: 0.7rem; font-weight: 700;
+      color: var(--text-muted); padding: 0 6px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .settings-group-note {
+      font-size: 0.78rem; color: var(--text-muted);
+      margin: 4px 0 2px; line-height: 1.3;
+    }
+    .settings-input-row {
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 8px 0; font-size: 0.9rem;
+    }
+    .settings-input-row span { color: var(--text-secondary); }
+    .settings-input-row input[type="text"] {
+      padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: 6px; background: var(--bg-card); color: var(--text);
+      font-size: 0.9rem; font-family: inherit;
+    }
+    .settings-input-row input[type="text"]:focus {
+      outline: 2px solid var(--accent); border-color: transparent;
+    }
+
+    /* Disabled stav skupiny: vizuálně grayed + neklikatelné. */
+    .settings-group.disabled {
+      pointer-events: none;
+      opacity: 0.55;
+    }
+    .settings-group.disabled .settings-group-note {
+      pointer-events: auto;  /* aby šel přečíst tooltip */
+      opacity: 1.5;          /* protiváha k 0.55 — výsledná opacity ~0.85 */
+      color: #C0392B;
+      font-weight: 500;
+    }
+
+    /* Pulsující srdíčko vedle oblíbených jídel — Lucide heart, vyplněný */
+    .item-fav-heart {
+      display: inline-flex; align-items: center;
+      color: #E74C3C;
+      margin-left: 6px;
+      animation: fav-heart-pulse 1.4s ease-in-out infinite;
+    }
+    .item-fav-heart svg { width: 14px; height: 14px; }
+    .item-fav-heart svg path {
+      fill: currentColor;
+      stroke: currentColor;
+    }
+    @keyframes fav-heart-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.25); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .item-fav-heart { animation: none; }
+    }
+
+    /* Decentní podbarvení celého řádku oblíbeného jídla. Background přesahuje
+       na hrany karty (kompenzuje padding card-body), aby vlevo i vpravo
+       podbarvení končilo přesně na edge — žádný vizuální asymetrický odsaz. */
+    .item.is-favorite {
+      background: rgba(231, 76, 60, 0.06);
+      padding-left: 12px; padding-right: 12px;
+      margin-left: -12px; margin-right: -12px;
+    }
 
     .fav-handle {
-      cursor: grab; color: var(--text-muted); font-size: 1.1rem;
+      cursor: grab; color: var(--text-muted);
       padding: 0 4px; user-select: none; line-height: 1;
       display: flex; align-items: center;
-      touch-action: none; /* zabrání scroll-scrubu když user drží handle */
+      touch-action: none;
     }
     .fav-handle:active { cursor: grabbing; }
+    .fav-handle svg,
+    .fav-toggle svg,
+    .fav-rm svg,
+    .fav-edit svg { width: 18px; height: 18px; }
     /* Sortable.js classes během drag */
     .fav.sort-ghost { opacity: 0.3; }
     .fav.sort-chosen { background: var(--cat-bg); }
     .fav.sort-drag { opacity: 0.85; box-shadow: 0 8px 16px rgba(0,0,0,0.15); }
     .fav-order {
       color: var(--text-muted); font-weight: 600;
-      min-width: 1.4em; text-align: right; font-variant-numeric: tabular-nums;
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+      min-width: 1.6em; text-align: right;
     }
-    .fav-actions {
-      display: flex; flex-direction: column;
-      align-items: center; gap: 2px;
+    .fav-toggle {
+      width: 28px; height: 28px;
+      background: transparent; border: none;
+      cursor: pointer; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted);
+      border-radius: 4px;
+      flex-shrink: 0;
     }
+    .fav-toggle[data-visible="true"] { color: var(--accent); }
+    .fav-toggle:hover { background: var(--border); }
+    .info-btn svg { width: 18px; height: 18px; }
+    .icon-btn svg { width: 20px; height: 20px; }
 
     .card {
       background: var(--bg-card); border-radius: var(--radius);
       box-shadow: var(--shadow); overflow: hidden;
+      container-type: inline-size;  /* pro container queries v hlavičce */
     }
     .card-header {
       padding: 12px 16px; background: var(--cat-bg);
-      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
     }
-    .card-title { font-weight: 600; font-size: 1rem; color: var(--text); }
-    .card-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; }
-    .card-link { color: var(--accent); font-size: 0.85rem; text-decoration: none; white-space: nowrap; }
-    .card-link:hover { text-decoration: underline; }
-    .card-body { padding: 12px 16px; }
+    .card-header > .card-title-block {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .card-title {
+      font-weight: 600; font-size: 1em; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-subtitle {
+      font-size: 0.85em; color: var(--text-muted); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-link {
+      color: var(--accent); text-decoration: none;
+      display: flex; align-items: center; padding: 4px;
+      margin: -4px -4px 0 0;
+      border-radius: 6px; transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .card-link:hover { background: rgba(107, 45, 139, 0.1); }
+    .card-link svg { width: 18px; height: 18px; }
+
+    .card-refresh {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 0.75em; color: var(--text-muted);
+      margin-top: 2px;
+      min-width: 0;
+    }
+    .card-refresh-text {
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    /* Refresh ikona bez orámování. Šedá pokud nelze refreshovat (čerstvé < 15 min),
+       fialová pokud lze. Klikatelná v obou stavech, ale neaktivní stav jen
+       zobrazí toast vysvětlení. */
+    .card-refresh-btn {
+      width: 20px; height: 20px;
+      border: none; background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted);
+      cursor: pointer; padding: 0;
+      font-family: inherit;
+      transition: color 0.15s;
+    }
+    .card-refresh-btn svg { width: 14px; height: 14px; }
+    .card-refresh-btn.can-refresh { color: var(--accent); }
+    .card-refresh-btn.can-refresh:hover { color: var(--purple-dark); }
+    .card-refresh-btn:not(.can-refresh) { cursor: default; }
+    .card-body { padding: 12px 12px; }
 
     .menu-cat { margin-bottom: 14px; }
     .menu-cat:last-child { margin-bottom: 0; }
+    /* Velikosti uvnitř .restaurants jsou v `em` (relativní k root v .restaurants),
+       takže CSS variable --menu-font-scale globálně mění celý jídelníček. */
     .menu-cat-title {
-      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      font-size: 0.7em; font-weight: 700; text-transform: uppercase;
       color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.5px;
     }
     .item {
@@ -156,7 +333,7 @@
     }
     .item:last-child { border-bottom: none; }
     .item-name {
-      flex: 1; font-size: 0.95rem;
+      flex: 1; font-size: 0.95em;
       display: flex; gap: 8px; align-items: flex-start;
     }
     .item-no {
@@ -166,18 +343,42 @@
     .item-text { flex: 1; min-width: 0; }
     .item-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
     .tag {
-      font-size: 0.7rem; padding: 1px 6px; border-radius: 4px;
+      font-size: 0.7em; padding: 1px 6px; border-radius: 4px;
       background: var(--cat-bg); color: var(--accent); white-space: nowrap;
     }
     .tag-allergen { background: rgba(230, 126, 34, 0.15); color: #C0651E; }
     [data-theme="dark"] .tag-allergen { background: rgba(230, 126, 34, 0.25); color: #E89B5B; }
     .item-price {
       font-weight: 600; color: var(--price); white-space: nowrap;
+      font-size: 0.95em;  /* sjednoceno s .item-name */
     }
 
     .empty {
       padding: 24px 16px; text-align: center;
       color: var(--text-secondary);
+    }
+
+    .schedule-banner {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 12px; padding: 40px 24px;
+      background: var(--bg-card); border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .schedule-banner .banner-icon {
+      display: flex; align-items: center; justify-content: center;
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--cat-bg);
+      color: var(--accent);
+    }
+    .schedule-banner .banner-icon svg { width: 32px; height: 32px; }
+    .schedule-banner .banner-title {
+      font-size: 1.05rem; font-weight: 600; color: var(--text);
+    }
+    .schedule-banner .banner-body {
+      font-size: 0.9rem; color: var(--text-secondary);
+      max-width: 480px; line-height: 1.5;
     }
     .empty a { color: var(--accent); cursor: pointer; }
 
@@ -200,7 +401,6 @@
       grid-template-columns: repeat(3, 1fr);
       gap: 6px;
     }
-    .fav-list .fav-edit-form { grid-column: 1 / -1; }
     @media (max-width: 800px) {
       .fav-list { grid-template-columns: repeat(2, 1fr); }
     }
@@ -208,29 +408,104 @@
       .fav-list { grid-template-columns: 1fr; }
     }
     .fav {
-      display: flex; align-items: center; gap: 10px;
-      padding: 8px 10px; background: var(--bg); border-radius: 8px;
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 12px; background: var(--bg); border-radius: 8px;
+      min-width: 0;
     }
-    .fav input[type="checkbox"] {
-      width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
+    .fav-handle {
+      display: flex; align-items: center;
+      padding-top: 2px;  /* mírné odsazení na úroveň názvu */
     }
-    .fav-name { flex: 1; font-size: 0.9rem; }
-    .fav-meta { font-size: 0.8rem; color: var(--text-muted); }
-    .fav-rm, .fav-edit {
-      width: 28px; height: 28px; border: none; background: transparent;
-      color: var(--text-muted); cursor: pointer; line-height: 1;
-      border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    .fav-order-side {
+      padding-top: 1px;
+      font-weight: 600; color: var(--text-muted);
+      font-size: 0.9rem;
+      font-variant-numeric: tabular-nums;
+      min-width: 1.6em; text-align: right;
     }
-    .fav-rm { font-size: 1.3rem; }
-    .fav-edit { font-size: 0.95rem; }
-    .fav-rm:hover, .fav-edit:hover { background: var(--border); color: var(--text); }
-    .fav-rm:disabled { opacity: 0.3; cursor: not-allowed; }
-    .fav-rm:disabled:hover { background: transparent; color: var(--text-muted); }
+    .fav-text {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column;
+      gap: 2px;
+    }
+    .fav-name {
+      font-size: 0.9rem; line-height: 1.2; font-weight: 500;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .fav-meta { font-size: 0.8rem; color: var(--text-muted); line-height: 1.2; }
+
+    /* Řada badge tlačítek pod názvem + městem — všechny stejně široké, vyplní celou šířku textu */
+    .fav-actions-row {
+      display: flex; gap: 6px; margin-top: 8px;
+    }
+    .fav-badge {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      height: 28px; padding: 0 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.8rem; font-weight: 600;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .fav-badge svg { width: 16px; height: 16px; }
+
+    .fav-toggle-badge[data-visible="true"] {
+      background: var(--purple-pale);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    /* Hover na vypnutém oku: naznačí "po kliku se zapne" — stejná barva jako visible=true */
+    .fav-toggle-badge:hover {
+      background: var(--purple-pale);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    /* Hover na zapnutém oku: tmavší fialová — naznačí "po kliku se vypne" */
+    .fav-toggle-badge[data-visible="true"]:hover {
+      background: rgba(107, 45, 139, 0.22);
+      border-color: var(--purple-dark);
+      color: var(--purple-dark);
+    }
+
+    .fav-edit-badge {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .fav-edit-badge:hover { background: var(--purple-pale); }
+
+    .fav-rm-badge {
+      background: rgba(230, 126, 34, 0.12);
+      border-color: #E67E22;
+      color: #E67E22;
+    }
+    .fav-rm-badge:hover:not(:disabled) {
+      background: rgba(230, 126, 34, 0.30);
+      border-color: #C0651E;
+      color: #C0651E;
+    }
+    .fav-rm-badge:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .fav-edit-form {
       display: flex; flex-direction: column; gap: 6px;
-      padding: 10px; background: var(--bg); border-radius: 8px;
+      padding: 12px 14px; background: var(--bg-card); border-radius: 8px;
       border: 1px solid var(--accent);
+    }
+    /* Overlay varianta — absolute pod editovanou kartou, full-width gridu.
+       Nevyhazuje ostatní karty z layoutu, jen je překryje. */
+    .fav-edit-form.overlay {
+      position: absolute;
+      left: 0; right: 0;
+      z-index: 10;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+    .fav-list { position: relative; }
+    .fav.editing {
+      outline: 1px solid var(--accent);
+      outline-offset: -1px;
     }
     .fav-edit-form input {
       padding: 8px 10px; border: 1px solid var(--border);
@@ -252,14 +527,43 @@
     .fav-edit-actions .save {
       background: var(--accent); color: #fff;
     }
+    .fav-edit-actions .save:disabled {
+      background: var(--border); color: var(--text-muted);
+      cursor: not-allowed; opacity: 0.7;
+    }
     .fav-edit-actions .cancel {
       background: var(--border); color: var(--text);
     }
 
-    .add-hint {
-      font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;
+    .info-btn {
+      width: 38px; height: 38px;
+      border: 1px solid var(--border); background: var(--bg-card);
+      color: var(--text-secondary); cursor: pointer;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; line-height: 1;
+      flex-shrink: 0;
+      transition: all 0.15s;
     }
-    .add-hint a { color: var(--accent); }
+    .info-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .info-btn[aria-expanded="true"] {
+      background: var(--cat-bg); color: var(--accent); border-color: var(--accent);
+    }
+
+    .add-popover {
+      margin-top: 8px;
+      padding: 12px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.88rem; color: var(--text-secondary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .add-popover[hidden] { display: none; }
+    .add-popover p { margin-bottom: 8px; }
+    .add-popover p:last-child { margin-bottom: 0; }
+    .add-popover a { color: var(--accent); }
+
     .link-btn {
       background: none; border: none; padding: 0;
       color: var(--accent); cursor: pointer; font-size: inherit;
@@ -333,6 +637,47 @@
     .toast.show { transform: translateX(-50%) translateY(0); }
     .toast.error { background: #C0392B; color: #fff; }
 
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: 20px;
+      animation: modal-fade-in 0.15s ease-out;
+    }
+    .modal-overlay[hidden] { display: none; }
+    @keyframes modal-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .modal-box {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 380px; width: 100%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      animation: modal-slide-up 0.2s ease-out;
+    }
+    @keyframes modal-slide-up {
+      from { transform: translateY(8px); opacity: 0; }
+      to   { transform: translateY(0);   opacity: 1; }
+    }
+    .modal-text {
+      font-size: 0.95rem; color: var(--text);
+      margin-bottom: 20px; line-height: 1.4;
+    }
+    .modal-actions {
+      display: flex; gap: 8px; justify-content: flex-end;
+    }
+    .modal-actions button {
+      padding: 9px 18px; border: none; border-radius: 8px;
+      cursor: pointer; font-size: 0.9rem; font-weight: 500;
+      font-family: inherit;
+    }
+    .modal-cancel { background: var(--border); color: var(--text); }
+    .modal-cancel:hover { background: var(--text-muted); color: var(--bg-card); }
+    .modal-danger { background: #C0392B; color: #fff; }
+    .modal-danger:hover { background: #A93226; }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
     }
@@ -348,23 +693,16 @@
   <header class="site-header">
     <div class="header-inner">
       <div class="header-title">
-        <span aria-hidden="true">🍽️</span>
+        <i data-lucide="utensils-crossed" aria-hidden="true"></i>
         <span>Meníčka</span>
       </div>
       <div class="header-actions">
         <span class="user-badge" id="user-badge"></span>
         <button class="icon-btn" id="btn-settings" title="Nastavení" aria-label="Nastavení">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
+          <i data-lucide="settings"></i>
         </button>
         <button class="icon-btn" id="btn-theme" title="Přepnout tmavý režim" aria-label="Přepnout tmavý režim">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          </svg>
+          <i data-lucide="moon"></i>
         </button>
       </div>
     </div>
@@ -378,12 +716,15 @@
       <div class="fav-list" id="fav-list"></div>
 
       <div class="add-row">
-        <input type="url" id="add-url" placeholder="https://www.menicka.cz/12345-nazev-restaurace.html" autocomplete="off" spellcheck="false">
-        <button id="btn-add">Přidat</button>
+        <input type="url" id="add-url" placeholder="URL restaurace z menicka.cz" autocomplete="off" spellcheck="false">
+        <button class="info-btn" id="btn-info" type="button" aria-label="Nápověda" aria-expanded="false" title="Jak najít a přidat restauraci">
+          <i data-lucide="info"></i>
+        </button>
+        <button id="btn-add" title="Přidat restauraci podle vložené URL">Přidat</button>
       </div>
-      <div class="add-hint">
-        Otevři <a href="https://www.menicka.cz" target="_blank" rel="noopener">menicka.cz</a>, najdi svou restauraci a sem vlož URL z adresního řádku.
-        Nebo přidej <button id="btn-add-menza" class="link-btn" type="button">Menzu UTB</button>.
+      <div class="add-popover" id="add-popover" hidden>
+        <p>Otevři <a href="https://www.menicka.cz" target="_blank" rel="noopener">menicka.cz</a>, najdi svou restauraci a sem vlož URL z adresního řádku.</p>
+        <p>Nebo přidej <button id="btn-add-menza" class="link-btn" type="button" title="Přidat speciální restauraci Menza UTB (jiný zdroj než menicka.cz)">Menzu UTB</button>.</p>
       </div>
 
       <h3>Zobrazení</h3>
@@ -391,15 +732,52 @@
         <input type="checkbox" id="opt-hide-empty">
         <span>Skrýt restaurace bez dnešního menu (zavřeno, nezadáno)</span>
       </label>
-      <label class="toggle-row" id="cols-row">
-        <span>Sloupců vedle sebe:</span>
-        <select id="opt-cols">
-          <option value="1">1 (řádkově)</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-        </select>
-      </label>
+
+      <fieldset class="settings-group" id="cols-group">
+        <legend>Sloupcové zobrazení</legend>
+        <div class="settings-group-note">Tyto volby fungují jen na desktopu (širší obrazovce).</div>
+
+        <label class="toggle-row" id="cols-row">
+          <span>Sloupců nejvýše:</span>
+          <div class="slider-wrap">
+            <input type="range" id="opt-cols-slider" min="1" max="5" step="1" value="1">
+            <div class="slider-ticks" id="cols-ticks"></div>
+          </div>
+        </label>
+        <label class="toggle-row" id="wide-row">
+          <input type="checkbox" id="opt-wide">
+          <span>Využít celou šířku obrazovky pro jídelníčky</span>
+        </label>
+        <label class="toggle-row" id="font-row">
+          <span>Velikost písma jídelníčku:</span>
+          <button id="opt-font-minus" type="button" class="font-btn" title="Zmenšit písmo o 10 %" aria-label="Zmenšit písmo">−</button>
+          <span id="opt-font-value" class="font-value">100 %</span>
+          <button id="opt-font-plus" type="button" class="font-btn" title="Zvětšit písmo o 10 %" aria-label="Zvětšit písmo">+</button>
+        </label>
+      </fieldset>
+
+      <fieldset class="settings-group">
+        <legend>Oblíbená jídla</legend>
+
+        <label class="settings-input-row">
+          <span>Klíčová slova:</span>
+          <input type="text" id="opt-fav-keywords" placeholder="vepřové, kuřecí, ryby…" autocomplete="off">
+        </label>
+        <div class="settings-group-note">Oddělené čárkou. Vyhledává se jako podřetězec, bez ohledu na velikost písmen a diakritiku.</div>
+
+        <label class="toggle-row" title="Vedle každého jídla, které matchuje klíčová slova, se objeví pulsující srdíčko a řádek se jemně podbarví.">
+          <input type="checkbox" id="opt-fav-mark" checked>
+          <span>Označit oblíbená jídla srdíčkem</span>
+        </label>
+        <label class="toggle-row" title="Skrýt karty restaurací, které dnes nevaří žádné z tvých oblíbených jídel (polévku ani hlavní).">
+          <input type="checkbox" id="opt-fav-only-rest">
+          <span>Skrýt restaurace bez oblíbeného jídla</span>
+        </label>
+        <label class="toggle-row" title="V kartě s oblíbeným hlavním jídlem se ostatní hlavní jídla skryjí, polévky zůstanou. Pokud má restaurace oblíbenou jen polévku, ukáže se celé menu beze změn.">
+          <input type="checkbox" id="opt-fav-only-dish">
+          <span>Skrýt neoblíbená hlavní jídla</span>
+        </label>
+      </fieldset>
 
       <div hidden data-feature="diet">
         <h3>Stravovací omezení</h3>
@@ -412,14 +790,31 @@
         <div id="rss-section"></div>
       </div>
     </section>
-
-    <div class="restaurants" id="restaurants"></div>
   </main>
+
+  <!-- Restaurants vyjmutí z <main> (800px) — díky tomu může grid roztáhnout
+       na celou šířku viewportu, pokud je zapnuté "Využít šířku obrazovky". -->
+  <div class="restaurants-wrap">
+    <div class="restaurants" id="restaurants"></div>
+  </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <!-- Confirm dialog (univerzální) -->
+  <div class="modal-overlay" id="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="confirm-text">
+    <div class="modal-box">
+      <div class="modal-text" id="confirm-text"></div>
+      <div class="modal-actions">
+        <button class="modal-cancel" id="confirm-cancel" type="button" title="Zavřít dialog bez akce">Zrušit</button>
+        <button class="modal-danger" id="confirm-yes" type="button" title="Potvrdit smazání">Smazat</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // Server-rendered bootstrap data — žádný extra round-trip pro startup.
     var BOOTSTRAP = <?!= bootstrapJson ?>;
+
 
     var STATE = {
       user: BOOTSTRAP.user,
@@ -428,6 +823,15 @@
       datum: BOOTSTRAP.datum,
       cols: parseInt(localStorage.getItem('menicka_cols') || '1', 10),
       hideEmpty: localStorage.getItem('menicka_hide_empty') !== 'false',
+      wide: localStorage.getItem('menicka_wide') === 'true',
+      fontScale: parseFloat(localStorage.getItem('menicka_font_scale') || '1'),
+      favorites: {
+        keywords: (BOOTSTRAP.user && BOOTSTRAP.user.oblibena_jidla) || '',
+        mark: localStorage.getItem('menicka_fav_mark') !== 'false',
+        onlyRest: localStorage.getItem('menicka_fav_only_rest') === 'true',
+        onlyDish: localStorage.getItem('menicka_fav_only_dish') === 'true'
+      },
+      schedule: BOOTSTRAP.schedule || { triggerHours: [9, 10, 11, 12, 13, 14], cacheClearHour: 17 },
       theme: localStorage.getItem('menicka_theme') || (
         window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
       )
@@ -440,6 +844,9 @@
       { key: 'bezlaktozy', label: 'Bez laktózy' },
       { key: 'bezorechu',  label: 'Bez ořechů' }
     ];
+
+    // Feature flag: alergeny zatím nezobrazujeme. Gramáž zůstává.
+    var SHOW_ALLERGENS = false;
 
     var ALERGEN_LABELS = {
       '1': 'Lepek', '2': 'Korýši', '3': 'Vejce', '4': 'Ryby',
@@ -484,6 +891,119 @@
       return String(STATE.user.dieta || '')
         .split(',').map(function(s) { return s.trim(); }).filter(Boolean);
     }
+    var REFRESH_MIN_AGE_MIN = 15;
+
+    /**
+     * Pokud čas je mimo refresh okno (před prvním triggerem dne nebo po
+     * cleanup hodině), vrátí info banner s vysvětlením — jinak null.
+     */
+    function renderScheduleBanner() {
+      var hour = new Date().getHours();
+      var hours = (STATE.schedule && STATE.schedule.triggerHours) || [];
+      if (hours.length === 0) return null;
+      var first = hours[0];
+      var last = hours[hours.length - 1];
+      var endHour = (STATE.schedule && STATE.schedule.cacheClearHour) || 17;
+
+      var iconName, title, body;
+      if (hour >= endHour) {
+        iconName = 'moon';
+        title = 'Čas oběda už je za námi.';
+        body = 'Jídelníčky byly v ' + endHour + ':00 vyčištěny. Zítra se znovu začnou stahovat v '
+             + first + ':00, aktualizace probíhají každou hodinu do ' + last + ':00.';
+      } else if (hour < first) {
+        iconName = 'sun';
+        title = 'Dnešní jídelníčky se zatím nestahovaly.';
+        body = 'První aktualizace je naplánovaná na ' + first + ':00. '
+             + 'Dál pokračuje každou hodinu do ' + last + ':00.';
+      } else {
+        return null;  // jsme v refresh okně, ale cache je prázdná — ukáže se obyčejný empty stav
+      }
+
+      var iconWrap = el('div', { class: 'banner-icon' });
+      iconWrap.innerHTML = '<i data-lucide="' + iconName + '"></i>';
+      return el('div', { class: 'schedule-banner' }, [
+        iconWrap,
+        el('div', { class: 'banner-title', text: title }),
+        el('div', { class: 'banner-body', text: body })
+      ]);
+    }
+
+    function formatAktualizovano(ts) {
+      if (!ts) return '';
+      var d = new Date(ts);
+      if (isNaN(d.getTime())) return '';
+      var pad = function(n) { return String(n).padStart(2, '0'); };
+      return pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '. ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+
+    /** Pokud aktuální hodina není v refresh okně dle Konfigurace. */
+    function isOutsideRefreshWindow() {
+      var hours = (STATE.schedule && STATE.schedule.triggerHours) || [];
+      if (hours.length === 0) return false;
+      var hour = new Date().getHours();
+      var endHour = (STATE.schedule && STATE.schedule.cacheClearHour) || 17;
+      return hour < hours[0] || hour >= endHour;
+    }
+
+    /**
+     * Lze aktualizovat menu = staré aspoň 15 min (nebo nikdy nestaženo)
+     * a zároveň jsme v refresh okně (mezi prvním triggerem a cleanup hodinou).
+     */
+    function canRefreshMenu(ts) {
+      if (isOutsideRefreshWindow()) return false;
+      if (!ts) return true;
+      var minutes = (Date.now() - new Date(ts).getTime()) / 60000;
+      return minutes >= REFRESH_MIN_AGE_MIN;
+    }
+
+    function refreshOffHoursMessage() {
+      var hours = (STATE.schedule && STATE.schedule.triggerHours) || [];
+      var first = hours.length ? hours[0] : 9;
+      var endHour = (STATE.schedule && STATE.schedule.cacheClearHour) || 17;
+      return 'Aktualizace je možná jen mezi ' + first + ':00 a ' + endHour + ':00. Mimo tento čas se jídelníčky nestahují.';
+    }
+
+    /**
+     * Ruční refresh menu pro jednu restauraci. Server zkontroluje 15-min
+     * cooldown + soft-lock (zabránění duplicitních fetchů z více klientů).
+     */
+    function requestRefresh(restauraceId, btnEl) {
+      if (btnEl) btnEl.disabled = true;
+      showToast('Stahuji aktuální menu…');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (btnEl) btnEl.disabled = false;
+          if (!result) return;
+          if (result.outsideHours) {
+            showToast(refreshOffHoursMessage(), 'error');
+            return;
+          }
+          if (result.tooEarly) {
+            showToast('Jídelníček je čerstvý (' + result.ageMin + ' min). Zkus znovu po 15 min.', 'error');
+            return;
+          }
+          if (result.locked) {
+            showToast('Někdo jiný právě stahuje. Zkus to za pár sekund.', 'error');
+            return;
+          }
+          if (result.chyba) {
+            showToast('Chyba: ' + result.chyba, 'error');
+            return;
+          }
+          if (result.menu) {
+            STATE.menu[result.id] = result.menu;
+            renderRestaurants();
+            showToast('Jídelníček aktualizován');
+          }
+        })
+        .withFailureHandler(function(err) {
+          if (btnEl) btnEl.disabled = false;
+          showToast('Chyba: ' + err.message, 'error');
+        })
+        .refreshMenuFor(restauraceId);
+    }
+
     function findRestaurant(id) {
       for (var i = 0; i < STATE.restaurace.length; i++) {
         if (STATE.restaurace[i].id === String(id)) return STATE.restaurace[i];
@@ -514,10 +1034,10 @@
     function renderRestaurants() {
       var container = $('restaurants');
       clear(container);
-      container.setAttribute('data-cols', String(STATE.cols || 1));
 
       var ids = sledovaneIds();
       if (ids.length === 0) {
+        container.style.setProperty('--cols', '1');
         var link = el('a', { on: { click: function(e) { e.preventDefault(); toggleSettings(true); } } }, ['nastavení']);
         link.setAttribute('href', '#');
         container.appendChild(el('div', { class: 'empty' }, [
@@ -526,15 +1046,30 @@
         return;
       }
 
-      var visible = ids.filter(function(id) {
-        if (isHidden(id)) return false;
-        if (!STATE.hideEmpty) return true;
-        return !isMenuEmpty(STATE.menu[id]);
-      });
+      var visible = visibleIds();
+      var favFilterActive = (STATE.favorites.onlyRest || STATE.favorites.onlyDish) && favoriteKeywords().length > 0;
+
+      container.style.setProperty('--cols', String(effectiveCols()));
+
+      // Schedule banner — pokud cache je úplně prázdná pro dnešek a čas je
+      // mimo refresh okno (před prvním triggerem nebo po cleanup hodině),
+      // místo prázdných karet ukážeme info hlášku.
+      if (Object.keys(STATE.menu).length === 0) {
+        var banner = renderScheduleBanner();
+        if (banner) {
+          container.style.setProperty('--cols', '1');
+          container.appendChild(banner);
+          if (window.lucide) lucide.createIcons();
+          return;
+        }
+      }
 
       if (visible.length === 0) {
-        container.appendChild(el('div', { class: 'empty', text:
-          'Žádná z tvých restaurací dnes nemá menu. (Skrytí prázdných můžeš vypnout v Nastavení.)' }));
+        container.style.setProperty('--cols', '1');
+        var msg = favFilterActive
+          ? 'Dnes žádná restaurace nevaří tvoje oblíbené jídlo.'
+          : 'Žádná z tvých restaurací dnes nemá menu. (Skrytí prázdných můžeš vypnout v Nastavení.)';
+        container.appendChild(el('div', { class: 'empty', text: msg }));
         return;
       }
 
@@ -545,23 +1080,78 @@
           mesto: '',
           url: 'https://www.menicka.cz/restaurace/' + id
         };
-        container.appendChild(renderCard(rest, STATE.menu[id]));
+        var menu = STATE.menu[id];
+
+        // Filtr "Skrýt neoblíbená hlavní jídla". Polévky vždy zachovat.
+        // Pokud má restaurace oblíbenou jen polévku (žádné oblíbené hlavní),
+        // celé menu se nechává beze změny — jinak by tam zbyla jen polévka
+        // a žádné hlavní jídlo, což user neočekává.
+        if (STATE.favorites.onlyDish && menu && favoriteKeywords().length > 0
+            && hasFavoriteMain(menu)) {
+          menu = Object.assign({}, menu);
+          menu.hlavni_jidla = (menu.hlavni_jidla || []).filter(isFavoriteDish);
+        }
+
+        container.appendChild(renderCard(rest, menu));
       });
+
+      if (window.lucide) lucide.createIcons();
     }
 
     function renderCard(rest, menu) {
-      var titleBlock = el('div', null, [
-        el('div', { class: 'card-title', text: rest.nazev })
+      var titleBlock = el('div', { class: 'card-title-block' }, [
+        el('div', { class: 'card-title', title: rest.nazev, text: rest.nazev })
       ]);
       if (rest.mesto) titleBlock.appendChild(el('div', { class: 'card-subtitle', text: rest.mesto }));
 
+      // Menza UTB má vlastní web app na obědy (původní stránka menzy nemá smysl)
+      var linkUrl = rest.id === 'menza'
+        ? 'https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy'
+        : rest.url;
       var link = el('a', {
         class: 'card-link',
-        href: rest.url,
+        href: linkUrl,
         target: '_blank',
         rel: 'noopener noreferrer',
-        text: 'Otevřít →'
+        title: 'Otevřít stránku restaurace v novém okně',
+        'aria-label': 'Otevřít stránku restaurace'
       });
+      link.innerHTML = '<i data-lucide="external-link"></i>';
+
+      // Refresh-info patří dovnitř title-block (pod název + město), aby se
+      // všechno řadilo vertikálně vlevo. Vpravo zůstane jen external-link.
+      if (menu) {
+        var ts = menu.aktualizovano;
+        var canRef = canRefreshMenu(ts);
+        var offHours = isOutsideRefreshWindow();
+        var disabledTitle = offHours
+          ? refreshOffHoursMessage()
+          : 'Jídelníček je čerstvý — aktualizace možná až po 15 minutách od posledního stažení';
+        var refreshBtn = el('button', {
+          class: 'card-refresh-btn' + (canRef ? ' can-refresh' : ''),
+          type: 'button',
+          title: canRef ? 'Aktualizovat jídelníček (znovu stáhnout aktuální menu)' : disabledTitle,
+          'aria-label': 'Aktualizovat jídelníček'
+        });
+        refreshBtn.innerHTML = '<i data-lucide="refresh-cw"></i>';
+        refreshBtn.addEventListener('click', function() {
+          if (isOutsideRefreshWindow()) {
+            showToast(refreshOffHoursMessage(), 'error');
+            return;
+          }
+          if (!canRefreshMenu(ts)) {
+            showToast('Jídelníček je čerstvý, aktualizace možná až po 15 min.', 'error');
+            return;
+          }
+          requestRefresh(rest.id, refreshBtn);
+        });
+
+        var labelText = ts ? ('Jídelníček z ' + formatAktualizovano(ts)) : 'Čas stažení neznámý';
+        titleBlock.appendChild(el('div', { class: 'card-refresh' }, [
+          refreshBtn,
+          el('span', { class: 'card-refresh-text', text: labelText })
+        ]));
+      }
 
       var header = el('div', { class: 'card-header' }, [titleBlock, link]);
       var body = el('div', { class: 'card-body' });
@@ -589,34 +1179,66 @@
       var cat = el('div', { class: 'menu-cat' }, [el('div', { class: 'menu-cat-title', text: title })]);
 
       items.forEach(function(item) {
+        var isFav = STATE.favorites.mark && isFavoriteDish(item);
+        var itemEl = el('div', { class: 'item' + (isFav ? ' is-favorite' : '') });
+
         var nameWrap = el('div', { class: 'item-name' });
         if (item.cislo) {
           nameWrap.appendChild(el('span', { class: 'item-no', text: item.cislo + '.' }));
         }
         var textBlock = el('span', { class: 'item-text' }, [document.createTextNode(item.nazev || '')]);
+
+        if (isFav) {
+          var heart = el('span', { class: 'item-fav-heart', title: 'Oblíbené jídlo', 'aria-label': 'Oblíbené' });
+          heart.innerHTML = '<i data-lucide="heart"></i>';
+          textBlock.appendChild(heart);
+        }
+
         nameWrap.appendChild(textBlock);
 
-        var hasTags = item.mnozstvi || (item.alergeny && item.alergeny.length);
+        var showAllergens = SHOW_ALLERGENS && item.alergeny && item.alergeny.length;
+        var hasTags = item.mnozstvi || showAllergens;
         if (hasTags) {
           var tags = el('div', { class: 'item-tags' });
           if (item.mnozstvi) tags.appendChild(el('span', { class: 'tag', text: item.mnozstvi }));
-          (item.alergeny || []).forEach(function(a) {
-            var label = ALERGEN_LABELS[String(a)] || ('Alergen ' + a);
-            tags.appendChild(el('span', { class: 'tag tag-allergen', title: label, text: a }));
-          });
+          if (showAllergens) {
+            item.alergeny.forEach(function(a) {
+              var label = ALERGEN_LABELS[String(a)] || ('Alergen ' + a);
+              tags.appendChild(el('span', { class: 'tag tag-allergen', title: label, text: a }));
+            });
+          }
           textBlock.appendChild(tags);
         }
 
-        cat.appendChild(el('div', { class: 'item' }, [
-          nameWrap,
-          el('div', { class: 'item-price', text: item.cena || '' })
-        ]));
+        itemEl.appendChild(nameWrap);
+        itemEl.appendChild(el('div', { class: 'item-price', text: item.cena || '' }));
+        cat.appendChild(itemEl);
       });
       parent.appendChild(cat);
       return true;
     }
 
     var EDITING_ID = null; // ID restaurace, která je právě v inline edit módu
+
+    /**
+     * Počet sloupců v .fav-list — musí být v sync s CSS media queries:
+     *   ≤540px → 1, ≤800px → 2, jinak → 3.
+     */
+    function getFavCols() {
+      var w = window.innerWidth;
+      if (w <= 540) return 1;
+      if (w <= 800) return 2;
+      return 3;
+    }
+
+    // Re-render při resize, aby se edit form přesouval na novou pozici v řadě
+    var _resizeRenderTimer = null;
+    window.addEventListener('resize', function() {
+      clearTimeout(_resizeRenderTimer);
+      _resizeRenderTimer = setTimeout(function() {
+        if ($('settings').classList.contains('open')) renderSettings();
+      }, 200);
+    });
 
     function renderSettings() {
       var ids = sledovaneIds();
@@ -642,48 +1264,86 @@
       var canRemove = listed.length > 1;
 
       listed.forEach(function(r, index) {
-        if (EDITING_ID === r.id && !r.orphan) {
-          list.appendChild(renderEditForm(r));
-          return;
+        // Vždy vyrenderuj normální dlaždici. Editovaná dostane jen třídu
+        // .editing (vizuální highlight) — počet karet na řádku zůstává.
+        // Edit form se po renderu připne jako absolute overlay pod tu kartu.
+
+        // Drag handle + pořadové číslo vlevo nahoře
+        var handle = el('div', { class: 'fav-handle', title: 'Přetáhni pro změnu pořadí', 'aria-label': 'Přetáhnout' });
+        handle.innerHTML = '<i data-lucide="grip-vertical"></i>';
+        var orderEl = el('div', { class: 'fav-order-side', text: (index + 1) + '.' });
+
+        // Název + město
+        var nameEl = el('div', { class: 'fav-name', text: r.nazev });
+        var metaText = r.mesto || (r.orphan ? 'chybí v katalogu' : '');
+        var metaEl = el('div', { class: 'fav-meta', text: metaText });
+
+        // Badge řada (oko, tužka, koš) — všechny stejně široké
+        var visible = !isHidden(r.id);
+        var toggleBtn = el('button', { class: 'fav-badge fav-toggle-badge', type: 'button',
+                                       'data-visible': String(visible),
+                                       title: visible ? 'Skrýt z jídelníčku' : 'Zobrazit v jídelníčku',
+                                       'aria-label': 'Zobrazit / skrýt' });
+        toggleBtn.innerHTML = '<i data-lucide="' + (visible ? 'eye' : 'eye-off') + '"></i>';
+        toggleBtn.addEventListener('click', function() {
+          var nowVisible = toggleBtn.dataset.visible === 'true';
+          toggleVisible(r.id, !nowVisible);
+        });
+
+        var actionsItems = [toggleBtn];
+        if (!r.orphan) {
+          var editBtn = el('button', { class: 'fav-badge fav-edit-badge', type: 'button',
+                                       title: 'Upravit název / město', 'aria-label': 'Upravit' });
+          editBtn.innerHTML = '<i data-lucide="pencil"></i>';
+          // Toggle: pokud editujeme tuto kartu, druhý klik zavře (= Zrušit)
+          editBtn.addEventListener('click', function() {
+            EDITING_ID = (EDITING_ID === r.id) ? null : r.id;
+            renderSettings();
+          });
+          actionsItems.push(editBtn);
         }
-
-        // Drag handle — celé fav je draggable, handle je vizuální klíč
-        var handle = el('div', { class: 'fav-handle', title: 'Přetáhni pro změnu pořadí', 'aria-label': 'Přetáhnout' }, ['⋮⋮']);
-
-        // Pořadové číslo
-        var order = el('div', { class: 'fav-order', text: (index + 1) + '.' });
-
-        // Checkbox = visible/hidden (NE remove)
-        var checkbox = el('input', { type: 'checkbox' });
-        checkbox.checked = !isHidden(r.id);
-        checkbox.title = 'Zobrazit v jídelníčku';
-        checkbox.addEventListener('change', function() { toggleVisible(r.id, checkbox.checked); });
-
-        var nameWrap = el('div', { class: 'fav-name' }, [document.createTextNode(r.nazev)]);
-        if (r.mesto) nameWrap.appendChild(el('span', { class: 'fav-meta', text: ' (' + r.mesto + ')' }));
-        if (r.orphan) nameWrap.appendChild(el('span', { class: 'fav-meta', text: ' — chybí v katalogu' }));
-
-        // Akce vpravo: 🗑️ (smazat) + ✏️ (edit) — popelnice nahoře
-        var rmBtn = el('button', { class: 'fav-rm', title: 'Smazat ze sledovaných', 'aria-label': 'Smazat' }, ['🗑️']);
+        var rmBtn = el('button', { class: 'fav-badge fav-rm-badge', type: 'button',
+                                   title: 'Smazat ze sledovaných', 'aria-label': 'Smazat' });
+        rmBtn.innerHTML = '<i data-lucide="trash-2"></i>';
         if (!canRemove) {
           rmBtn.disabled = true;
           rmBtn.title = 'Musíš sledovat alespoň jednu restauraci.';
         }
         rmBtn.addEventListener('click', function() { removeFromList(r.id); });
+        actionsItems.push(rmBtn);
 
-        var actionItems = [rmBtn];
-        if (!r.orphan) {
-          var editBtn = el('button', { class: 'fav-edit', title: 'Upravit název / město', 'aria-label': 'Upravit' }, ['✏️']);
-          editBtn.addEventListener('click', function() { EDITING_ID = r.id; renderSettings(); });
-          actionItems.push(editBtn);
-        }
-        var rightStack = el('div', { class: 'fav-actions' }, actionItems);
+        var actionsRow = el('div', { class: 'fav-actions-row' }, actionsItems);
+        var textBlock = el('div', { class: 'fav-text' }, [nameEl, metaEl, actionsRow]);
 
-        var favEl = el('div', { class: 'fav' }, [handle, order, checkbox, nameWrap, rightStack]);
+        var favEl = el('div', { class: 'fav' }, [handle, orderEl, textBlock]);
         favEl.dataset.id = r.id;
+
+        if (EDITING_ID === r.id && !r.orphan) {
+          favEl.classList.add('editing');
+        }
 
         list.appendChild(favEl);
       });
+
+      // Edit form jako absolute overlay pod editovanou kartou
+      if (EDITING_ID) {
+        var target = listed.find(function(r) { return r.id === EDITING_ID && !r.orphan; });
+        var editingFav = list.querySelector('.fav.editing');
+        if (target && editingFav) {
+          var formEl = renderEditForm(target);
+          formEl.classList.add('overlay');
+          list.appendChild(formEl);
+          // Po insert spočítej offset (musí proběhnout layout)
+          requestAnimationFrame(function() {
+            var rect = editingFav.getBoundingClientRect();
+            var listRect = list.getBoundingClientRect();
+            formEl.style.top = (rect.bottom - listRect.top + 6) + 'px';
+          });
+        }
+      }
+
+      // Vyrenderuj Lucide ikony v nově přidaných elementech
+      if (window.lucide) lucide.createIcons();
 
       // Aktivuj Sortable.js drag-and-drop (s touch fallbackem pro mobil)
       _initSortable_(list);
@@ -718,7 +1378,7 @@
         box.appendChild(el('div', { class: 'rss-hint', text:
           'Vlož tento odkaz do své RSS čtečky. Aktualizuje se 2× denně po stažení nových menu.' }));
       } else {
-        var btn = el('button', { class: 'rss-cta', text: 'Vygenerovat RSS odkaz' });
+        var btn = el('button', { class: 'rss-cta', text: 'Vygenerovat RSS odkaz', title: 'Vytvoří veřejný RSS feed s tvými sledovanými restauracemi' });
         btn.addEventListener('click', function() { generateRss(btn); });
         box.appendChild(btn);
         box.appendChild(el('div', { class: 'rss-hint', text:
@@ -774,6 +1434,10 @@
       if (visible && idx !== -1) skryte.splice(idx, 1);
       if (!visible && idx === -1) skryte.push(String(id));
       STATE.user.skryte_restaurace = skryte.join(',');
+      renderSettings();
+      // visible count se změnil → re-clamp cols a refresh dropdownu
+      updateColsSlider();
+      setCols(STATE.cols);
       renderRestaurants();
       saveSettings({ skryte_restaurace: STATE.user.skryte_restaurace });
     }
@@ -784,27 +1448,99 @@
         showToast('Musíš sledovat alespoň jednu restauraci', 'error');
         return;
       }
-      // Volá server (Restaurants_removeFromUser_), který provede min-1 enforce
-      // a cleanup ze skrytých.
-      google.script.run
-        .withSuccessHandler(function(result) {
-          STATE.user.sledovane_restaurace = result.sledovane.join(',');
-          // Cleanup STATE.user.skryte_restaurace lokálně (server taky)
+
+      var rest = findRestaurant(id) || { nazev: 'Restaurace ' + id, mesto: '' };
+      var label = rest.nazev + (rest.mesto ? ' (' + rest.mesto + ')' : '');
+
+      confirmAction({
+        message: 'Smazat „' + label + '" ze sledovaných?',
+        confirmLabel: 'Smazat',
+        onConfirm: function() {
+          // Optimistický update — STATE se hned promítne do UI; server stub
+          // jen logne (v reálné verzi server vrátí autoritativní stav).
+          STATE.user.sledovane_restaurace = ids.filter(function(x) { return x !== String(id); }).join(',');
           var skryte = skryteIds().filter(function(x) { return x !== String(id); });
           STATE.user.skryte_restaurace = skryte.join(',');
           renderSettings();
+          updateColsSlider();
+          setCols(STATE.cols);
           renderRestaurants();
-        })
-        .withFailureHandler(function(err) { showToast('Chyba: ' + err.message, 'error'); })
-        .removeRestaurant(id);
+          showToast('Smazáno');
+
+          google.script.run
+            .withSuccessHandler(function(result) {
+              if (result && result.sledovane) {
+                STATE.user.sledovane_restaurace = result.sledovane.join(',');
+              }
+            })
+            .withFailureHandler(function(err) { showToast('Chyba: ' + err.message, 'error'); })
+            .removeRestaurant(id);
+        }
+      });
+    }
+
+    /**
+     * Univerzální confirm dialog. Příklad:
+     *   confirmAction({ message: 'Smazat?', confirmLabel: 'Smazat', onConfirm: function(){…} });
+     */
+    function confirmAction(opts) {
+      var overlay = $('confirm-overlay');
+      var text = $('confirm-text');
+      var yesBtn = $('confirm-yes');
+      var cancelBtn = $('confirm-cancel');
+
+      text.textContent = opts.message;
+      yesBtn.textContent = opts.confirmLabel || 'OK';
+      overlay.removeAttribute('hidden');
+
+      function close() {
+        overlay.setAttribute('hidden', '');
+        yesBtn.removeEventListener('click', onYes);
+        cancelBtn.removeEventListener('click', close);
+        overlay.removeEventListener('click', onOverlayClick);
+        document.removeEventListener('keydown', onKey);
+      }
+      function onYes() {
+        close();
+        if (typeof opts.onConfirm === 'function') opts.onConfirm();
+      }
+      function onOverlayClick(e) {
+        if (e.target === overlay) close();
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') close();
+        if (e.key === 'Enter') onYes();
+      }
+
+      yesBtn.addEventListener('click', onYes);
+      cancelBtn.addEventListener('click', close);
+      overlay.addEventListener('click', onOverlayClick);
+      document.addEventListener('keydown', onKey);
+      yesBtn.focus();
     }
 
     function renderEditForm(rest) {
+      var origNazev = (rest.nazev || '').trim();
+      var origMesto = (rest.mesto || '').trim();
+
       var nazevInput = el('input', { type: 'text', value: rest.nazev || '', placeholder: 'Název' });
       var mestoInput = el('input', { type: 'text', value: rest.mesto || '', placeholder: 'Město' });
 
-      var saveBtn = el('button', { class: 'save', text: 'Uložit' });
-      var cancelBtn = el('button', { class: 'cancel', text: 'Zrušit' });
+      var saveBtn = el('button', { class: 'save', text: 'Uložit', title: 'Uložit změny' });
+      var cancelBtn = el('button', { class: 'cancel', text: 'Zrušit', title: 'Zavřít bez uložení' });
+
+      var DISABLED_HINT = 'Změň název nebo město a pak můžeš uložit.';
+      function checkDirty() {
+        var changed = nazevInput.value.trim() !== origNazev
+                   || mestoInput.value.trim() !== origMesto;
+        saveBtn.disabled = !changed;
+        saveBtn.title = changed ? '' : DISABLED_HINT;
+      }
+      nazevInput.addEventListener('input', checkDirty);
+      mestoInput.addEventListener('input', checkDirty);
+      // Initial state: disabled (žádná změna)
+      saveBtn.disabled = true;
+      saveBtn.title = DISABLED_HINT;
 
       saveBtn.addEventListener('click', function() {
         var payload = {
@@ -959,10 +1695,154 @@
     function setCols(n) {
       var v = parseInt(n, 10);
       if (isNaN(v) || v < 1) v = 1;
-      if (v > 4) v = 4;
+      var max = maxCols();
+      if (v > max) v = max;
       STATE.cols = v;
       localStorage.setItem('menicka_cols', String(v));
-      $('opt-cols').value = String(v);
+      updateColsSlider();
+      updateWideEnabled();
+      renderRestaurants();
+    }
+
+    function setWide(on) {
+      STATE.wide = !!on;
+      localStorage.setItem('menicka_wide', STATE.wide ? 'true' : 'false');
+      $('opt-wide').checked = STATE.wide;
+      var apply = STATE.wide && effectiveCols() > 1;
+      document.body.classList.toggle('wide-restaurants', apply);
+    }
+
+    var FONT_MIN = 0.8, FONT_MAX = 1.5, FONT_STEP = 0.1;
+    function setFontScale(val) {
+      var v = Math.round(val * 100) / 100;  // round to 2 decimals
+      if (v < FONT_MIN) v = FONT_MIN;
+      if (v > FONT_MAX) v = FONT_MAX;
+      STATE.fontScale = v;
+      localStorage.setItem('menicka_font_scale', String(v));
+      $('opt-font-value').textContent = Math.round(v * 100) + ' %';
+      $('opt-font-minus').disabled = v <= FONT_MIN;
+      $('opt-font-plus').disabled = v >= FONT_MAX;
+      // Aplikuj na všechny .restaurants kontejnery
+      var els = document.querySelectorAll('.restaurants');
+      for (var i = 0; i < els.length; i++) {
+        els[i].style.setProperty('--menu-font-scale', String(v));
+      }
+    }
+
+    function updateColsSlider() {
+      var slider = $('opt-cols-slider');
+      var ticks = $('cols-ticks');
+      var max = maxCols();
+      slider.max = String(max);
+      var current = Math.min(STATE.cols || 1, max);
+      slider.value = String(current);
+
+      // Re-build ticks 1..max
+      while (ticks.firstChild) ticks.removeChild(ticks.firstChild);
+      for (var i = 1; i <= max; i++) {
+        var tick = el('span', { text: String(i) });
+        if (i === current) tick.classList.add('active');
+        ticks.appendChild(tick);
+      }
+    }
+
+    function updateWideEnabled() {
+      var wideInput = $('opt-wide');
+      var wideRow = $('wide-row');
+      var disabled = effectiveCols() <= 1;
+      wideInput.disabled = disabled;
+      if (disabled) {
+        wideRow.title = 'Týká se jen sloupcového zobrazení (≥ 2 sloupce). Při řádkovém zobrazení má jídelníček stejnou šířku jako Nastavení.';
+        wideRow.style.opacity = '0.55';
+        document.body.classList.remove('wide-restaurants');
+      } else {
+        wideRow.title = '';
+        wideRow.style.opacity = '';
+        if (STATE.wide) document.body.classList.add('wide-restaurants');
+      }
+    }
+
+    /**
+     * IDs karet, které se reálně objeví v gridu — po aplikaci skrytí, hideEmpty
+     * a favorites filtru. Společný zdroj pravdy pro renderRestaurants i pro
+     * effective cols (aby grid neměl prázdné cely).
+     */
+    function visibleIds() {
+      var ids = sledovaneIds().filter(function(id) { return !isHidden(id); });
+      if (STATE.hideEmpty) {
+        ids = ids.filter(function(id) { return !isMenuEmpty(STATE.menu[id]); });
+      }
+      var favFilter = (STATE.favorites.onlyRest || STATE.favorites.onlyDish) && favoriteKeywords().length > 0;
+      if (favFilter) {
+        // Restaurace s oblíbenou polévkou NEBO hlavním jídlem zůstává.
+        ids = ids.filter(function(id) { return hasFavoriteAny(STATE.menu[id]); });
+      }
+      return ids;
+    }
+
+    function visibleCount() {
+      return visibleIds().length;
+    }
+
+    /**
+     * Maximum sloupců, které dropdown nabídne — rovná se počtu ne-skrytých
+     * podniků (ne-závislé na hideEmpty, protože uživatelovo "preferované max"
+     * by mělo zůstat stabilní mezi dny, kdy nevaří někdo jiný).
+     */
+    function maxCols() {
+      return Math.max(1, sledovaneIds().filter(function(id) { return !isHidden(id); }).length);
+    }
+
+    /**
+     * Reálný počet sloupců v gridu = min(preferované, počet skutečně zobrazených).
+     * Pokud user vybere "5 sloupců" a 2 karty jsou prázdné při hideEmpty,
+     * grid vykreslí jen 3 sloupce — žádné prázdné cely.
+     */
+    function effectiveCols() {
+      return Math.min(STATE.cols || 1, Math.max(1, visibleCount()));
+    }
+
+    // === Oblíbená jídla ===
+
+    function _normalize(s) {
+      return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    function favoriteKeywords() {
+      return STATE.favorites.keywords.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    }
+
+    function isFavoriteDish(item) {
+      if (!item || !item.nazev) return false;
+      var kws = favoriteKeywords();
+      if (kws.length === 0) return false;
+      var norm = _normalize(item.nazev);
+      return kws.some(function(kw) { return norm.indexOf(_normalize(kw)) !== -1; });
+    }
+
+    function hasFavoriteMain(menu) {
+      if (!menu || !menu.hlavni_jidla) return false;
+      return menu.hlavni_jidla.some(isFavoriteDish);
+    }
+    /** Restaurace má aspoň jedno oblíbené jídlo (polévku nebo hlavní). */
+    function hasFavoriteAny(menu) {
+      if (!menu) return false;
+      return (menu.polevky || []).some(isFavoriteDish)
+          || (menu.hlavni_jidla || []).some(isFavoriteDish);
+    }
+
+    function setFavKeywords(value) {
+      var v = String(value || '');
+      STATE.favorites.keywords = v;
+      STATE.user.oblibena_jidla = v;  // persist server-side ve sloupci oblibena_jidla
+      saveSettings({ oblibena_jidla: v });
+      updateColsSlider();
+      renderRestaurants();
+    }
+    function setFavOption(key, on) {
+      STATE.favorites[key] = !!on;
+      var lsKey = ({ mark: 'menicka_fav_mark', onlyRest: 'menicka_fav_only_rest', onlyDish: 'menicka_fav_only_dish' })[key];
+      if (lsKey) localStorage.setItem(lsKey, STATE.favorites[key] ? 'true' : 'false');
       renderRestaurants();
     }
 
@@ -975,22 +1855,32 @@
 
     var _sortableInstance = null;
 
+    var _isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+    function isMobileMode() {
+      return _isTouchDevice || _mobileMql.matches;
+    }
+
     function _initSortable_(listEl) {
       if (_sortableInstance) {
         try { _sortableInstance.destroy(); } catch (e) {}
         _sortableInstance = null;
       }
-      if (!window.Sortable) return; // CDN nedostupné — drag-and-drop nebude
+      if (!window.Sortable) return;
       _sortableInstance = Sortable.create(listEl, {
-        handle: '.fav-handle',
+        handle: isMobileMode() ? undefined : '.fav-handle',
         draggable: '.fav',
         animation: 150,
         ghostClass: 'sort-ghost',
         chosenClass: 'sort-chosen',
         dragClass: 'sort-drag',
-        delay: 100,            // Krátké zdržení před tím než drag začne (anti-misdrag na touch)
+        delay: 100,
         delayOnTouchOnly: true,
         touchStartThreshold: 5,
+        onStart: function() {
+          // Zavři případný otevřený edit form během drag (overlay by se "potácel" za přesouvanou kartou)
+          if (EDITING_ID) { EDITING_ID = null; renderSettings(); }
+        },
         onEnd: function(evt) {
           if (evt.oldIndex === evt.newIndex) return;
           var ids = sledovaneIds();
@@ -1031,14 +1921,87 @@
     $('add-url').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') addRestaurantByUrl();
     });
-    $('btn-add-menza').addEventListener('click', function() { addRestaurantByInput('menza', $('btn-add-menza')); });
 
-    $('opt-hide-empty').addEventListener('change', function() { setHideEmpty(this.checked); });
-    $('opt-cols').addEventListener('change', function() { setCols(this.value); });
+    function toggleAddPopover(force) {
+      var pop = $('add-popover');
+      var btn = $('btn-info');
+      var open = (typeof force === 'boolean') ? force : pop.hasAttribute('hidden');
+      if (open) {
+        pop.removeAttribute('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+      } else {
+        pop.setAttribute('hidden', '');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    }
+    $('btn-info').addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggleAddPopover();
+    });
+    document.addEventListener('click', function(e) {
+      var pop = $('add-popover');
+      if (pop.hasAttribute('hidden')) return;
+      if (pop.contains(e.target) || e.target.id === 'btn-info') return;
+      toggleAddPopover(false);
+    });
+    $('btn-add-menza').addEventListener('click', function() {
+      toggleAddPopover(false);
+      addRestaurantByInput('menza', $('btn-add-menza'));
+    });
 
+    $('opt-hide-empty').addEventListener('change', function() {
+      setHideEmpty(this.checked);
+      updateColsSlider();
+      setCols(STATE.cols);
+    });
+    $('opt-cols-slider').addEventListener('input', function() {
+      setCols(this.value);
+    });
+    $('opt-wide').addEventListener('change', function() { setWide(this.checked); });
+
+    $('opt-font-minus').addEventListener('click', function() { setFontScale(STATE.fontScale - FONT_STEP); });
+    $('opt-font-plus').addEventListener('click', function() { setFontScale(STATE.fontScale + FONT_STEP); });
+
+    // Favorites
+    $('opt-fav-keywords').value = STATE.favorites.keywords;
+    $('opt-fav-mark').checked = STATE.favorites.mark;
+    $('opt-fav-only-rest').checked = STATE.favorites.onlyRest;
+    $('opt-fav-only-dish').checked = STATE.favorites.onlyDish;
+
+    var _favKwTimer = null;
+    $('opt-fav-keywords').addEventListener('input', function() {
+      var v = this.value;
+      clearTimeout(_favKwTimer);
+      _favKwTimer = setTimeout(function() { setFavKeywords(v); }, 250);
+    });
+    $('opt-fav-mark').addEventListener('change', function() { setFavOption('mark', this.checked); });
+    $('opt-fav-only-rest').addEventListener('change', function() { setFavOption('onlyRest', this.checked); });
+    $('opt-fav-only-dish').addEventListener('change', function() { setFavOption('onlyDish', this.checked); });
+
+    // Mobile detection — disabled stav skupiny "Sloupcové zobrazení"
+    var _mobileMql = window.matchMedia('(max-width: 700px)');
+    function applyMobileGroupState() {
+      var group = $('cols-group');
+      var isMobile = _mobileMql.matches;
+      group.classList.toggle('disabled', isMobile);
+    }
+    if (_mobileMql.addEventListener) {
+      _mobileMql.addEventListener('change', applyMobileGroupState);
+    } else {
+      _mobileMql.addListener(applyMobileGroupState);
+    }
+    applyMobileGroupState();
+
+    updateColsSlider();
     setHideEmpty(STATE.hideEmpty);
     setCols(STATE.cols);
+    setWide(STATE.wide);
+    setFontScale(STATE.fontScale);
     render();
+
+    // Vyrenderuj všechny Lucide ikony, které jsou v statickém HTML.
+    // (renderSettings volá createIcons() pro nově přidané fav položky.)
+    if (window.lucide) lucide.createIcons();
 
     // Handshake s PWA wrapperem (menicka.html v parent GitHub Pages):
     // wrapper má loading overlay, který fade-outne po obdržení této zprávy.

@@ -5,6 +5,12 @@
 var CONFIG_DEFAULTS = {
   default_restaurace: '',
   cache_ttl_hodin: 12,
+  // CSV s hodinami pro auto-refresh (Europe/Prague). Při změně spusť setupTriggers().
+  trigger_casy: '9,10,11,12,13,14',
+  // Hodina, kdy se denně vyčistí cache jídelníčků (po obědě). Po této době
+  // uživatelé vidí banner „Čas oběda už je za námi". Při změně spusť setupTriggers().
+  cache_konec_hodina: 17,
+  // Legacy klíče (zachované kvůli starým instalacím — `trigger_casy` má prioritu).
   trigger_cas_1: 9,
   trigger_cas_2: 11
 };

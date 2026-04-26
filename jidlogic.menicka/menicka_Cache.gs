@@ -36,6 +36,10 @@ function Cache_storeMenu_(datum, restauraceId, menu) {
   var aktualizovano = new Date();
   var headers = _headers_(sheet);
 
+  // Timestamp stažení do JSONu menu, ať si FE může spočítat stáří + zobrazit
+  // datum/čas v hlavičce karty + rozhodnout o ručním refreshi.
+  menu.aktualizovano = aktualizovano.toISOString();
+
   if (lastRow >= 2) {
     var keys = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
     for (var i = 0; i < keys.length; i++) {
@@ -108,6 +112,35 @@ function Cache_pruneStale_(keepDate, keepIds) {
   }
   Cache_invalidate_(keepDate);
   return rowsToDelete.length;
+}
+
+/**
+ * Smaže všechny dnešní záznamy z Menu Cache. Volá se denně v `cache_konec_hodina`
+ * (default 17:00) — po této době už menu nepotřebujeme, navíc by stará data
+ * matla uživatele, kteří appku otevřou večer/noc.
+ */
+function clearTodaysCache() {
+  var dnes = _today_();
+  var sheet = _sheet_(SHEETS.MENU_CACHE);
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    Logger.log('clearTodaysCache: prázdné, nic ke smazání');
+    return { smazano: 0 };
+  }
+
+  var dates = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  var rowsToDelete = [];
+  for (var i = 0; i < dates.length; i++) {
+    if (String(dates[i][0]) === dnes) rowsToDelete.push(i + 2);
+  }
+
+  for (var j = rowsToDelete.length - 1; j >= 0; j--) {
+    sheet.deleteRow(rowsToDelete[j]);
+  }
+
+  Cache_invalidate_(dnes);
+  Logger.log('clearTodaysCache: smazáno ' + rowsToDelete.length + ' řádků pro ' + dnes);
+  return { smazano: rowsToDelete.length };
 }
 
 /**
