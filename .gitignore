@@ -37,3 +37,8 @@ appsscript.json
 node_modules/
 .DS_Store
 .vscode/
+
+# Výjimka — jidlogic.menicka/ je samostatný GAS projekt, jeho .gs i manifest
+# chceme držet v gitu kvůli historii + backupu (nikoli skrz clasp jako parent).
+!jidlogic.menicka/
+!jidlogic.menicka/**
