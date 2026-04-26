@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Meníčka</title>
+  <meta name="theme-color" content="#6B2D8B">
+  <meta name="description" content="Jídelníčky restaurací z menicka.cz">
+
+  <!-- Sortable.js — drag-and-drop reorder s podporou touch (mobil) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+
+  <style>
+    :root {
+      --purple:        #6B2D8B;
+      --purple-light:  #8E44AD;
+      --purple-pale:   #F3EAF8;
+      --bg:            #F7F7FA;
+      --bg-card:       #FFFFFF;
+      --bg-card-hover: #FAFAFE;
+      --border:        #E8E4EE;
+      --text:          #2D2D3A;
+      --text-secondary:#6E6E80;
+      --text-muted:    #A0A0B0;
+      --accent:        #6B2D8B;
+      --price:         #6B2D8B;
+      --cat-bg:        #F3EAF8;
+      --shadow:        0 2px 12px rgba(107,45,139,0.06);
+      --radius:        12px;
+      --header-bg:     #FFFFFF;
+    }
+    [data-theme="dark"] {
+      --bg:            #1A1A2E;
+      --bg-card:       #1E1E36;
+      --bg-card-hover: #252542;
+      --border:        #2E2E4A;
+      --text:          #E4E4EC;
+      --text-secondary:#A0A0B8;
+      --text-muted:    #6E6E88;
+      --accent:        #B07DD8;
+      --price:         #B07DD8;
+      --cat-bg:        #2A1D3E;
+      --shadow:        0 2px 12px rgba(0,0,0,0.2);
+      --header-bg:     #16162A;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { overscroll-behavior: none; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    .site-header {
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-inner {
+      max-width: 800px; margin: 0 auto; padding: 0 16px;
+      height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-title {
+      font-size: 1.1rem; font-weight: 700; color: var(--accent);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .header-actions { display: flex; align-items: center; gap: 4px; }
+    .icon-btn {
+      width: 40px; height: 40px;
+      border: none; background: transparent;
+      border-radius: 8px; cursor: pointer;
+      color: var(--text-secondary);
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .icon-btn:hover { background: var(--border); color: var(--text); }
+    .user-badge {
+      font-size: 0.8rem; color: var(--text-muted);
+      padding: 4px 10px; background: var(--cat-bg); border-radius: 12px;
+      max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      margin-right: 4px;
+    }
+
+    main { max-width: 800px; margin: 0 auto; padding: 16px; }
+
+
+    .restaurants { display: grid; gap: 16px; grid-template-columns: 1fr; }
+    .restaurants[data-cols="2"] { grid-template-columns: repeat(2, 1fr); }
+    .restaurants[data-cols="3"] { grid-template-columns: repeat(3, 1fr); }
+    .restaurants[data-cols="4"] { grid-template-columns: repeat(4, 1fr); }
+    @media (max-width: 700px) {
+      .restaurants { grid-template-columns: 1fr !important; }
+      #cols-row { display: none; }
+    }
+
+    .toggle-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0; cursor: pointer; font-size: 0.9rem;
+    }
+    .toggle-row input[type="checkbox"] {
+      width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer;
+    }
+    .toggle-row select {
+      padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg-card); color: var(--text); font-size: 0.9rem; cursor: pointer;
+    }
+
+    .fav-handle {
+      cursor: grab; color: var(--text-muted); font-size: 1.1rem;
+      padding: 0 4px; user-select: none; line-height: 1;
+      display: flex; align-items: center;
+      touch-action: none; /* zabrání scroll-scrubu když user drží handle */
+    }
+    .fav-handle:active { cursor: grabbing; }
+    /* Sortable.js classes během drag */
+    .fav.sort-ghost { opacity: 0.3; }
+    .fav.sort-chosen { background: var(--cat-bg); }
+    .fav.sort-drag { opacity: 0.85; box-shadow: 0 8px 16px rgba(0,0,0,0.15); }
+    .fav-order {
+      color: var(--text-muted); font-weight: 600;
+      min-width: 1.4em; text-align: right; font-variant-numeric: tabular-nums;
+    }
+    .fav-actions {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 2px;
+    }
+
+    .card {
+      background: var(--bg-card); border-radius: var(--radius);
+      box-shadow: var(--shadow); overflow: hidden;
+    }
+    .card-header {
+      padding: 12px 16px; background: var(--cat-bg);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .card-title { font-weight: 600; font-size: 1rem; color: var(--text); }
+    .card-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; }
+    .card-link { color: var(--accent); font-size: 0.85rem; text-decoration: none; white-space: nowrap; }
+    .card-link:hover { text-decoration: underline; }
+    .card-body { padding: 12px 16px; }
+
+    .menu-cat { margin-bottom: 14px; }
+    .menu-cat:last-child { margin-bottom: 0; }
+    .menu-cat-title {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.5px;
+    }
+    .item {
+      display: flex; gap: 12px; padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .item:last-child { border-bottom: none; }
+    .item-name {
+      flex: 1; font-size: 0.95rem;
+      display: flex; gap: 8px; align-items: flex-start;
+    }
+    .item-no {
+      color: var(--text-muted); font-weight: 600;
+      flex: 0 0 1.6em; text-align: right;
+    }
+    .item-text { flex: 1; min-width: 0; }
+    .item-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+    .tag {
+      font-size: 0.7rem; padding: 1px 6px; border-radius: 4px;
+      background: var(--cat-bg); color: var(--accent); white-space: nowrap;
+    }
+    .tag-allergen { background: rgba(230, 126, 34, 0.15); color: #C0651E; }
+    [data-theme="dark"] .tag-allergen { background: rgba(230, 126, 34, 0.25); color: #E89B5B; }
+    .item-price {
+      font-weight: 600; color: var(--price); white-space: nowrap;
+    }
+
+    .empty {
+      padding: 24px 16px; text-align: center;
+      color: var(--text-secondary);
+    }
+    .empty a { color: var(--accent); cursor: pointer; }
+
+    .settings {
+      display: none; background: var(--bg-card);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 16px; margin-bottom: 16px;
+    }
+    .settings.open { display: block; }
+    .settings h2 {
+      font-size: 1rem; font-weight: 600; margin-bottom: 4px; color: var(--text);
+    }
+    .settings h3 {
+      font-size: 0.75rem; font-weight: 700;
+      color: var(--text-muted); margin: 16px 0 8px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .fav-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .fav-list .fav-edit-form { grid-column: 1 / -1; }
+    @media (max-width: 800px) {
+      .fav-list { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 540px) {
+      .fav-list { grid-template-columns: 1fr; }
+    }
+    .fav {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; background: var(--bg); border-radius: 8px;
+    }
+    .fav input[type="checkbox"] {
+      width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
+    }
+    .fav-name { flex: 1; font-size: 0.9rem; }
+    .fav-meta { font-size: 0.8rem; color: var(--text-muted); }
+    .fav-rm, .fav-edit {
+      width: 28px; height: 28px; border: none; background: transparent;
+      color: var(--text-muted); cursor: pointer; line-height: 1;
+      border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    }
+    .fav-rm { font-size: 1.3rem; }
+    .fav-edit { font-size: 0.95rem; }
+    .fav-rm:hover, .fav-edit:hover { background: var(--border); color: var(--text); }
+    .fav-rm:disabled { opacity: 0.3; cursor: not-allowed; }
+    .fav-rm:disabled:hover { background: transparent; color: var(--text-muted); }
+
+    .fav-edit-form {
+      display: flex; flex-direction: column; gap: 6px;
+      padding: 10px; background: var(--bg); border-radius: 8px;
+      border: 1px solid var(--accent);
+    }
+    .fav-edit-form input {
+      padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.9rem;
+      background: var(--bg-card); color: var(--text);
+    }
+    .fav-edit-form input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+    .fav-edit-form label {
+      font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 0.5px; margin-top: 4px;
+    }
+    .fav-edit-actions {
+      display: flex; gap: 6px; margin-top: 6px;
+    }
+    .fav-edit-actions button {
+      flex: 1; padding: 8px; border: none; border-radius: 6px;
+      font-size: 0.85rem; cursor: pointer; font-weight: 500;
+    }
+    .fav-edit-actions .save {
+      background: var(--accent); color: #fff;
+    }
+    .fav-edit-actions .cancel {
+      background: var(--border); color: var(--text);
+    }
+
+    .add-hint {
+      font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;
+    }
+    .add-hint a { color: var(--accent); }
+    .link-btn {
+      background: none; border: none; padding: 0;
+      color: var(--accent); cursor: pointer; font-size: inherit;
+      text-decoration: underline; font-family: inherit;
+    }
+    .link-btn:hover { opacity: 0.8; }
+
+    .add-row { display: flex; gap: 8px; margin-top: 10px; }
+    .add-row input {
+      flex: 1; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 0.9rem; background: var(--bg); color: var(--text);
+    }
+    .add-row input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+    .add-row button {
+      padding: 10px 16px; background: var(--accent); color: #fff;
+      border: none; border-radius: 8px; cursor: pointer; font-weight: 500;
+    }
+    .add-row button:hover { background: var(--purple-light); }
+    .add-row button:disabled { opacity: 0.5; cursor: wait; }
+
+    .diet-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .diet-chip {
+      padding: 6px 12px; border-radius: 16px;
+      background: var(--bg); border: 1px solid var(--border);
+      cursor: pointer; font-size: 0.85rem; color: var(--text);
+      transition: all 0.15s;
+    }
+    .diet-chip.active {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    .diet-hint {
+      font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;
+    }
+
+    .rss-row {
+      display: flex; gap: 8px; align-items: stretch;
+    }
+    .rss-row input {
+      flex: 1; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 0.85rem; background: var(--bg);
+      color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .rss-row button {
+      padding: 10px 16px; background: var(--accent); color: #fff;
+      border: none; border-radius: 8px; cursor: pointer; font-weight: 500;
+      white-space: nowrap;
+    }
+    .rss-row button.secondary {
+      background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    }
+    .rss-row button:hover { opacity: 0.9; }
+    .rss-row button:disabled { opacity: 0.5; cursor: wait; }
+    .rss-hint {
+      font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;
+    }
+    .rss-cta {
+      padding: 10px 14px; background: var(--accent); color: #fff;
+      border: none; border-radius: 8px; cursor: pointer; font-weight: 500;
+    }
+    .rss-cta:disabled { opacity: 0.5; cursor: wait; }
+
+    .toast {
+      position: fixed; bottom: 16px; left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      background: var(--text); color: var(--bg-card);
+      padding: 10px 20px; border-radius: 8px;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      transition: transform 0.3s; z-index: 200;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #C0392B; color: #fff; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+    }
+
+    @media (max-width: 600px) {
+      main { padding: 12px; }
+      .header-inner { padding: 0 12px; }
+      .user-badge { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-title">
+        <span aria-hidden="true">🍽️</span>
+        <span>Meníčka</span>
+      </div>
+      <div class="header-actions">
+        <span class="user-badge" id="user-badge"></span>
+        <button class="icon-btn" id="btn-settings" title="Nastavení" aria-label="Nastavení">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="btn-theme" title="Přepnout tmavý režim" aria-label="Přepnout tmavý režim">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="settings" id="settings" aria-hidden="true">
+      <h2>Nastavení</h2>
+
+      <h3>Sledované restaurace</h3>
+      <div class="fav-list" id="fav-list"></div>
+
+      <div class="add-row">
+        <input type="url" id="add-url" placeholder="https://www.menicka.cz/12345-nazev-restaurace.html" autocomplete="off" spellcheck="false">
+        <button id="btn-add">Přidat</button>
+      </div>
+      <div class="add-hint">
+        Otevři <a href="https://www.menicka.cz" target="_blank" rel="noopener">menicka.cz</a>, najdi svou restauraci a sem vlož URL z adresního řádku.
+        Nebo přidej <button id="btn-add-menza" class="link-btn" type="button">Menzu UTB</button>.
+      </div>
+
+      <h3>Zobrazení</h3>
+      <label class="toggle-row">
+        <input type="checkbox" id="opt-hide-empty">
+        <span>Skrýt restaurace bez dnešního menu (zavřeno, nezadáno)</span>
+      </label>
+      <label class="toggle-row" id="cols-row">
+        <span>Sloupců vedle sebe:</span>
+        <select id="opt-cols">
+          <option value="1">1 (řádkově)</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </label>
+
+      <div hidden data-feature="diet">
+        <h3>Stravovací omezení</h3>
+        <div class="diet-row" id="diet-row"></div>
+        <div class="diet-hint">Označená omezení v budoucnu zvýrazní vhodná jídla.</div>
+      </div>
+
+      <div hidden data-feature="rss">
+        <h3>RSS feed</h3>
+        <div id="rss-section"></div>
+      </div>
+    </section>
+
+    <div class="restaurants" id="restaurants"></div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    var BOOTSTRAP = <?!= bootstrapJson ?>;
+
+    var STATE = {
+      user: BOOTSTRAP.user,
+      restaurace: BOOTSTRAP.restaurace || [],
+      menu: BOOTSTRAP.menu || {},
+      datum: BOOTSTRAP.datum,
+      cols: parseInt(localStorage.getItem('menicka_cols') || '1', 10),
+      hideEmpty: localStorage.getItem('menicka_hide_empty') !== 'false',
+      theme: localStorage.getItem('menicka_theme') || (
+        window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      )
+    };
+
+    var DIET_OPTIONS = [
+      { key: 'vege',       label: 'Vegetariánsky' },
+      { key: 'vegan',      label: 'Vegansky' },
+      { key: 'bezlepku',   label: 'Bez lepku' },
+      { key: 'bezlaktozy', label: 'Bez laktózy' },
+      { key: 'bezorechu',  label: 'Bez ořechů' }
+    ];
+
+    var ALERGEN_LABELS = {
+      '1': 'Lepek', '2': 'Korýši', '3': 'Vejce', '4': 'Ryby',
+      '5': 'Arašídy', '6': 'Sója', '7': 'Mléko', '8': 'Skořápkové plody',
+      '9': 'Celer', '10': 'Hořčice', '11': 'Sezam', '12': 'Oxid siřičitý',
+      '13': 'Vlčí bob', '14': 'Měkkýši'
+    };
+
+    function $(id) { return document.getElementById(id); }
+
+    function el(tag, attrs, children) {
+      var n = document.createElement(tag);
+      if (attrs) Object.keys(attrs).forEach(function(k) {
+        var v = attrs[k];
+        if (v == null) return;
+        if (k === 'class') n.className = v;
+        else if (k === 'text') n.textContent = v;
+        else if (k === 'on') Object.keys(v).forEach(function(ev) { n.addEventListener(ev, v[ev]); });
+        else n.setAttribute(k, v);
+      });
+      (children || []).forEach(function(c) {
+        if (c == null) return;
+        n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+      });
+      return n;
+    }
+
+    function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+    function sledovaneIds() {
+      return String(STATE.user.sledovane_restaurace || '')
+        .split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    }
+    function skryteIds() {
+      return String(STATE.user.skryte_restaurace || '')
+        .split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    }
+    function isHidden(id) {
+      return skryteIds().indexOf(String(id)) !== -1;
+    }
+    function dietKeys() {
+      return String(STATE.user.dieta || '')
+        .split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    }
+    function findRestaurant(id) {
+      for (var i = 0; i < STATE.restaurace.length; i++) {
+        if (STATE.restaurace[i].id === String(id)) return STATE.restaurace[i];
+      }
+      return null;
+    }
+
+    function render() {
+      renderUser();
+      renderRestaurants();
+      renderSettings();
+    }
+
+    function renderUser() {
+      $('user-badge').textContent = STATE.user.email || '';
+    }
+
+    function isMenuEmpty(menu) {
+      if (!menu) return true;
+      if (menu.chyba || menu.info) return true;
+      var has = (menu.polevky || []).length
+             || (menu.hlavni_jidla || []).length
+             || (menu.piti || []).length
+             || (menu.dezerty || []).length;
+      return !has;
+    }
+
+    function renderRestaurants() {
+      var container = $('restaurants');
+      clear(container);
+      container.setAttribute('data-cols', String(STATE.cols || 1));
+
+      var ids = sledovaneIds();
+      if (ids.length === 0) {
+        var link = el('a', { on: { click: function(e) { e.preventDefault(); toggleSettings(true); } } }, ['nastavení']);
+        link.setAttribute('href', '#');
+        container.appendChild(el('div', { class: 'empty' }, [
+          'Nemáte vybrané žádné restaurace. Otevřete ', link, ' a přidejte si je.'
+        ]));
+        return;
+      }
+
+      var visible = ids.filter(function(id) {
+        if (isHidden(id)) return false;
+        if (!STATE.hideEmpty) return true;
+        return !isMenuEmpty(STATE.menu[id]);
+      });
+
+      if (visible.length === 0) {
+        container.appendChild(el('div', { class: 'empty', text:
+          'Žádná z tvých restaurací dnes nemá menu. (Skrytí prázdných můžeš vypnout v Nastavení.)' }));
+        return;
+      }
+
+      visible.forEach(function(id) {
+        var rest = findRestaurant(id) || {
+          id: id,
+          nazev: 'Restaurace ' + id,
+          mesto: '',
+          url: 'https://www.menicka.cz/restaurace/' + id
+        };
+        container.appendChild(renderCard(rest, STATE.menu[id]));
+      });
+    }
+
+    function renderCard(rest, menu) {
+      var titleBlock = el('div', null, [
+        el('div', { class: 'card-title', text: rest.nazev })
+      ]);
+      if (rest.mesto) titleBlock.appendChild(el('div', { class: 'card-subtitle', text: rest.mesto }));
+
+      var link = el('a', {
+        class: 'card-link',
+        href: rest.url,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        text: 'Otevřít →'
+      });
+
+      var header = el('div', { class: 'card-header' }, [titleBlock, link]);
+      var body = el('div', { class: 'card-body' });
+
+      if (!menu) {
+        body.appendChild(el('div', { class: 'empty', text: 'Jídelníček zatím nestažen pro dnešek.' }));
+      } else if (menu.chyba) {
+        body.appendChild(el('div', { class: 'empty', text: 'Chyba: ' + menu.chyba }));
+      } else if (menu.info) {
+        body.appendChild(el('div', { class: 'empty', text: menu.info }));
+      } else {
+        var any = false;
+        any = renderCategory(body, 'Polévky', menu.polevky) || any;
+        any = renderCategory(body, 'Hlavní jídla', menu.hlavni_jidla) || any;
+        any = renderCategory(body, 'Pití', menu.piti) || any;
+        any = renderCategory(body, 'Dezerty', menu.dezerty) || any;
+        if (!any) body.appendChild(el('div', { class: 'empty', text: 'Pro dnešek nejsou žádné položky.' }));
+      }
+
+      return el('div', { class: 'card' }, [header, body]);
+    }
+
+    function renderCategory(parent, title, items) {
+      if (!items || items.length === 0) return false;
+      var cat = el('div', { class: 'menu-cat' }, [el('div', { class: 'menu-cat-title', text: title })]);
+
+      items.forEach(function(item) {
+        var nameWrap = el('div', { class: 'item-name' });
+        if (item.cislo) {
+          nameWrap.appendChild(el('span', { class: 'item-no', text: item.cislo + '.' }));
+        }
+        var textBlock = el('span', { class: 'item-text' }, [document.createTextNode(item.nazev || '')]);
+        nameWrap.appendChild(textBlock);
+
+        var hasTags = item.mnozstvi || (item.alergeny && item.alergeny.length);
+        if (hasTags) {
+          var tags = el('div', { class: 'item-tags' });
+          if (item.mnozstvi) tags.appendChild(el('span', { class: 'tag', text: item.mnozstvi }));
+          (item.alergeny || []).forEach(function(a) {
+            var label = ALERGEN_LABELS[String(a)] || ('Alergen ' + a);
+            tags.appendChild(el('span', { class: 'tag tag-allergen', title: label, text: a }));
+          });
+          textBlock.appendChild(tags);
+        }
+
+        cat.appendChild(el('div', { class: 'item' }, [
+          nameWrap,
+          el('div', { class: 'item-price', text: item.cena || '' })
+        ]));
+      });
+      parent.appendChild(cat);
+      return true;
+    }
+
+    var EDITING_ID = null; // ID restaurace, která je právě v inline edit módu
+
+    function renderSettings() {
+      var ids = sledovaneIds();
+
+      // Zobrazí všechny sledované — i orphans (ID, které nejsou v katalogu),
+      // aby je uživatel mohl smazat. Orphans nemají edit ✏️.
+      var byId = {};
+      STATE.restaurace.forEach(function(r) { byId[r.id] = r; });
+
+      // Pořadí respektuje CSV v sledovane_restaurace (uživatel může měnit šipkami).
+      // Orphans se nesortí na konec — zůstávají na svém indexu.
+      var listed = ids.map(function(id) {
+        return byId[id] || { id: id, nazev: 'Restaurace ' + id, mesto: '', url: null, orphan: true };
+      });
+
+      var list = $('fav-list');
+      clear(list);
+
+      if (listed.length === 0) {
+        list.appendChild(el('div', { class: 'empty', text: 'Nemáš zatím žádné sledované restaurace. Přidej první níže.' }));
+      }
+
+      var canRemove = listed.length > 1;
+
+      listed.forEach(function(r, index) {
+        if (EDITING_ID === r.id && !r.orphan) {
+          list.appendChild(renderEditForm(r));
+          return;
+        }
+
+        // Drag handle — celé fav je draggable, handle je vizuální klíč
+        var handle = el('div', { class: 'fav-handle', title: 'Přetáhni pro změnu pořadí', 'aria-label': 'Přetáhnout' }, ['⋮⋮']);
+
+        // Pořadové číslo
+        var order = el('div', { class: 'fav-order', text: (index + 1) + '.' });
+
+        // Checkbox = visible/hidden (NE remove)
+        var checkbox = el('input', { type: 'checkbox' });
+        checkbox.checked = !isHidden(r.id);
+        checkbox.title = 'Zobrazit v jídelníčku';
+        checkbox.addEventListener('change', function() { toggleVisible(r.id, checkbox.checked); });
+
+        var nameWrap = el('div', { class: 'fav-name' }, [document.createTextNode(r.nazev)]);
+        if (r.mesto) nameWrap.appendChild(el('span', { class: 'fav-meta', text: ' (' + r.mesto + ')' }));
+        if (r.orphan) nameWrap.appendChild(el('span', { class: 'fav-meta', text: ' — chybí v katalogu' }));
+
+        // Akce vpravo: 🗑️ (smazat) + ✏️ (edit) — popelnice nahoře
+        var rmBtn = el('button', { class: 'fav-rm', title: 'Smazat ze sledovaných', 'aria-label': 'Smazat' }, ['🗑️']);
+        if (!canRemove) {
+          rmBtn.disabled = true;
+          rmBtn.title = 'Musíš sledovat alespoň jednu restauraci.';
+        }
+        rmBtn.addEventListener('click', function() { removeFromList(r.id); });
+
+        var actionItems = [rmBtn];
+        if (!r.orphan) {
+          var editBtn = el('button', { class: 'fav-edit', title: 'Upravit název / město', 'aria-label': 'Upravit' }, ['✏️']);
+          editBtn.addEventListener('click', function() { EDITING_ID = r.id; renderSettings(); });
+          actionItems.push(editBtn);
+        }
+        var rightStack = el('div', { class: 'fav-actions' }, actionItems);
+
+        var favEl = el('div', { class: 'fav' }, [handle, order, checkbox, nameWrap, rightStack]);
+        favEl.dataset.id = r.id;
+
+        list.appendChild(favEl);
+      });
+
+      // Aktivuj Sortable.js drag-and-drop (s touch fallbackem pro mobil)
+      _initSortable_(list);
+
+      var dietRow = $('diet-row');
+      clear(dietRow);
+      var current = dietKeys();
+      DIET_OPTIONS.forEach(function(opt) {
+        var active = current.indexOf(opt.key) >= 0;
+        var chip = el('button', {
+          class: 'diet-chip' + (active ? ' active' : ''),
+          'data-key': opt.key,
+          text: opt.label
+        });
+        chip.addEventListener('click', function() { toggleDiet(opt.key); });
+        dietRow.appendChild(chip);
+      });
+
+      renderRss();
+    }
+
+    function renderRss() {
+      var box = $('rss-section');
+      clear(box);
+
+      if (STATE.user.rss_url) {
+        var input = el('input', { type: 'text', readonly: 'readonly', value: STATE.user.rss_url });
+        var copyBtn = el('button', { text: 'Kopírovat' });
+        copyBtn.addEventListener('click', function() { copyToClipboard(STATE.user.rss_url, copyBtn); });
+
+        box.appendChild(el('div', { class: 'rss-row' }, [input, copyBtn]));
+        box.appendChild(el('div', { class: 'rss-hint', text:
+          'Vlož tento odkaz do své RSS čtečky. Aktualizuje se 2× denně po stažení nových menu.' }));
+      } else {
+        var btn = el('button', { class: 'rss-cta', text: 'Vygenerovat RSS odkaz' });
+        btn.addEventListener('click', function() { generateRss(btn); });
+        box.appendChild(btn);
+        box.appendChild(el('div', { class: 'rss-hint', text:
+          'Vlastní RSS feed pro tvé sledované restaurace. Lze otevřít v jakékoliv RSS čtečce bez přihlašování.' }));
+      }
+    }
+
+    function generateRss(btn) {
+      btn.disabled = true;
+      btn.textContent = 'Generuji…';
+      google.script.run
+        .withSuccessHandler(function(result) {
+          STATE.user.rss_url = result.rss_url;
+          renderRss();
+          showToast('RSS odkaz vytvořen');
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Vygenerovat RSS odkaz';
+          showToast('Chyba: ' + err.message, 'error');
+        })
+        .getRssUrl();
+    }
+
+    function copyToClipboard(text, btn) {
+      var done = function() {
+        var orig = btn.textContent;
+        btn.textContent = 'Zkopírováno ✓';
+        setTimeout(function() { btn.textContent = orig; }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function() { fallbackCopy(text); done(); });
+      } else {
+        fallbackCopy(text);
+        done();
+      }
+    }
+
+    function fallbackCopy(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+
+    function toggleVisible(id, visible) {
+      var skryte = skryteIds();
+      var idx = skryte.indexOf(String(id));
+      if (visible && idx !== -1) skryte.splice(idx, 1);
+      if (!visible && idx === -1) skryte.push(String(id));
+      STATE.user.skryte_restaurace = skryte.join(',');
+      renderRestaurants();
+      saveSettings({ skryte_restaurace: STATE.user.skryte_restaurace });
+    }
+
+    function removeFromList(id) {
+      var ids = sledovaneIds();
+      if (ids.length === 1) {
+        showToast('Musíš sledovat alespoň jednu restauraci', 'error');
+        return;
+      }
+      // Volá server (Restaurants_removeFromUser_), který provede min-1 enforce
+      // a cleanup ze skrytých.
+      google.script.run
+        .withSuccessHandler(function(result) {
+          STATE.user.sledovane_restaurace = result.sledovane.join(',');
+          // Cleanup STATE.user.skryte_restaurace lokálně (server taky)
+          var skryte = skryteIds().filter(function(x) { return x !== String(id); });
+          STATE.user.skryte_restaurace = skryte.join(',');
+          renderSettings();
+          renderRestaurants();
+        })
+        .withFailureHandler(function(err) { showToast('Chyba: ' + err.message, 'error'); })
+        .removeRestaurant(id);
+    }
+
+    function renderEditForm(rest) {
+      var nazevInput = el('input', { type: 'text', value: rest.nazev || '', placeholder: 'Název' });
+      var mestoInput = el('input', { type: 'text', value: rest.mesto || '', placeholder: 'Město' });
+
+      var saveBtn = el('button', { class: 'save', text: 'Uložit' });
+      var cancelBtn = el('button', { class: 'cancel', text: 'Zrušit' });
+
+      saveBtn.addEventListener('click', function() {
+        var payload = {
+          nazev: nazevInput.value.trim(),
+          mesto: mestoInput.value.trim()
+        };
+        if (!payload.nazev) {
+          showToast('Název nesmí být prázdný', 'error');
+          return;
+        }
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Ukládám…';
+        google.script.run
+          .withSuccessHandler(function(updated) {
+            for (var i = 0; i < STATE.restaurace.length; i++) {
+              if (STATE.restaurace[i].id === rest.id) {
+                STATE.restaurace[i] = updated;
+                break;
+              }
+            }
+            EDITING_ID = null;
+            renderSettings();
+            renderRestaurants();
+            showToast('Uloženo (vidíš jen ty)');
+          })
+          .withFailureHandler(function(err) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Uložit';
+            showToast('Chyba: ' + err.message, 'error');
+          })
+          .updateRestaurant(rest.id, payload);
+      });
+
+      cancelBtn.addEventListener('click', function() {
+        EDITING_ID = null;
+        renderSettings();
+      });
+
+      var urlReadonly = el('a', {
+        href: rest.url || '#',
+        target: '_blank',
+        rel: 'noopener',
+        class: 'rss-hint'
+      }, [rest.url || '—']);
+
+      return el('div', { class: 'fav-edit-form' }, [
+        el('label', { text: 'Název (jen pro tebe)' }),
+        nazevInput,
+        el('label', { text: 'Město (jen pro tebe)' }),
+        mestoInput,
+        el('label', { text: 'URL profilu — měnit nelze, jen odebrat a přidat znovu' }),
+        urlReadonly,
+        el('div', { class: 'fav-edit-actions' }, [saveBtn, cancelBtn])
+      ]);
+    }
+
+    function toggleDiet(key) {
+      var current = dietKeys();
+      var idx = current.indexOf(key);
+      if (idx === -1) current.push(key); else current.splice(idx, 1);
+      STATE.user.dieta = current.join(',');
+      renderSettings();
+      saveSettings({ dieta: STATE.user.dieta });
+    }
+
+    var saveDebounceTimer = null;
+    var pendingSave = {};
+    function saveSettings(payload) {
+      Object.keys(payload).forEach(function(k) { pendingSave[k] = payload[k]; });
+      clearTimeout(saveDebounceTimer);
+      saveDebounceTimer = setTimeout(function() {
+        var toSend = pendingSave;
+        pendingSave = {};
+        google.script.run
+          .withFailureHandler(function(err) { showToast('Chyba uložení: ' + err.message, 'error'); })
+          .updateSettings(toSend);
+      }, 350);
+    }
+
+    var MENICKA_URL_RE = /^https?:\/\/(?:www\.)?menicka\.cz\/\d+-[a-z0-9-]+\.html(?:[?#].*)?$/i;
+
+    function addRestaurantByUrl() {
+      var input = $('add-url');
+      var url = (input.value || '').trim();
+      if (!url) return;
+      if (!MENICKA_URL_RE.test(url)) {
+        showToast('Vlož URL ve tvaru https://www.menicka.cz/12345-nazev.html', 'error');
+        return;
+      }
+      addRestaurantByInput(url, $('btn-add'), input);
+    }
+
+    function addRestaurantByInput(serverInput, btn, urlInput) {
+      var origLabel = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Přidávám…';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.disabled = false;
+          btn.textContent = origLabel;
+          if (urlInput) urlInput.value = '';
+
+          if (!STATE.restaurace.some(function(r) { return r.id === result.restaurace.id; })) {
+            STATE.restaurace.push(result.restaurace);
+          }
+          STATE.user.sledovane_restaurace = result.sledovane.join(',');
+
+          renderSettings();
+          renderRestaurants();
+          showToast('Restaurace přidána, načítám menu…');
+
+          google.script.run
+            .withSuccessHandler(function(menuResult) {
+              if (menuResult && menuResult.menu) {
+                STATE.menu[menuResult.id] = menuResult.menu;
+                renderRestaurants();
+              }
+            })
+            .withFailureHandler(function() { /* menu se dotáhne při refreshi */ })
+            .fetchMenuForRestaurant(result.restaurace.id);
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.textContent = origLabel;
+          showToast('Chyba: ' + err.message, 'error');
+        })
+        .addRestaurant(serverInput);
+    }
+
+    function refreshFromServer() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          STATE.user = data.user;
+          STATE.menu = data.menu || {};
+          STATE.restaurace = data.restaurace || [];
+          render();
+        })
+        .withFailureHandler(function(err) {
+          showToast('Chyba načtení: ' + err.message, 'error');
+        })
+        .bootstrap();
+    }
+
+    function toggleSettings(force) {
+      var s = $('settings');
+      var open = (typeof force === 'boolean') ? force : !s.classList.contains('open');
+      s.classList.toggle('open', open);
+      s.setAttribute('aria-hidden', String(!open));
+    }
+
+    function setCols(n) {
+      var v = parseInt(n, 10);
+      if (isNaN(v) || v < 1) v = 1;
+      if (v > 4) v = 4;
+      STATE.cols = v;
+      localStorage.setItem('menicka_cols', String(v));
+      $('opt-cols').value = String(v);
+      renderRestaurants();
+    }
+
+    function setHideEmpty(on) {
+      STATE.hideEmpty = !!on;
+      localStorage.setItem('menicka_hide_empty', STATE.hideEmpty ? 'true' : 'false');
+      $('opt-hide-empty').checked = STATE.hideEmpty;
+      renderRestaurants();
+    }
+
+    var _sortableInstance = null;
+
+    function _initSortable_(listEl) {
+      if (_sortableInstance) {
+        try { _sortableInstance.destroy(); } catch (e) {}
+        _sortableInstance = null;
+      }
+      if (!window.Sortable) return; // CDN nedostupné — drag-and-drop nebude
+      _sortableInstance = Sortable.create(listEl, {
+        handle: '.fav-handle',
+        draggable: '.fav',
+        animation: 150,
+        ghostClass: 'sort-ghost',
+        chosenClass: 'sort-chosen',
+        dragClass: 'sort-drag',
+        delay: 100,            // Krátké zdržení před tím než drag začne (anti-misdrag na touch)
+        delayOnTouchOnly: true,
+        touchStartThreshold: 5,
+        onEnd: function(evt) {
+          if (evt.oldIndex === evt.newIndex) return;
+          var ids = sledovaneIds();
+          var moved = ids[evt.oldIndex];
+          if (!moved) return;
+          ids.splice(evt.oldIndex, 1);
+          ids.splice(evt.newIndex, 0, moved);
+          STATE.user.sledovane_restaurace = ids.join(',');
+          renderSettings();
+          renderRestaurants();
+          saveSettings({ sledovane_restaurace: STATE.user.sledovane_restaurace });
+        }
+      });
+    }
+
+    function setTheme(theme) {
+      STATE.theme = theme;
+      localStorage.setItem('menicka_theme', theme);
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+
+    var toastTimer = null;
+    function showToast(msg, type) {
+      var t = $('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (type === 'error' ? ' error' : '');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function() { t.classList.remove('show'); }, 3000);
+    }
+
+    setTheme(STATE.theme);
+
+    $('btn-settings').addEventListener('click', function() { toggleSettings(); });
+    $('btn-theme').addEventListener('click', function() {
+      setTheme(STATE.theme === 'dark' ? 'light' : 'dark');
+    });
+    $('btn-add').addEventListener('click', addRestaurantByUrl);
+    $('add-url').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') addRestaurantByUrl();
+    });
+    $('btn-add-menza').addEventListener('click', function() { addRestaurantByInput('menza', $('btn-add-menza')); });
+
+    $('opt-hide-empty').addEventListener('change', function() { setHideEmpty(this.checked); });
+    $('opt-cols').addEventListener('change', function() { setCols(this.value); });
+
+    setHideEmpty(STATE.hideEmpty);
+    setCols(STATE.cols);
+    render();
+
+    // Handshake s PWA wrapperem (menicka.html v parent GitHub Pages):
+    // wrapper má loading overlay, který fade-outne po obdržení této zprávy.
+    try { window.parent.postMessage({ type: 'menicka-ready' }, '*'); } catch (e) {}
+
+    if (STATE.user && STATE.user.novy) {
+      setTimeout(function() {
+        toggleSettings(true);
+        showToast('Vítejte! Vlož URL své první restaurace z menicka.cz.');
+      }, 200);
+    }
+  </script>
+</body>
+</html>
