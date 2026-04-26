@@ -42,3 +42,6 @@ node_modules/
 # chceme držet v gitu kvůli historii + backupu (nikoli skrz clasp jako parent).
 !jidlogic.menicka/
 !jidlogic.menicka/**
+# …ale Claude Code lokální nastavení (per-machine permissions) v subfolderu
+# zůstávají lokální stejně jako v parentu.
+jidlogic.menicka/.claude/
