@@ -1,4 +1,7 @@
 // Jídlogic — Service Worker (PWA shell cache)
+// v14 — 2026-04-26: přidáno menicka.html + menicka-manifest.json do shell cache
+// (samostatná Meníčka PWA na stejném GitHub Pages origin). Iframe target je
+// jiný GAS deploy (AKfycbw4… místo AKfycbxq…), ale wrapper se chová stejně.
 // v13 — 2026-04-23: obousměrný handshake — wrapper posílá ACK 'wrapper-hidden'
 // do iframe po dokončení fade, Obedy.html čeká na ACK před spuštěním loading
 // animation (jinak kroky 0-2 běžely skryté pod wrapperem). Fallback timeout
@@ -15,11 +18,13 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v13';
+var CACHE_NAME = 'jidlogic-shell-v14';
 var CORE_SHELL = [
   './',
   'index.html',
   'manifest.json',
+  'menicka.html',
+  'menicka-manifest.json',
   'icon.svg?v=20260422',
 ];
 
