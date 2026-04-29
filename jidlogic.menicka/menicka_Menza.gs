@@ -12,7 +12,8 @@
  *   "oběd"           → obed
  *   "oběd ostatní"   → obed_ostatni
  *   "pizza"          → pizza
- *   ostatní (steril., obaly, minutky, …) → ignorováno
+ *   "minutky"        → minutky
+ *   ostatní (steril., obaly, …) → ignorováno
  *   menza nemá pití ani dezerty
  *
  * Pokud API vrací prázdno (víkend, prázdniny), `menu.info` obsahuje hlášku.
@@ -33,7 +34,8 @@ var MENZA_KIND_MAP = {
   'polévka':      'polevky',
   'oběd':         'obed',
   'oběd ostatní': 'obed_ostatni',
-  'pizza':        'pizza'
+  'pizza':        'pizza',
+  'minutky':      'minutky'
 };
 
 // "120g Svíčková" → mnozstvi="120g", nazev="Svíčková". Group 1 = hodnota,
@@ -49,7 +51,8 @@ function Menza_fetchTodayMenu_() {
     obed: [],
     obed_ostatni: [],
     pizza: [],
-    hlavni_jidla: [],  // prázdné pro Menzu (FE renderuje obed/obed_ostatni/pizza zvlášť)
+    minutky: [],
+    hlavni_jidla: [],  // prázdné pro Menzu (FE renderuje obed/obed_ostatni/pizza/minutky zvlášť)
     piti: [],
     dezerty: []
   };
@@ -103,7 +106,7 @@ function Menza_fetchTodayMenu_() {
 
   // Krok 3: roztřiď do kategorií + per-kategorie číslování (1. 2. … oddělené
   // pro Oběd vs. Oběd ostatní vs. Pizza, jak to ukazuje webkredit menzy).
-  var counters = { obed: 0, obed_ostatni: 0, pizza: 0 };
+  var counters = { obed: 0, obed_ostatni: 0, pizza: 0, minutky: 0 };
   items.forEach(function(item) {
     var kind = String(item.mealKindName || '').trim().toLowerCase();
     var category = MENZA_KIND_MAP[kind];
@@ -142,8 +145,9 @@ function Menza_fetchTodayMenu_() {
   // Pokud po filtraci žádná položka neprošla mapou, info — uživatel by jinak
   // viděl prázdnou kartu bez vysvětlení.
   if (menu.polevky.length === 0 && menu.obed.length === 0
-      && menu.obed_ostatni.length === 0 && menu.pizza.length === 0) {
-    menu.info = 'Menza dnes nemá v nabídce polévky, obědy ani pizzy.';
+      && menu.obed_ostatni.length === 0 && menu.pizza.length === 0
+      && menu.minutky.length === 0) {
+    menu.info = 'Menza dnes nemá v nabídce žádné jídlo.';
   }
 
   return menu;

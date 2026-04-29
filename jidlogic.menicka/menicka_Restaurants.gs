@@ -25,12 +25,17 @@ function Restaurants_listActive_() {
   var active = rows
     .filter(function(r) { return _truthy_(r['aktivní']); })
     .map(function(r) {
+      var lat = parseFloat(r.lat);
+      var lon = parseFloat(r.lon);
       return {
         id: String(r.id),
         nazev: r['název'] || '',
         mesto: r['město'] || '',
+        adresa: r['adresa'] || '',
         url: r.url || '',
         foto_url: r.foto_url || '',
+        lat: isNaN(lat) ? null : lat,
+        lon: isNaN(lon) ? null : lon,
         vychozi: _truthy_(r['výchozí'])
       };
     });
@@ -66,7 +71,12 @@ function Restaurants_register_(input) {
   // Speciální zkratka pro Menzu UTB
   if (String(input).trim().toLowerCase() === MENZA_RESTAURACE_ID) {
     var existing = Restaurants_byId_(MENZA_RESTAURACE_ID);
-    if (existing) return existing;
+    if (existing) {
+      // DB záznam existuje, ale může mít prázdná pole (registrace před přidáním
+      // sloupců adresa/lat/lon). Reconcile doplní z hard-coded defaultů.
+      Restaurants_reconcileMenza_();
+      return Restaurants_byId_(MENZA_RESTAURACE_ID);  // re-read po reconcile
+    }
     return _registerMenza_();
   }
 
@@ -98,12 +108,18 @@ function Restaurants_register_(input) {
   }
   // Město může zůstat prázdné — uživatel ho doplní přes UI ✏️.
 
+  // Bez sync geocode — addRestaurant musí být co nejrychlejší. Souřadnice
+  // doplní FE async přes `geocodeRestaurant(id)` po success addu, nebo
+  // půlnoční backfill trigger pro chybějící.
   var rec = {
     id: String(parsed.id),
     nazev: info.nazev,
     mesto: info.mesto || '',
+    adresa: info.adresa || '',
     url: parsed.url,
     foto_url: print.foto_url || '',
+    lat: null,
+    lon: null,
     vychozi: false
   };
 
@@ -111,8 +127,11 @@ function Restaurants_register_(input) {
     id: rec.id,
     'název': rec.nazev,
     'město': rec.mesto,
+    'adresa': rec.adresa,
     url: rec.url,
     foto_url: rec.foto_url,
+    lat: '',
+    lon: '',
     'aktivní': 1,
     'výchozí': 0
   });
@@ -347,6 +366,66 @@ function Restaurants_setOverride_(email, restauraceId, payload) {
 }
 
 /**
+ * Re-fetch katalogových metadat pro restauraci (z menicka.cz). Doplňuje JEN
+ * prázdná pole (adresa, foto_url, lat/lon) — název a město jsou stabilní a
+ * mohou mít per-user overrides. Idempotentní: pokud nic nechybí, neudělá nic.
+ *
+ * Volá se:
+ *   - Z `updateRestaurant` po Save edit formu (uživatel tak pasivně doplní data
+ *     pro restaurace registrované před přidáním sloupců adresa/lat/lon).
+ *   - Z admin backfillu `backfillRestaurantAddresses`.
+ */
+function Restaurants_refreshCatalogInfo_(restauraceId) {
+  var rid = String(restauraceId);
+  if (rid === MENZA_RESTAURACE_ID) return null;  // Menza není na menicka.cz
+
+  var rows = _readAll_(SHEETS.RESTAURACE);
+  var row = null;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].id) === rid) { row = rows[i]; break; }
+  }
+  if (!row || !row.url) return null;
+
+  var updates = {};
+  var needsAddress = !row['adresa'];
+  var needsFoto = !row.foto_url;
+
+  if (needsAddress) {
+    try {
+      var info = Scraper_fetchRestaurantInfo_(row.url);
+      if (info.adresa) updates['adresa'] = info.adresa;
+    } catch (e) { Logger.log('refreshCatalogInfo profile fetch fail pro ' + rid + ': ' + e.message); }
+  }
+
+  if (needsFoto) {
+    try {
+      var print = Scraper_fetchPrintProfile_(rid);
+      if (print.foto_url) updates.foto_url = print.foto_url;
+    } catch (e) { Logger.log('refreshCatalogInfo print fetch fail pro ' + rid + ': ' + e.message); }
+  }
+
+  // Lat/lon — pokud chybí, geocoduj z (nově získané nebo existující) adresy
+  var hasLat = row.lat !== '' && row.lat != null;
+  if (!hasLat) {
+    var addr = updates['adresa'] || row['adresa'] || '';
+    var mesto = row['město'] || '';
+    if (addr || mesto) {
+      var geo = Geo_geocodeRestaurant_(addr, mesto);
+      if (geo) {
+        updates.lat = geo.lat;
+        updates.lon = geo.lon;
+      }
+    }
+  }
+
+  if (Object.keys(updates).length > 0) {
+    _setRowFields_(SHEETS.RESTAURACE, row._row, updates);
+    Restaurants_invalidate_();
+  }
+  return Restaurants_byId_(rid);
+}
+
+/**
  * Vrací seznam aktivních restaurací s aplikovanými per-user overrides.
  * Použije se v bootstrap a v RSS publish.
  */
@@ -365,8 +444,11 @@ function _applyOverride_(rec, override) {
     id: rec.id,
     nazev: override.nazev || rec.nazev,
     mesto: (override.mesto !== undefined) ? override.mesto : rec.mesto,
+    adresa: rec.adresa || '',
     url: rec.url,
     foto_url: rec.foto_url || '',
+    lat: rec.lat,
+    lon: rec.lon,
     vychozi: rec.vychozi,
     custom: true
   };
@@ -404,26 +486,70 @@ function _removeRestaurantFromAllUsers_(restauraceId) {
 /**
  * Zaregistruje speciální Menzu UTB do listu Restaurace.
  */
+// Hard-coded defaults pro Menzu UTB — adresa Fakulty aplikované informatiky
+// (Nad Stráněmi 4511, Zlín), kde menza U5 reálně sídlí. DB má přednost: pokud
+// uživatel přepíše hodnotu v listu, zachová se. Pokud řádek menzy v DB chybí
+// (nikdy neregistrována) nebo má prázdné cell, naplní se z těchto defaultů.
+var MENZA_DEFAULTS = {
+  adresa: 'Nad Stráněmi 4511, 760 05 Zlín',
+  lat: 49.2308,
+  lon: 17.6510
+};
+
 function _registerMenza_() {
   var rec = {
     id: MENZA_RESTAURACE_ID,
     nazev: MENZA_INFO.nazev,
     mesto: MENZA_INFO.mesto,
+    adresa: MENZA_DEFAULTS.adresa,
     url: MENZA_INFO.url,
     foto_url: '',
+    lat: MENZA_DEFAULTS.lat,
+    lon: MENZA_DEFAULTS.lon,
     vychozi: false
   };
   _appendRowMapped_(SHEETS.RESTAURACE, {
     id: rec.id,
     'název': rec.nazev,
     'město': rec.mesto,
+    'adresa': rec.adresa,
     url: rec.url,
     foto_url: '',
+    lat: rec.lat,
+    lon: rec.lon,
     'aktivní': 1,
     'výchozí': 0
   });
   Restaurants_invalidate_();
   return rec;
+}
+
+/**
+ * Pokud řádek menzy v listu Restaurace má prázdná pole (adresa / lat / lon),
+ * doplní je z `MENZA_DEFAULTS`. DB hodnoty zůstanou nedotčené (priorita DB,
+ * default jen jako fallback). Idempotentní — po prvním běhu nedělá nic.
+ *
+ * Volá se z `initializeMenicka` (schema migration) a z `Restaurants_register_`
+ * když user přidá Menzu a ona už v listu je (pasivní fix prázdných cells).
+ */
+function Restaurants_reconcileMenza_() {
+  var rows = _readAll_(SHEETS.RESTAURACE);
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].id) !== MENZA_RESTAURACE_ID) continue;
+    var r = rows[i];
+    var updates = {};
+    if (!r['adresa']) updates['adresa'] = MENZA_DEFAULTS.adresa;
+    if (r.lat === '' || r.lat == null) updates.lat = MENZA_DEFAULTS.lat;
+    if (r.lon === '' || r.lon == null) updates.lon = MENZA_DEFAULTS.lon;
+    if (Object.keys(updates).length > 0) {
+      _setRowFields_(SHEETS.RESTAURACE, r._row, updates);
+      Restaurants_invalidate_();
+      Logger.log('Menza reconcile: doplněno z defaultů → ' + Object.keys(updates).join(', '));
+      return updates;
+    }
+    return null;  // Menza existuje, vše vyplněné — žádné updates
+  }
+  return null;  // Menza v listu vůbec není (nikdy nebyla registrovaná)
 }
 
 /**

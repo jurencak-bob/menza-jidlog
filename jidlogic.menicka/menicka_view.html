@@ -76,21 +76,6 @@
       font-size: 1.1rem; font-weight: 700; color: var(--accent);
       display: flex; align-items: center; gap: 8px;
     }
-    /* Edition badge (BE = Blogic Edition / Bob Edition). Drobný outlinovaný
-       suffix u názvu — odlišuje od menicka.cz, signalizuje speciální edici. */
-    .brand-edition {
-      display: inline-block;
-      margin-left: 6px;
-      font-size: 0.55rem;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      color: var(--text-muted);
-      border: 1.5px solid var(--text-muted);
-      border-radius: 3px;
-      padding: 1px 4px 0;
-      vertical-align: middle;
-      position: relative; top: -1px;
-    }
     .header-actions { display: flex; align-items: center; gap: 4px; }
     .icon-btn {
       width: 40px; height: 40px;
@@ -346,6 +331,19 @@
     .card-link:hover { background: rgba(107, 45, 139, 0.1); }
     .card-link svg { width: 18px; height: 18px; }
 
+    /* Map-pin v hlavičce karty — viditelné jen pokud restaurace má adresu.
+       Klik otevře Google Maps s plnou adresou jako query (přesnost ulice). */
+    .card-map-btn {
+      color: var(--text-muted); text-decoration: none;
+      display: flex; align-items: center; padding: 4px;
+      margin: -4px 0 0 0;
+      border-radius: 6px;
+      transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .card-map-btn:hover { background: rgba(107, 45, 139, 0.1); color: var(--accent); }
+    .card-map-btn svg { width: 18px; height: 18px; }
+
     /* Logo restaurace z menicka.cz tisk-profilu, soft-fail přes onerror. */
     .card-thumb {
       width: 40px; height: 40px;
@@ -386,6 +384,33 @@
     .card-refresh-btn.is-loading { color: var(--accent); cursor: wait; }
     .card-refresh-btn.is-loading svg { animation: refresh-spin 1s linear infinite; }
     @keyframes refresh-spin { to { transform: rotate(360deg); } }
+
+    /* Info-lišta pod hlavičkou karty během aktualizace jídelníčku — uživatel
+       vidí stará data, bar oznamuje že nová přijdou. Skryje se v okamžiku
+       překreslení (next render má `isLoading=false`, bar se prostě nevyrendruje). */
+    .card-refresh-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 16px;
+      background: var(--cat-bg);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75em;
+      color: var(--text-secondary);
+      line-height: 1.3;
+    }
+    .card-refresh-bar svg {
+      width: 13px; height: 13px;
+      color: var(--accent);
+      flex-shrink: 0;
+      animation: hourglass-flip 2.4s ease-in-out infinite;
+    }
+    @keyframes hourglass-flip {
+      0%, 40% { transform: rotate(0deg); }
+      50%, 90% { transform: rotate(180deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .card-refresh-bar svg { animation: none; }
+    }
 
     /* Eye-off ikona v hlavičce karty — skryje kartu z jídelníčku (desktop only).
        Opětovné zobrazení v Nastavení přes badge "oko". */
@@ -443,7 +468,17 @@
       flex: 0 0 1.6em; text-align: right;
     }
     .item-text { flex: 1; min-width: 0; }
+    /* Mobile default: tags (gramáž) pod názvem jídla. Desktop: inline za názvem
+       — kompaktnější layout pro užší sloupce a vyšší hustotu informací. */
     .item-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+    @media (min-width: 701px) {
+      .item-tags {
+        display: inline-flex;
+        margin-top: 0;
+        margin-left: 8px;
+        vertical-align: baseline;
+      }
+    }
     .tag {
       font-size: 0.7em; padding: 1px 6px; border-radius: 4px;
       background: var(--cat-bg); color: var(--accent); white-space: nowrap;
@@ -832,6 +867,15 @@
       text-decoration: underline; font-family: inherit;
     }
     .link-btn:hover { opacity: 0.8; }
+    /* "Obnovit polohu" tlačítko v geo nastavení — text + Lucide ikona inline,
+       margin nahoře pro odsazení od status řádku. */
+    #opt-geo-refresh {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 6px;
+      font-size: 0.85rem;
+    }
+    #opt-geo-refresh svg { width: 14px; height: 14px; }
+    #opt-geo-refresh[hidden] { display: none; }
 
     .add-row { display: flex; gap: 8px; margin-top: 10px; }
     .add-row input {
@@ -839,12 +883,14 @@
       border-radius: 8px; font-size: 0.9rem; background: var(--bg); color: var(--text);
     }
     .add-row input:focus { outline: 2px solid var(--accent); border-color: transparent; }
-    .add-row button {
+    /* `:not(.info-btn)` aby tahle plné fialové stylování se nepřebilo na info
+       tlačítko (info-btn má výrazně jiný visual: outline + nápovědný tooltip). */
+    .add-row button:not(.info-btn) {
       padding: 10px 16px; background: var(--accent); color: #fff;
       border: none; border-radius: 8px; cursor: pointer; font-weight: 500;
     }
-    .add-row button:hover { background: var(--purple-light); }
-    .add-row button:disabled { opacity: 0.5; cursor: wait; }
+    .add-row button:not(.info-btn):hover { background: var(--purple-light); }
+    .add-row button:not(.info-btn):disabled { opacity: 0.5; cursor: wait; }
 
     .diet-row { display: flex; flex-wrap: wrap; gap: 6px; }
     .diet-chip {
@@ -886,6 +932,31 @@
       border: none; border-radius: 8px; cursor: pointer; font-weight: 500;
     }
     .rss-cta:disabled { opacity: 0.5; cursor: wait; }
+
+    /* Custom tooltip — JS-řízený, nahrazuje native title (rychlejší appearance,
+       funguje na mobilu, clampuje se uvnitř viewportu). Single shared element
+       v <body>, pozicuje se z JS dle target rectu + viewport edges. */
+    .tooltip {
+      position: fixed;
+      background: var(--text); color: var(--bg-card);
+      padding: 6px 10px; border-radius: 6px;
+      font-size: 0.8rem; line-height: 1.3;
+      max-width: min(280px, calc(100vw - 24px));
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease-out;
+      z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      font-family: inherit; font-weight: 400;
+      text-align: center;
+      white-space: normal;
+      word-wrap: break-word;
+      left: 0; top: 0;
+    }
+    .tooltip.show { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) {
+      .tooltip { transition: none; }
+    }
 
     .toast {
       position: fixed; bottom: 16px; left: 50%;
@@ -1002,7 +1073,7 @@
     <div class="header-inner">
       <div class="header-title">
         <i data-lucide="utensils-crossed" aria-hidden="true"></i>
-        <span>meníčka<span class="brand-edition" title="Blogic Edition">BE</span></span>
+        <span title="meníčka Blogic Edition nebo Bob Edition ...vyber si :-D">meníčka BE</span>
       </div>
       <div class="header-actions">
         <button class="icon-btn" id="btn-theme" title="Přepnout tmavý režim" aria-label="Přepnout tmavý režim">
@@ -1060,6 +1131,9 @@
       <label class="toggle-row">
         <input type="checkbox" id="opt-hide-empty">
         <span>Skrýt restaurace bez dnešního menu (zavřeno, nezadáno)</span>
+        <span class="toggle-info" title="O víkendech a státních svátcích je tato volba zapnutá automaticky (a uzamčená) — většina restaurací tehdy nevaří. Po skončení svátku se vrátí tvoje původní nastavení." aria-label="Detail" onclick="event.stopPropagation()">
+          <i data-lucide="info"></i>
+        </span>
       </label>
 
       <!-- Logo restaurace v UI zatím skryto. Backend dál fetchuje foto_url
@@ -1078,6 +1152,24 @@
         <span>Zobrazit gramáž / objem u jídel</span>
       </label>
       <div class="settings-group-note">Malý štítek („300g", „0.33l", …) pod každou položkou jídelníčku, pokud zdroj uvádí.</div>
+
+      <fieldset class="settings-group" id="geo-group">
+        <legend>Filtr podle polohy</legend>
+        <div class="settings-group-note">Zobrazí jen podniky v okruhu kolem tvojí aktuální polohy. Posuň slider na <b>∞</b> pro vypnutí filtru. Při prvním zapnutí prohlížeč jednou požádá o povolení k poloze. Restaurace bez známé polohy zůstanou vidět.</div>
+
+        <label class="toggle-row" id="geo-radius-row">
+          <span>Okruh:</span>
+          <div class="slider-wrap">
+            <input type="range" id="opt-geo-radius" min="0" max="5" step="1" value="5">
+            <div class="slider-ticks" id="geo-radius-ticks"></div>
+          </div>
+        </label>
+
+        <div class="settings-group-note" id="opt-geo-status" style="min-height: 1em;"></div>
+        <button id="opt-geo-refresh" class="link-btn" type="button" hidden title="Vyžádat aktuální polohu znovu — pokud ses pohnul a appka ještě neobnovila polohu sama.">
+          <i data-lucide="navigation"></i> Obnovit polohu teď
+        </button>
+      </fieldset>
 
       <fieldset class="settings-group" id="cols-group">
         <legend>Sloupcové zobrazení</legend>
@@ -1168,8 +1260,6 @@
 
   <footer class="site-footer">
     <div class="footer-inner">
-      <span class="footer-by">meníčka BE</span>
-      <span class="footer-sep">·</span>
       <a href="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy" target="_blank" rel="noopener" title="Otevřít Jídlogic v novém tabu">Jídlogic</a>
       <span class="footer-sep">·</span>
       <a class="footer-j4n" href="https://www.justicefornature.org/" target="_blank" rel="noopener" title="Justice for Nature">
@@ -1210,6 +1300,26 @@
       // ID restaurací, pro které právě běží fetch menu (refreshMenuFor /
       // fetchMenuForRestaurant). Ikona se na nich točí, klik se ignoruje.
       loadingMenu: {},
+      // Geo filter: zobrazí jen restaurace v okruhu kolem aktuální polohy.
+      // Default vypnuto — geolocation prompt se objeví AŽ při zapnutí toggle
+      // v Nastavení (žádné permission popup při startu). Souřadnice uživatele
+      // cachujeme v sessionStorage 30 min, ať každý refresh nevolá geolocation.
+      geo: (function() {
+        // radiusKm: 1-5 = okruh v km, Infinity = filter vypnutý. Slider má 6
+        // pozic, poslední = ∞. localStorage hodnota 'inf' nebo '1'..'5'.
+        // `enabled` je derivace z radius: true ⟺ radius < Infinity.
+        var raw = localStorage.getItem('menicka_geo_radius');
+        var rk = (raw === 'inf' || raw === null) ? Infinity : (parseInt(raw, 10) || Infinity);
+        return {
+          enabled: rk !== Infinity,
+          radiusKm: rk,
+          userLat: null,
+          userLon: null,
+          fetchedAt: null,
+          city: null,    // reverse-geocoded město pro status řádek
+          error: null    // 'denied' | 'unavailable' | 'timeout' | null
+        };
+      })(),
       theme: localStorage.getItem('menicka_theme') || (
         window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
       )
@@ -1477,8 +1587,8 @@
     }
 
     // Hlavní (=ne polévkové) sekce. Ostatní zdroje než Menza používají jen
-    // `hlavni_jidla`, Menza místo toho rozkládá do `obed` / `obed_ostatni` / `pizza`.
-    var MAIN_KEYS = ['hlavni_jidla', 'obed', 'obed_ostatni', 'pizza'];
+    // `hlavni_jidla`, Menza místo toho rozkládá do `obed` / `obed_ostatni` / `pizza` / `minutky`.
+    var MAIN_KEYS = ['hlavni_jidla', 'obed', 'obed_ostatni', 'pizza', 'minutky'];
 
     function isMenuEmpty(menu) {
       if (!menu) return true;
@@ -1562,6 +1672,8 @@
 
       if (window.lucide) lucide.createIcons();
       _initRestaurantsSortable_();
+      // Status řádek geo filteru má diagnostické counts — refresh při změnách.
+      if (typeof renderGeoStatus === 'function') renderGeoStatus();
     }
 
     function renderCard(rest, menu) {
@@ -1678,6 +1790,26 @@
       });
       headerKids.push(hideBtn);
 
+      // Map-pin — Google query je `nazev + adresa`. Pouhá adresa nestačí,
+       // protože menicka.cz má často chybné formátování ("V Kruhu , 2, 160 0,
+       // Praha 6" pro Kaštan — chybí 0 v PSČ, žádné Vokovice). Google s názvem
+       // restaurace + lokalitou si sám najde správný podnik (otvírací doba,
+       // recenze, fotky atd.).
+      if (rest.adresa) {
+        var mapQuery = (rest.nazev || '') + ' ' + rest.adresa;
+        var mapUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapQuery.trim());
+        var mapBtn = el('a', {
+          class: 'card-map-btn',
+          href: mapUrl,
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          title: rest.adresa + ' — otevřít v Google Mapách',
+          'aria-label': 'Zobrazit na mapě'
+        });
+        mapBtn.innerHTML = '<i data-lucide="map-pin"></i>';
+        headerKids.push(mapBtn);
+      }
+
       headerKids.push(link);
       var header = el('div', { class: 'card-header' }, headerKids);
       var body = el('div', { class: 'card-body' });
@@ -1696,12 +1828,27 @@
         any = renderCategory(body, 'Oběd', menu.obed) || any;
         any = renderCategory(body, 'Oběd ostatní', menu.obed_ostatni) || any;
         any = renderCategory(body, 'Pizza', menu.pizza) || any;
+        any = renderCategory(body, 'Minutky', menu.minutky) || any;
         any = renderCategory(body, 'Pití', menu.piti) || any;
         any = renderCategory(body, 'Dezerty', menu.dezerty) || any;
         if (!any) body.appendChild(el('div', { class: 'empty', text: 'Pro dnešek nejsou žádné položky.' }));
       }
 
-      var card = el('div', { class: 'card' }, [header, body]);
+      // Info-lišta při aktualizaci existujícího menu (uživatel vidí stará
+       // data → bar oznamuje "překreslíme jakmile přijde nové"). Při initial
+       // fetchi (menu == null) bar nepouštíme — body už ukazuje "Načítám…".
+      var children = [header];
+      if (isLoading && menu) {
+        var bar = el('div', { class: 'card-refresh-bar', 'aria-live': 'polite' });
+        var iconSpan = el('span', { class: 'card-refresh-bar-icon' });
+        iconSpan.innerHTML = '<i data-lucide="hourglass"></i>';
+        bar.appendChild(iconSpan);
+        bar.appendChild(el('span', { text: 'Aktualizuji jídelníček, po dokončení se překreslí.' }));
+        children.push(bar);
+      }
+      children.push(body);
+
+      var card = el('div', { class: 'card' }, children);
       card.dataset.id = rest.id;  // pro Sortable.js mapování při reorderu
       return card;
     }
@@ -2205,6 +2352,26 @@
           setCols(maxCols());
           showToast('Restaurace přidána, načítám menu…');
 
+          // Async geocoding na pozadí — addRestaurant ukládá lat/lon=null
+          // (rychlost), tady doplníme. Při úspěchu update STATE a re-render
+          // (geo filter pak novou restauraci započítá). Při selhání ji chytí
+          // půlnoční backfill trigger. Fail-safe: bez lat/lon je restaurace
+          // v geo filteru vždy zobrazená.
+          google.script.run
+            .withSuccessHandler(function(geoResult) {
+              if (!geoResult || geoResult.lat == null) return;
+              for (var k = 0; k < STATE.restaurace.length; k++) {
+                if (STATE.restaurace[k].id === newId) {
+                  STATE.restaurace[k].lat = geoResult.lat;
+                  STATE.restaurace[k].lon = geoResult.lon;
+                  break;
+                }
+              }
+              if (STATE.geo.enabled) renderRestaurants();
+            })
+            .withFailureHandler(function() { /* půlnoční backfill to chytí */ })
+            .geocodeRestaurant(newId);
+
           google.script.run
             .withSuccessHandler(function(menuResult) {
               delete STATE.loadingMenu[newId];
@@ -2347,13 +2514,26 @@
      */
     function visibleIds() {
       var ids = sledovaneIds().filter(function(id) { return !isHidden(id); });
-      if (STATE.hideEmpty) {
+      // effectiveHideEmpty: respektuje user pref, ale vynucuje TRUE o víkendu /
+      // svátku (většina restaurací nevaří, prázdné karty by user akorát rušily).
+      if (effectiveHideEmpty()) {
         ids = ids.filter(function(id) { return !isMenuEmpty(STATE.menu[id]); });
       }
       var favFilter = (STATE.favorites.onlyRest || STATE.favorites.onlyDish) && favoriteKeywords().length > 0;
       if (favFilter) {
         // Restaurace s oblíbenou polévkou NEBO hlavním jídlem zůstává.
         ids = ids.filter(function(id) { return hasFavoriteAny(STATE.menu[id]); });
+      }
+      // Geo filter — vyřazuje restaurace mimo okruh od user pozice. Restaurace
+      // bez lat/lon (legacy / neúspěšný geocode) zůstávají viditelné — fail-safe,
+      // user by jinak nepochopil proč zmizely.
+      if (STATE.geo.enabled && STATE.geo.userLat != null && STATE.geo.userLon != null) {
+        ids = ids.filter(function(id) {
+          var rest = findRestaurant(id);
+          if (!rest || rest.lat == null || rest.lon == null) return true;
+          var d = _haversineKm_(STATE.geo.userLat, STATE.geo.userLon, rest.lat, rest.lon);
+          return d <= STATE.geo.radiusKm;
+        });
       }
       return ids;
     }
@@ -2428,10 +2608,76 @@
     }
 
     function setHideEmpty(on) {
+      // User preference se ukládá tak, jak je — víkend/svátek je virtuální
+      // override přes UI (applyHideEmptyState) a filtr (effectiveHideEmpty).
+      // Po pondělí se vrátí k uložené hodnotě bez ztráty.
       STATE.hideEmpty = !!on;
       localStorage.setItem('menicka_hide_empty', STATE.hideEmpty ? 'true' : 'false');
-      $('opt-hide-empty').checked = STATE.hideEmpty;
+      applyHideEmptyState();
       renderRestaurants();
+    }
+
+    /**
+     * Velikonoční neděle pro daný rok (Anonymous Gregorian computus).
+     * Vrátí Date v lokální TZ. Velký pátek = -2 dny, Velikonoční pondělí = +1.
+     */
+    function _easterSunday_(year) {
+      var a = year % 19;
+      var b = Math.floor(year / 100), c = year % 100;
+      var d = Math.floor(b / 4), e = b % 4;
+      var f = Math.floor((b + 8) / 25);
+      var g = Math.floor((b - f + 1) / 3);
+      var h = (19 * a + b - d - g + 15) % 30;
+      var i = Math.floor(c / 4), k = c % 4;
+      var l = (32 + 2 * e + 2 * i - h - k) % 7;
+      var m = Math.floor((a + 11 * h + 22 * l) / 451);
+      var month = Math.floor((h + l - 7 * m + 114) / 31);
+      var day = ((h + l - 7 * m + 114) % 31) + 1;
+      return new Date(year, month - 1, day);
+    }
+
+    /**
+     * Víkend (so/ne) nebo český státní svátek (fixní data + Velký pátek +
+     * Velikonoční pondělí). Volá se při každém render — datum se re-eval, takže
+     * o půlnoci se přechod automaticky promítne.
+     */
+    function _isWeekendOrHoliday_(d) {
+      d = d || new Date();
+      var day = d.getDay();
+      if (day === 0 || day === 6) return true;  // ne, so
+
+      var key = (d.getMonth() + 1) + '-' + d.getDate();
+      // Fixní české státní svátky (M-D)
+      if (['1-1','5-1','5-8','7-5','7-6','9-28','10-28','11-17','12-24','12-25','12-26'].indexOf(key) !== -1) {
+        return true;
+      }
+      var easter = _easterSunday_(d.getFullYear());
+      var goodFri = new Date(easter); goodFri.setDate(easter.getDate() - 2);
+      var easterMon = new Date(easter); easterMon.setDate(easter.getDate() + 1);
+      var sameDay = function(a, b) {
+        return a.getFullYear() === b.getFullYear()
+          && a.getMonth() === b.getMonth()
+          && a.getDate() === b.getDate();
+      };
+      return sameDay(d, goodFri) || sameDay(d, easterMon);
+    }
+
+    /** Effective value pro filtr — víkend/svátek vždy zapne, jinak user pref. */
+    function effectiveHideEmpty() {
+      return STATE.hideEmpty || _isWeekendOrHoliday_();
+    }
+
+    /**
+     * Synchronizuje stav `opt-hide-empty` checkboxu s logickou hodnotou:
+     * víkend/svátek → checkbox checked + disabled, jinak user preference enabled.
+     * Volá se při init, při změně state, a při (potenciálním) re-renderu nastavení.
+     */
+    function applyHideEmptyState() {
+      var checkbox = $('opt-hide-empty');
+      if (!checkbox) return;
+      var weekend = _isWeekendOrHoliday_();
+      checkbox.disabled = weekend;
+      checkbox.checked = weekend ? true : STATE.hideEmpty;
     }
 
     // Logo restaurace v UI zatím skryto — toggle v Nastavení je zakomentovaný,
@@ -2459,6 +2705,211 @@
 
     function isMobileMode() {
       return _isTouchDevice || _mobileMql.matches;
+    }
+
+    // === Geo filter ===
+
+    var GEO_CACHE_KEY = 'menicka_geo_pos';
+    var GEO_CACHE_TTL_MS = 30 * 60 * 1000;  // 30 min
+
+    function _haversineKm_(lat1, lon1, lat2, lon2) {
+      var R = 6371;
+      var toRad = function(d) { return d * Math.PI / 180; };
+      var dLat = toRad(lat2 - lat1);
+      var dLon = toRad(lon2 - lon1);
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return R * 2 * Math.asin(Math.sqrt(a));
+    }
+
+    /** Načte cached pozici z sessionStorage (TTL 30 min). */
+    function _loadGeoCache_() {
+      try {
+        var raw = sessionStorage.getItem(GEO_CACHE_KEY);
+        if (!raw) return null;
+        var obj = JSON.parse(raw);
+        if (!obj || !obj.fetchedAt) return null;
+        if (Date.now() - obj.fetchedAt > GEO_CACHE_TTL_MS) return null;
+        return obj;
+      } catch (e) { return null; }
+    }
+
+    function _saveGeoCache_(lat, lon, city) {
+      try {
+        sessionStorage.setItem(GEO_CACHE_KEY, JSON.stringify({
+          lat: lat, lon: lon, city: city || null, fetchedAt: Date.now()
+        }));
+      } catch (e) { /* private mode etc — ignore */ }
+    }
+
+    /**
+     * Reverse-geocode aktuální user pozici → město. Async, fail-safe (status
+     * řádek prostě město neukáže). Po success uloží do STATE + sessionStorage.
+     */
+    function _resolveCityForCurrentPos_() {
+      if (STATE.geo.userLat == null || STATE.geo.userLon == null) return;
+      if (STATE.geo.city) return;  // už máme
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (!result || !result.city) return;
+          STATE.geo.city = result.city;
+          _saveGeoCache_(STATE.geo.userLat, STATE.geo.userLon, result.city);
+          renderGeoStatus();
+        })
+        .withFailureHandler(function() { /* status prostě bez města */ })
+        .reverseGeocode(STATE.geo.userLat, STATE.geo.userLon);
+    }
+
+    /**
+     * Požádá browser o aktuální polohu. Permission prompt se objeví právě tady
+     * (uživatel právě zapnul toggle). Při deny / unavailable / timeout uloží
+     * error stav, FE pak nabídne ručně přepsat (TODO: city dropdown fallback).
+     */
+    function requestGeoPosition_(onDone, options) {
+      if (!navigator.geolocation) {
+        STATE.geo.error = 'unavailable';
+        if (onDone) onDone(false);
+        return;
+      }
+      // Default: tolerate browser cache do 30 min (= sessionStorage TTL).
+      // Pro force refresh předat { maximumAge: 0 } — vyžádá svěží GPS fix.
+      var opts = options || { timeout: 10000, maximumAge: GEO_CACHE_TTL_MS };
+      navigator.geolocation.getCurrentPosition(
+        function(pos) {
+          STATE.geo.userLat = pos.coords.latitude;
+          STATE.geo.userLon = pos.coords.longitude;
+          STATE.geo.fetchedAt = Date.now();
+          STATE.geo.city = null;  // reset, reverse geocode doplní
+          STATE.geo.error = null;
+          _saveGeoCache_(pos.coords.latitude, pos.coords.longitude, null);
+          _resolveCityForCurrentPos_();  // async background
+          if (onDone) onDone(true);
+        },
+        function(err) {
+          STATE.geo.error = err.code === 1 ? 'denied' :
+                            err.code === 2 ? 'unavailable' : 'timeout';
+          STATE.geo.userLat = null;
+          STATE.geo.userLon = null;
+          if (onDone) onDone(false);
+        },
+        opts
+      );
+    }
+
+    /**
+     * Hlavní vstup pro geo filter. Slider má 6 pozic: 1/2/3/4/5 km nebo ∞.
+     * - ∞ (Infinity) → filter vypnutý. Pozice se nedotahuje, status řádek skrytý.
+     * - 1-5 km → filter zapnutý. Pokud nemáme pozici, dotáhne se (cached
+     *   sessionStorage nebo permission prompt). `enabled` je derivace.
+     */
+    function setGeoRadius(km) {
+      var radius = (km === Infinity || km == null) ? Infinity :
+                   Math.max(1, Math.min(5, parseInt(km, 10) || 1));
+      STATE.geo.radiusKm = radius;
+      STATE.geo.enabled = radius !== Infinity;
+      localStorage.setItem('menicka_geo_radius', radius === Infinity ? 'inf' : String(radius));
+
+      if (!STATE.geo.enabled) {
+        STATE.geo.error = null;
+        renderGeoStatus();
+        renderRestaurants();
+        return;
+      }
+
+      // Filter právě aktivován — máme pozici? Pokud ne, načti.
+      if (STATE.geo.userLat != null && STATE.geo.userLon != null) {
+        renderGeoStatus();
+        renderRestaurants();
+        return;
+      }
+
+      var cached = _loadGeoCache_();
+      if (cached) {
+        STATE.geo.userLat = cached.lat;
+        STATE.geo.userLon = cached.lon;
+        STATE.geo.fetchedAt = cached.fetchedAt;
+        STATE.geo.city = cached.city || null;
+        STATE.geo.error = null;
+        if (!STATE.geo.city) _resolveCityForCurrentPos_();
+        renderGeoStatus();
+        renderRestaurants();
+        return;
+      }
+
+      showToast('Žádám o tvoji aktuální polohu…');
+      requestGeoPosition_(function(ok) {
+        renderGeoStatus();
+        renderRestaurants();
+        if (!ok) {
+          var msg = STATE.geo.error === 'denied'
+            ? 'Polohu nelze zjistit (povolení odepřeno). Zapni geolokaci v prohlížeči a zkus znovu.'
+            : STATE.geo.error === 'unavailable'
+            ? 'Polohu nelze zjistit (signál nedostupný).'
+            : 'Polohu nelze zjistit (timeout).';
+          showToast(msg, 'error');
+        }
+      });
+    }
+
+    /** Aktualizuje UI status řádek pod geo togglem (cached pos / error / off). */
+    function renderGeoStatus() {
+      var elem = $('opt-geo-status');
+      var refreshBtn = $('opt-geo-refresh');
+      if (refreshBtn) {
+        // Tlačítko "Obnovit polohu" jen když filter zapnutý — ∞ nemá smysl.
+        if (STATE.geo.enabled) refreshBtn.removeAttribute('hidden');
+        else refreshBtn.setAttribute('hidden', '');
+      }
+      if (!elem) return;
+      while (elem.firstChild) elem.removeChild(elem.firstChild);
+      if (!STATE.geo.enabled) return;
+
+      if (STATE.geo.error === 'denied') {
+        elem.textContent = 'Povolení k poloze bylo odepřeno. Zapni v nastavení prohlížeče.';
+      } else if (STATE.geo.error === 'unavailable') {
+        elem.textContent = 'Polohu se nepodařilo zjistit (signál nedostupný).';
+      } else if (STATE.geo.error === 'timeout') {
+        elem.textContent = 'Polohu se nepodařilo zjistit (vypršel limit).';
+      } else if (STATE.geo.userLat != null) {
+        var ts = STATE.geo.fetchedAt ? new Date(STATE.geo.fetchedAt) : null;
+        var hh = ts ? String(ts.getHours()).padStart(2, '0') + ':' + String(ts.getMinutes()).padStart(2, '0') : '?';
+        var lat = STATE.geo.userLat.toFixed(4);
+        var lon = STATE.geo.userLon.toFixed(4);
+        var cityLabel = STATE.geo.city || '(město neznámé)';
+        var label = cityLabel + ' • ' + lat + ', ' + lon;
+
+        elem.appendChild(document.createTextNode('Poloha v ' + hh + ': '));
+        var link = el('a', {
+          href: 'https://www.google.com/maps?q=' + STATE.geo.userLat + ',' + STATE.geo.userLon,
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          title: 'Otevřít moji odhadovanou polohu v Google Mapách',
+          text: label
+        });
+        link.style.color = 'var(--accent)';
+        elem.appendChild(link);
+
+        // Diagnostika filtru — kolik podniků v okruhu vs. bez známé polohy
+        // (fail-safe = vždy zobrazené). Pomáhá uživateli pochopit, proč vidí
+        // i vzdálené restaurace (typicky chybí backfill lat/lon v DB).
+        var inRadius = 0, noGeo = 0, outOfRadius = 0;
+        sledovaneIds().forEach(function(id) {
+          if (isHidden(id)) return;
+          var rest = findRestaurant(id);
+          if (!rest) return;
+          if (rest.lat == null || rest.lon == null) { noGeo++; return; }
+          var d = _haversineKm_(STATE.geo.userLat, STATE.geo.userLon, rest.lat, rest.lon);
+          if (d <= STATE.geo.radiusKm) inRadius++; else outOfRadius++;
+        });
+        var stats = ' Okruh ' + STATE.geo.radiusKm + ' km — v dosahu ' + inRadius;
+        if (noGeo > 0) stats += ', ' + noGeo + ' bez polohy (zobrazeno z opatrnosti)';
+        if (outOfRadius > 0) stats += ', ' + outOfRadius + ' mimo';
+        stats += '.';
+        elem.appendChild(document.createTextNode(stats));
+      } else {
+        elem.textContent = 'Čekám na polohu…';
+      }
     }
 
     /**
@@ -2627,6 +3078,82 @@
     // $('opt-show-thumb').addEventListener('change', function() { setShowThumb(this.checked); });
     $('opt-show-mnozstvi').checked = STATE.showMnozstvi;
     $('opt-show-mnozstvi').addEventListener('change', function() { setShowMnozstvi(this.checked); });
+
+    // Geo filter — 6 pozic sliderů: 1/2/3/4/5 km, posledná ∞ = filter off.
+    // Default ∞ (žádná geolokace dokud user explicitně nepřesune slider).
+    var GEO_RADIUS_OPTIONS = [1, 2, 3, 4, 5, Infinity];
+    function setupGeoRadiusSlider() {
+      var slider = $('opt-geo-radius');
+      var ticks = $('geo-radius-ticks');
+      if (!slider || !ticks) return;
+      var idx = STATE.geo.radiusKm === Infinity ? 5 : GEO_RADIUS_OPTIONS.indexOf(STATE.geo.radiusKm);
+      if (idx < 0) idx = 5;  // default ∞
+      slider.value = String(idx);
+      while (ticks.firstChild) ticks.removeChild(ticks.firstChild);
+      for (var i = 0; i < GEO_RADIUS_OPTIONS.length; i++) {
+        var v = GEO_RADIUS_OPTIONS[i];
+        var label = v === Infinity ? '∞' : (v + ' km');
+        var t = el('span', { text: label });
+        if (i === idx) t.classList.add('active');
+        ticks.appendChild(t);
+      }
+    }
+    setupGeoRadiusSlider();
+    $('opt-geo-radius').addEventListener('input', function() {
+      var idx = parseInt(this.value, 10);
+      var km = GEO_RADIUS_OPTIONS[idx];
+      setGeoRadius(km);
+      setupGeoRadiusSlider();
+    });
+    $('opt-geo-refresh').addEventListener('click', function() {
+      showToast('Aktualizuji polohu…');
+      // maximumAge: 0 → force fresh GPS fix, ignoruje browser cache (defaultně
+      // 30 min). Po 1-3 s vrátí novou pozici i když user fyzicky stojí.
+      requestGeoPosition_(function(ok) {
+        if (ok) {
+          renderGeoStatus();
+          renderRestaurants();
+          showToast('Poloha aktualizována.');
+        } else {
+          showToast('Nepodařilo se získat aktuální polohu.', 'error');
+        }
+      }, { timeout: 10000, maximumAge: 0 });
+    });
+    // Pokud byl geo filter zapnutý z minulé session a v sessionStorage je
+    // čerstvá poloha, načti ji rovnou (žádný nový permission prompt). Pokud ne,
+    // toggle zůstane zapnutý ale neaplikuje se filter, dokud user nezapne znovu.
+    if (STATE.geo.enabled) {
+      var cached = _loadGeoCache_();
+      if (cached) {
+        STATE.geo.userLat = cached.lat;
+        STATE.geo.userLon = cached.lon;
+        STATE.geo.fetchedAt = cached.fetchedAt;
+        STATE.geo.city = cached.city || null;
+        if (!STATE.geo.city) _resolveCityForCurrentPos_();
+      } else {
+        // Geo filter aktivní z minulé session, ale cache prázdná (nová session
+        // nebo sessionStorage flushed). Browser už má dříve udělené povolení,
+        // takže fetchneme na pozadí bez nového promptu.
+        requestGeoPosition_(function(ok) {
+          if (ok) { renderGeoStatus(); renderRestaurants(); }
+        });
+      }
+      renderGeoStatus();
+    }
+
+    // Auto-refresh polohy při návratu na tab — pokud filter aktivní a poloha
+    // starší než 15 min, tichý fetch v pozadí. Řeší scénář "ze Zlína do Prahy
+    // s otevřenou aplikací". Browser ne-promptuje (permission už je).
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState !== 'visible') return;
+      if (!STATE.geo.enabled) return;
+      var stale = !STATE.geo.fetchedAt || (Date.now() - STATE.geo.fetchedAt > 15 * 60 * 1000);
+      if (!stale) return;
+      requestGeoPosition_(function(ok) {
+        if (ok) { renderGeoStatus(); renderRestaurants(); }
+      });
+    });
+
     $('opt-cols-slider').addEventListener('input', function() {
       setCols(this.value);
     });
@@ -2686,6 +3213,178 @@
         showToast('Vítejte! Vlož URL své první restaurace z menicka.cz.');
       }, 200);
     }
+
+    /* ════════════════════════════════════════════════════════════════════
+       Custom tooltip — nahrazuje native `title` rychlejším, mobile-friendly
+       a viewport-aware tooltipem. IIFE, žádný globální leak.
+
+       Jak to funguje:
+       1. Single shared <div class="tooltip"> v <body>, pozice se počítá z JS
+       2. Migrate: každý `title` na elementu se přesune do `data-tooltip`
+          (jinak by browser ukazoval native tooltip souběžně s naším). Migrace
+          se opakuje při změnách DOM přes MutationObserver — re-render karet,
+          settings, dynamicky vložené elementy se ošetří automaticky.
+       3. Desktop: hover s 400 ms delay → show. mouseout → hide.
+          Keyboard focus also triggers (a11y).
+       4. Mobil: long-press 500 ms → show. Touch end → linger 1.5 s, pak hide.
+       5. Pozicování: nad cílem, `flip` pod cíl pokud nahoře málo místa.
+          Horizontálně clampuje k MARGIN od edge viewportu — nevyleze nikdy ven.
+       ════════════════════════════════════════════════════════════════════ */
+    (function() {
+      var tipEl = null;
+      var showTimer = null;
+      var currentTarget = null;
+      var DELAY_HOVER = 400;
+      var DELAY_TOUCH = 500;
+      var TOUCH_LINGER = 1500;
+      var MARGIN = 8;
+      var GAP = 8;
+
+      function tip() {
+        if (tipEl) return tipEl;
+        tipEl = document.createElement('div');
+        tipEl.className = 'tooltip';
+        tipEl.setAttribute('role', 'tooltip');
+        document.body.appendChild(tipEl);
+        return tipEl;
+      }
+
+      function migrate(root) {
+        if (!root || root.nodeType !== 1) return;
+        if (root.hasAttribute && root.hasAttribute('title')) {
+          var t = root.getAttribute('title');
+          if (t) {
+            root.setAttribute('data-tooltip', t);
+            root.removeAttribute('title');
+          }
+        }
+        if (root.querySelectorAll) {
+          var children = root.querySelectorAll('[title]');
+          for (var i = 0; i < children.length; i++) {
+            var t2 = children[i].getAttribute('title');
+            if (t2) {
+              children[i].setAttribute('data-tooltip', t2);
+              children[i].removeAttribute('title');
+            }
+          }
+        }
+      }
+
+      function position(target) {
+        var t = tip();
+        var r = target.getBoundingClientRect();
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+
+        // Měření po nastavení textu — visibility:hidden + show class odebráno
+        // dočasně, aby offsetWidth dal reálnou šířku.
+        t.style.left = '0';
+        t.style.top = '0';
+        var tw = t.offsetWidth;
+        var th = t.offsetHeight;
+
+        var top = r.top - th - GAP;       // default: nad cílem
+        var left = r.left + r.width / 2 - tw / 2;
+
+        if (top < MARGIN) top = r.bottom + GAP;       // flip pod cíl
+        if (left < MARGIN) left = MARGIN;             // clamp left edge
+        if (left + tw > vw - MARGIN) left = vw - MARGIN - tw;  // clamp right
+        if (top + th > vh - MARGIN) top = vh - MARGIN - th;    // clamp bottom
+        if (top < MARGIN) top = MARGIN;                         // clamp top
+
+        t.style.left = left + 'px';
+        t.style.top = top + 'px';
+      }
+
+      function show(target) {
+        if (!target) return;
+        var text = target.getAttribute('data-tooltip');
+        if (!text) return;
+        currentTarget = target;
+        var t = tip();
+        t.textContent = text;
+        position(target);
+        t.classList.add('show');
+      }
+
+      function hide() {
+        clearTimeout(showTimer);
+        if (tipEl) tipEl.classList.remove('show');
+        currentTarget = null;
+      }
+
+      function findTarget(node) {
+        return node && node.closest ? node.closest('[data-tooltip]') : null;
+      }
+
+      // Desktop: hover (mouseover/out s delegací)
+      document.addEventListener('mouseover', function(e) {
+        var t = findTarget(e.target);
+        if (!t || t === currentTarget) return;
+        clearTimeout(showTimer);
+        showTimer = setTimeout(function() { show(t); }, DELAY_HOVER);
+      });
+      document.addEventListener('mouseout', function(e) {
+        var t = findTarget(e.target);
+        if (!t) return;
+        clearTimeout(showTimer);
+        if (e.relatedTarget && t.contains(e.relatedTarget)) return;
+        hide();
+      });
+
+      // Klávesnice — focusin/out pro a11y
+      document.addEventListener('focusin', function(e) {
+        var t = findTarget(e.target);
+        if (t) show(t);
+      });
+      document.addEventListener('focusout', function(e) {
+        if (findTarget(e.target)) hide();
+      });
+
+      // Mobile: long-press
+      var touchTimer = null;
+      document.addEventListener('touchstart', function(e) {
+        var t = findTarget(e.target);
+        if (!t) return;
+        clearTimeout(touchTimer);
+        touchTimer = setTimeout(function() { show(t); }, DELAY_TOUCH);
+      }, { passive: true });
+      document.addEventListener('touchend', function() {
+        clearTimeout(touchTimer);
+        setTimeout(hide, TOUCH_LINGER);
+      }, { passive: true });
+      document.addEventListener('touchmove', function() {
+        clearTimeout(touchTimer);
+      }, { passive: true });
+
+      // Hide při interakci, scrollu, resizu
+      document.addEventListener('click', hide);
+      window.addEventListener('scroll', hide, true);
+      window.addEventListener('resize', hide);
+
+      // Initial pass + observer pro dynamicky vkládaný obsah (renderCard,
+      // renderSettings, edit form, …). MutationObserver chytá nové uzly i
+      // změny title atributu in-place.
+      migrate(document.body);
+      if (window.MutationObserver) {
+        var mo = new MutationObserver(function(muts) {
+          for (var i = 0; i < muts.length; i++) {
+            var m = muts[i];
+            if (m.type === 'attributes' && m.attributeName === 'title') {
+              migrate(m.target);
+            } else if (m.type === 'childList') {
+              for (var j = 0; j < m.addedNodes.length; j++) {
+                migrate(m.addedNodes[j]);
+              }
+            }
+          }
+        });
+        mo.observe(document.body, {
+          childList: true, subtree: true,
+          attributes: true, attributeFilter: ['title']
+        });
+      }
+    })();
   </script>
 </body>
 </html>

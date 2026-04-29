@@ -169,18 +169,22 @@ function _parseRow_(rowHtml) {
 
 /**
  * Z profile stránky restaurace (https://www.menicka.cz/<id>-<slug>.html)
- * vytáhne název a město. Vrací objekt — hodnoty mohou být null, pokud
- * stránka má nestandardní strukturu. Caller (Restaurants_register_) má
+ * vytáhne název, město a plnou adresu. Vrací objekt — hodnoty mohou být null,
+ * pokud stránka má nestandardní strukturu. Caller (Restaurants_register_) má
  * fallback na slug z URL.
  *
- * Strategie (od nejspolehlivějšího):
- *   1. <meta name="description" content="Denní menu <NAZEV>,<MESTO>, ...">
- *   2. <title>[Restaurace ]<NAZEV> v <MESTO>, obědy, ... | Meníčka.cz</title>
- *   3. <div class='adresa'>Ulice, číslo, PSČ, Město</div> — jen pro město
+ * Strategie:
+ *   - Název / Město: meta description → title → fallback z adresy
+ *   - Adresa: vždy parsuje <div class='adresa'> (plný řetězec — ulice + PSČ +
+ *     město), bere se i jako fallback městu (poslední comma-část)
+ *
+ * Plná adresa se ukládá do listu Restaurace a později se posílá do Nominatim
+ * pro přesnější geocoding (úroveň ulice místo city centra).
  */
 function Parser_extractRestaurantInfo_(html) {
   var nazev = null;
   var mesto = null;
+  var adresa = null;
 
   // 1. Meta description (univerzální pattern napříč profile stránkami)
   var descMatch = html.match(/<meta\s+name=["']description["']\s+content=["']Denní menu\s+(.+?),\s*([^,]+?),/i);
@@ -205,17 +209,43 @@ function Parser_extractRestaurantInfo_(html) {
     }
   }
 
-  // 3. Fallback městu přes <div class='adresa'>
-  if (!mesto) {
-    var adresaMatch = html.match(/<div\s+class=['"][^'"]*adresa[^'"]*['"][^>]*>([\s\S]*?)<\/div>/i);
-    if (adresaMatch) {
-      var addr = adresaMatch[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
-      var parts = addr.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
-      if (parts.length > 0) mesto = parts[parts.length - 1];
+  // 3. <div class='adresa'> — plná adresa pro geocoding + fallback městu
+  var adresaMatch = html.match(/<div\s+class=['"][^'"]*adresa[^'"]*['"][^>]*>([\s\S]*?)<\/div>/i);
+  if (adresaMatch) {
+    var addr = adresaMatch[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    if (addr) {
+      adresa = _normalizeAddress_(_decodeHtml_(addr));
+      if (!mesto) {
+        var parts = adresa.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+        if (parts.length > 0) mesto = parts[parts.length - 1];
+      }
     }
   }
 
-  return { nazev: nazev || null, mesto: mesto || null };
+  return { nazev: nazev || null, mesto: mesto || null, adresa: adresa || null };
+}
+
+/**
+ * Normalizuje adresu z menicka.cz formátu:
+ *   "Bartošova, 4393, 76001, Zlín"  →  "Bartošova 4393, 76001, Zlín"
+ *   "Lešetín I, 676, 760 01, Zlín"  →  "Lešetín I 676, 760 01, Zlín"
+ *   "V Kruhu , 2, 160 0, Praha 6"   →  "V Kruhu 2, 160 0, Praha 6"
+ *
+ * Spojí první dvě čárkou oddělené části mezerou, pokud druhá je číslo popisné
+ * (čistě digit, případně se slashem nebo písmenem). Říms. číslice ve street
+ * jsou zachovány (jsou to písmena, neobjedou se na druhé pozici samy).
+ *
+ * Geocoding pak dostane standardnější formát (Nominatim/Photon mu rozumí líp).
+ */
+function _normalizeAddress_(addr) {
+  if (!addr) return addr;
+  var parts = String(addr).split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+  // Pattern pro číslo popisné: digits, volitelně /digits nebo -digits, volitelně 1 písmeno
+  // Pokrývá: "4393", "220/2", "23a", "12-5", "1234A".
+  if (parts.length >= 2 && /^\d+([\/\-]\d+)?[a-z]?$/i.test(parts[1])) {
+    parts = [parts[0] + ' ' + parts[1]].concat(parts.slice(2));
+  }
+  return parts.join(', ');
 }
 
 /**

@@ -14,6 +14,10 @@ function initializeMenicka() {
   Config_seedDefaults_();
   setupTriggers_();
 
+  // Po schema migration doplň menze adresu / souřadnice z hard-coded defaultů,
+  // pokud má prázdná pole (typicky po prvním běhu po přidání nových sloupců).
+  Restaurants_reconcileMenza_();
+
   Logger.log('Menicka inicializována. URL: ' + ss.getUrl());
   return { url: ss.getUrl() };
 }
@@ -216,6 +220,116 @@ function backfillRestaurantPhotos() {
 }
 
 /**
+ * One-shot: pro každý řádek v Restaurace bez `adresa` re-fetchne profile
+ * z menicka.cz a doplní adresu (a foto_url, pokud taky chybí). Skipuje řádky,
+ * kde už `adresa` je vyplněná, plus Menzu UTB (není na menicka.cz).
+ *
+ * Po doplnění adresy spustí ručně `backfillRestaurantCoords()` — souřadnice
+ * z plné adresy budou přesnější (úroveň ulice).
+ *
+ * Mezi calls 0.5s pause — menicka.cz nemá explicitní rate limit, ale buďme slušní.
+ */
+function backfillRestaurantAddresses() {
+  var rows = _readAll_(SHEETS.RESTAURACE);
+  var doplneno = 0, preskoceno = 0, selhalo = 0;
+
+  rows.forEach(function(r) {
+    if (r['adresa']) { preskoceno++; return; }
+    var id = String(r.id);
+    if (!id || id === MENZA_RESTAURACE_ID) { preskoceno++; return; }
+    if (!r.url) { preskoceno++; return; }
+
+    try {
+      var info = Scraper_fetchRestaurantInfo_(r.url);
+      if (info.adresa) {
+        _setRowFields_(SHEETS.RESTAURACE, r._row, { 'adresa': info.adresa });
+        doplneno++;
+        Logger.log('adresa pro id=' + id + ' → ' + info.adresa);
+      } else {
+        selhalo++;
+        Logger.log('adresa pro id=' + id + ' nenalezena na menicka.cz');
+      }
+    } catch (e) {
+      selhalo++;
+      Logger.log('adresa pro id=' + id + ' fetch chyba: ' + e.message);
+    }
+    Utilities.sleep(500);
+  });
+
+  Restaurants_invalidate_();
+  Logger.log('backfillRestaurantAddresses hotovo: doplneno=' + doplneno + ', preskoceno=' + preskoceno + ', selhalo=' + selhalo);
+  return { doplneno: doplneno, preskoceno: preskoceno, selhalo: selhalo };
+}
+
+/**
+ * Projde existující řádky v listu Restaurace a aplikuje `_normalizeAddress_`
+ * na sloupec `adresa`. Spojí "Ulice, ČísloPopisné" do "Ulice ČísloPopisné"
+ * (geocoding pak rozumí líp). Idempotentní — pokud je adresa už znormalizovaná,
+ * nedělá nic. Po doběhnutí doporučeno `clearNominatimBackoff()` +
+ * `backfillRestaurantCoords()` pro re-geocode s lepším formátem.
+ */
+function normalizeRestaurantAddresses() {
+  var rows = _readAll_(SHEETS.RESTAURACE);
+  var zmeneno = 0, beze_zmeny = 0;
+
+  rows.forEach(function(r) {
+    var orig = String(r['adresa'] || '').trim();
+    if (!orig) { beze_zmeny++; return; }
+    var fixed = _normalizeAddress_(orig);
+    if (fixed !== orig) {
+      _setRowFields_(SHEETS.RESTAURACE, r._row, { 'adresa': fixed });
+      zmeneno++;
+      Logger.log('id=' + r.id + ': "' + orig + '" → "' + fixed + '"');
+    } else {
+      beze_zmeny++;
+    }
+  });
+
+  Restaurants_invalidate_();
+  Logger.log('normalizeRestaurantAddresses hotovo: zmeneno=' + zmeneno + ', beze_zmeny=' + beze_zmeny);
+  return { zmeneno: zmeneno, beze_zmeny: beze_zmeny };
+}
+
+/**
+ * Pro každý řádek v Restaurace bez `lat/lon` zkusí přes Nominatim zjistit
+ * souřadnice — primárně z plné `adresy` (úroveň ulice), fallback `město`.
+ * Skipuje řádky, kde už lat (idempotentní). Mezi calls 1.1s pause kvůli
+ * Nominatim rate limitu (1 req/s).
+ *
+ * Volá se:
+ *   - Ručně po `initializeMenicka` přes editor (jednorázový backfill)
+ *   - Automaticky půlnočním triggerem (zpracuje nové, ke kterým FE async
+ *     geocoding selhal — typicky max pár záznamů denně)
+ */
+function backfillRestaurantCoords() {
+  var rows = _readAll_(SHEETS.RESTAURACE);
+  var doplneno = 0, preskoceno = 0, selhalo = 0;
+
+  rows.forEach(function(r) {
+    var hasLat = r.lat !== '' && r.lat != null;
+    if (hasLat) { preskoceno++; return; }
+    var adresa = String(r['adresa'] || '').trim();
+    var mesto = String(r['město'] || '').trim();
+    if (!adresa && !mesto) { preskoceno++; return; }
+
+    var geo = Geo_geocodeRestaurant_(adresa, mesto);
+    if (geo) {
+      _setRowFields_(SHEETS.RESTAURACE, r._row, { lat: geo.lat, lon: geo.lon });
+      doplneno++;
+      Logger.log('lat/lon pro id=' + r.id + ' (' + (adresa || mesto) + ') → ' + geo.lat + ', ' + geo.lon);
+    } else {
+      selhalo++;
+      Logger.log('lat/lon pro id=' + r.id + ' (' + (adresa || mesto) + ') nenalezeno');
+    }
+    Utilities.sleep(1500);  // Nominatim rate limit: 1 req/s + margin pro fallback adresa→město
+  });
+
+  Restaurants_invalidate_();
+  Logger.log('backfillRestaurantCoords hotovo: doplneno=' + doplneno + ', preskoceno=' + preskoceno + ', selhalo=' + selhalo);
+  return { doplneno: doplneno, preskoceno: preskoceno, selhalo: selhalo };
+}
+
+/**
  * Pro každého uživatele v listu Uživatelé odstraní ze `sledovane_restaurace`
  * ID, která neodpovídají žádné aktuální restauraci v listu Restaurace.
  * Spusť ručně, pokud máš podezření na orphan IDs (např. po manuálním smazání
@@ -316,7 +430,7 @@ function listTriggers() {
 function setupTriggers_() {
   ScriptApp.getProjectTriggers().forEach(function(t) {
     var f = t.getHandlerFunction();
-    if (f === 'refreshAllMenus' || f === 'clearTodaysCache') {
+    if (f === 'refreshAllMenus' || f === 'clearTodaysCache' || f === 'backfillRestaurantCoords') {
       ScriptApp.deleteTrigger(t);
     }
   });
@@ -364,7 +478,18 @@ function setupTriggers_() {
     .inTimezone(TZ)
     .create();
 
+  // Backfill geo coords v půlnoci — zpracuje restaurace, kterým FE async
+  // geocoding selhal (Nominatim down, timeout, denial). Idempotentní, takže
+  // pokud nic nechybí, prostě skipuje vše.
+  ScriptApp.newTrigger('backfillRestaurantCoords')
+    .timeBased()
+    .atHour(0)
+    .nearMinute(0)
+    .everyDays(1)
+    .inTimezone(TZ)
+    .create();
+
   Logger.log('Triggery: refreshAllMenus pro hodiny ' + JSON.stringify(hours) +
-             ', clearTodaysCache v ' + endHour + ':00');
-  return { refreshHours: hours, cleanupHour: endHour };
+             ', clearTodaysCache v ' + endHour + ':00, backfillRestaurantCoords v 0:00');
+  return { refreshHours: hours, cleanupHour: endHour, geoBackfillHour: 0 };
 }

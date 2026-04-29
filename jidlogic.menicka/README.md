@@ -47,8 +47,9 @@ jidlogic.menicka/
 ├── menicka_Scraper.gs     — fetchHtml (iframe HTML), refreshAllMenus trigger handler
 ├── menicka_Parser.gs      — HTML parser (table.menu/tr.soup/tr.main/td.food/td.prize)
 ├── menicka_Menza.gs       — UTB JSON API integrace (Ordering + Menu endpointy, plné ceny)
+├── menicka_Geo.gs         — geocoding (Nominatim primárně + Photon fallback), reverse geocoding, haversine
 ├── menicka_Rss.gs         — RSS XML generátor (1 file v Drive per uživatel, sdílený link)
-├── menicka_Init.gs        — initializeMenicka, repair*, cleanup*, migrace, triggers
+├── menicka_Init.gs        — initializeMenicka, repair*, cleanup*, migrace, triggers, backfill*
 ├── menicka_Debug.gs       — debugFetch, raw HTML dump
 ├── menicka_Code.gs        — doGet, _bootstrap_, public funkce pro google.script.run
 ├── menicka_view.html      — frontend (server-rendered bootstrap, Sortable.js drag)
@@ -197,6 +198,10 @@ Spouštět ručně z Apps Script editoru:
 | `setupTriggers` | [menicka_Init.gs:243](menicka_Init.gs#L243) | Re-registrovat refresh + cleanup triggery podle aktuální Konfigurace (volej po změně `trigger_casy` / `cache_konec_hodina`) |
 | `listTriggers` | [menicka_Init.gs:259](menicka_Init.gs#L259) | Vypíše všechny registrované triggery do Logger.log — diagnostika „proč mi nefungují automatické refreshe" |
 | `backfillRestaurantPhotos` | [menicka_Init.gs:181](menicka_Init.gs#L181) | Pro řádky bez `foto_url` zkusí stáhnout logo z `tisk-profil.php` (idempotentní) |
+| `backfillRestaurantAddresses` | [menicka_Init.gs](menicka_Init.gs) | Pro řádky bez `adresa` re-fetchne profile z menicka.cz, vytáhne `<div class='adresa'>`, doplní (idempotentní, 0.5 s pause mezi fetchy) |
+| `backfillRestaurantCoords` | [menicka_Init.gs](menicka_Init.gs) | Pro řádky bez `lat/lon` zavolá Nominatim → Photon fallback, primárně z plné adresy. 1.5 s pause mezi calls. Volá ho i půlnoční trigger. |
+| `normalizeRestaurantAddresses` | [menicka_Init.gs](menicka_Init.gs) | Spojí v existujících řádcích formát `Ulice, ČísloPopisné` → `Ulice ČísloPopisné`. Pro lepší geocoding po backfillu adres. Idempotentní. |
+| `clearNominatimBackoff` | [menicka_Geo.gs](menicka_Geo.gs) | Vymaže 1h backoff flag po HTTP 429 — pro experimenty / když víš že soft-ban už dávno vypršel |
 | `clearAllCaches` | [menicka_Init.gs:53](menicka_Init.gs#L53) | Vyčistit CacheService klíče **a smazat všechny řádky z listu `Menu Cache`** |
 | `clearTodaysCache` | [menicka_Cache.gs:122](menicka_Cache.gs#L122) | Smaže jen dnešní řádky z `Menu Cache` (volá ho denní cleanup trigger v 17:00) |
 | `repairRestaurants` | [menicka_Init.gs:78](menicka_Init.gs#L78) | Pro placeholder řádky v Restaurace zkusit doplnit info nebo smazat |
@@ -247,11 +252,20 @@ Když je budeš chtít vrátit, smaž `hidden` atribut z příslušných `<div d
 
 ## Roadmap / nápady
 
+### Aktivně diskutované, navrženo, čeká na rozhodnutí
+
+- **Plnohodnotná Google auth s allowlistem** ([nápad 2026-04-29]) — sheet `Povolení` (typ: `domena|uzivatel`, hodnota, aktivní), default `domena=blogic.cz` + `uzivatel=jurencak@gmail.com`. `currentUser_()` rozšíření o lookup. **Pasti:** otevření web app na „Anyone with Google account" znamená zrušit workspace gate (URL bez `/a/macros/blogic.cz/`); biometrie (WebAuthn) jen jako per-device optimalizace, ne primární auth. **Plán fází:** F1 = sheet allowlist + currentUser_ check + error page (low risk); F2 = re-deploy na non-workspace + auth gate UI; F3 = WebAuthn biometric.
+- **In-app search restaurací** ([nápad 2026-04-29]) — místo „kopíruj URL z menicka.cz" psát přímo do search inputu název. **Plán fází:** F1 = lokální search v `Restaurace` listu (instant, žádný API limit); F2 = fallback na menicka.cz scrape pokud lokálně nic — vyžaduje reverse-engineering jejich search endpointu (křehké).
+- **Návrhy podle popularity** ([nápad 2026-04-29]) — při add restaurace nabídnout top N nejsledovanějších v okolí (mimo defaulty + uživatelovy stávající). Agregace z `Uzivatele.sledovane_restaurace`. **Pasti:** cold-start (sociální signál nedává smysl pod ~5 uživateli), privacy (leakuje agregátní info — pro `@blogic.cz` interní OK).
+
+### Dlouhodobější nápady
+
 - **Detekce vhodných jídel pro stravovací omezení** — heuristika z názvu jídla + alergenů (např. alergen 1 = lepek → bezlepek=false; "tofu" / "vegan" v názvu → vegan=true). Vyžaduje testovací datasety.
-- **Oblíbená jídla** — `oblibena_jidla` sloupec existuje, žádná UI ani logika. Návrh: ⭐ tlačítko u každého jídla v kartě → log do user.oblibena_jidla → zvýraznění při příštím výskytu.
+- **Oblíbená jídla** — `oblibena_jidla` sloupec existuje, dnes jen filter podle keywords. Návrh: ⭐ tlačítko u každého jídla v kartě → log do user.oblibena_jidla → zvýraznění při příštím výskytu (řešilo by problém manuálního dopisování klíčových slov).
 - **Historie menu** — list `Menu Cache` udržuje jen dnes. Pokud chceme historii (statistiky "co jsme jedli minulý měsíc"), musíme zachovat starší řádky. Pravděpodobně nový list `Menu Historie` aby se nemíchalo s aktivním cache.
 - **Notifikace přes Google Chat / email** — parent projekt (Jídlogic) tohle dělá pro UTB Menzu, mohli bychom analogicky pro restaurace ze sledování.
 - **Sdílení sledovaného seznamu** mezi kolegy (něco jako "tvůj kolega Y má rád tyhle restaurace, přidat všechny?").
+- **Manuální obnovení polohy** v hlavičce karty (vedle obnovení menu) — dnes je v Nastavení, ale když user otevírá geo filter status zřídka, refresh button v Nastavení je daleko od toho, co se chce — viz „seskupování akcí blízko ohniska pozornosti".
 
 ---
 

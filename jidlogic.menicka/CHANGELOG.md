@@ -6,6 +6,76 @@ Před přechodem na datumový formát byly verze `Menicka 0.5` až `Menicka 1.6`
 
 ---
 
+## v20260429.020 – v20260429.021 — 2026-04-29
+
+**Geo slider 1/2/3/4/5/∞ km, jeden ovladač** ([menicka_view.html](menicka_view.html)) — předchozí hodnoty `5/10/15/25/50` km zrušeny (50 km nikdo nedojede k obědu). Toggle „Filtrovat podle polohy" odstraněn — slider sám funguje jako on/off: ∞ pozice = filter vypnutý (bez fetche pozice, bez status řádku), 1-5 km = filter zapnutý. `localStorage menicka_geo_radius` ukládá `'inf'` nebo `'1'..'5'`. `STATE.geo.enabled` je teď derivace `radiusKm !== Infinity`.
+
+**Auto-refresh polohy při návratu na tab** — `visibilitychange` listener: pokud je geo filter aktivní a poloha starší než 15 min, tichý fetch v pozadí. Žádný permission prompt (už je granted), žádný toast. Řeší scénář „Zlín → Praha s otevřenou aplikací". Init při startu app: pokud je filter aktivní z minulé session a sessionStorage prázdný, fetchne polohu na pozadí.
+
+**Manuální „Obnovit polohu teď" tlačítko** v Nastavení (zobrazí se jen když filter aktivní) — `requestGeoPosition_` s `maximumAge: 0` ignoruje 30-min browser cache a vyžádá svěží GPS fix.
+
+---
+
+## v20260429.017 – v20260429.019 — 2026-04-29
+
+**Photon (Komoot) jako fallback geocoder** ([menicka_Geo.gs](menicka_Geo.gs)) — když Nominatim selže (HTTP 429 / null / network), zkusí se Photon. Stejná OSM data, jiná infrastruktura, žádný API klíč. Sdílený cache (`geo_q_<query>`) — jakmile jeden uspěje, oba ho čtou. `source` field v cached objektu odlišuje (`'nominatim'` vs `'photon'`) pro debug. Photon `lang=cs` parametr nepodporuje (`HTTP 400` → only `default/de/en/fr`); URL musí být bez `lang`.
+
+**Address normalize — spojení ulice + popisné** ([menicka_Parser.gs](menicka_Parser.gs)) — menicka.cz formátuje `<div class='adresa'>` jako `Bartošova, 4393, 76001, Zlín` (čárka mezi ulicí a č.p.). Parser teď detekuje druhou comma-část jako číslo popisné (regex `^\d+([\/\-]\d+)?[a-z]?$`) a spojí ji s první přes mezeru → `Bartošova 4393, 76001, Zlín`. Geocoderu jasnější, vyšší úspěšnost. Říms. číslice ve street názvech (Lešetín I) zachovány. Admin funkce `normalizeRestaurantAddresses()` opraví existující řádky retroaktivně.
+
+---
+
+## v20260429.013 – v20260429.016 — 2026-04-29
+
+**Reverse geocoding — město pro user pozici** — nový endpoint `reverseGeocode(lat, lon)` přes Nominatim reverse API. Cache 24 h per zaokrouhlené souřadnice. FE volá po fetchování pozice, do `STATE.geo.city` + sessionStorage. Status řádek pak ukazuje `Zlín • 49.2308, 17.6510` jako klikatelný odkaz na Google Maps (`?q=<lat>,<lon>`).
+
+**Diagnostické counts v geo statusu** — místo prostého „Zobrazují se podniky do 5 km" teď vidíš `Okruh 5 km — v dosahu 3, 1 bez polohy (zobrazeno z opatrnosti), 8 mimo`. Pomáhá pochopit proč jsou viditelné i vzdálené restaurace (typicky chybějící lat/lon → fail-safe).
+
+**Nominatim 429 backoff cache** — po HTTP 429 (rate-limit, soft-ban) se nastaví flag v CacheService na 1 h. Všechny další geo calls během této doby přeskočí Nominatim a jdou rovnou na Photon fallback. Bez toho by každý další call vrátil 429 a vyčerpal nás ještě hlouběji. Admin funkce `clearNominatimBackoff()` pro ruční reset.
+
+**Reverse cache: necachovat prázdné city** — pokud Nominatim vrátil odpověď bez `addr.city/town/...`, výsledek se neukládá do cache (jinak by se 24 h držel poisoned záznam). Plus `addr.city_district` přidán do fallback chainu (Nominatim u city_districtu jako Zlín vrací tam).
+
+---
+
+## v20260429.008 – v20260429.012 — 2026-04-29
+
+**Geo filter podle polohy** — varianta B (async geocoding po addRestaurant):
+- Schema: nové sloupce `adresa`, `lat`, `lon` v listu Restaurace
+- Parser vytahuje plnou adresu z `<div class='adresa'>` profile stránky
+- `Restaurants_register_` neudělá geocode (rychlost) — uloží jen adresu
+- FE po success volá nový `geocodeRestaurant(id)` na pozadí, doplní lat/lon do STATE
+- Půlnoční trigger `backfillRestaurantCoords` zachytí selhané (Nominatim down)
+- `Geo_geocodeRestaurant_(adresa, mesto)` preferuje plnou adresu (úroveň ulice ~50 m), fallback město (city centrum ~1 km)
+- Hardcoded coords pro Menzu UTB → Nad Stráněmi 4511, 760 05 Zlín (Fakulta aplikované informatiky, kde menza fakticky sídlí)
+- `Restaurants_reconcileMenza_()` doplní hard-coded defaulty pokud DB cells prázdné (priority pořadí: DB → defaulty)
+
+**Edit Save → re-fetch z menicka.cz** — `updateRestaurant` po uložení per-user override volá `Restaurants_refreshCatalogInfo_(rid)` který doplní jen prázdná pole (adresa, foto_url, lat/lon). Pasivní backfill mechanismus pro restaurace registrované před přidáním schema.
+
+**Map-pin v hlavičce karty** ([menicka_view.html](menicka_view.html)) — Lucide `map-pin` ikona vlevo od external-link, jen když `rest.adresa` existuje. Klik = Google Maps query `nazev + adresa` (název pomáhá disambiguaci kvůli polámaným adresám menicka.cz typu „V Kruhu , 2, 160 0, Praha 6"). Tooltip = plná adresa.
+
+**Admin `backfillRestaurantAddresses()`** — pro každý řádek bez `adresa` re-fetchne profile z menicka.cz a doplní. 0.5 s pause mezi fetchy.
+
+---
+
+## v20260429.005 – v20260429.007 — 2026-04-29
+
+**Minutky jako 5. sekce Menzy UTB** ([menicka_Menza.gs](menicka_Menza.gs)) — předtím se kategorie `'minutky'` z UTB API ignorovala. Teď přidáno `MENZA_KIND_MAP['minutky'] → 'minutky'`, vlastní counter v `menu` (1, 2, …), `menu.minutky: []` v init. FE `MAIN_KEYS` rozšířen o `'minutky'` (zahrnuje filtr „Skrýt jídla, která nejsou oblíbená", `isMenuEmpty`, `hasFavoriteMain`). Pořadí sekcí na kartě: Polévky → Oběd → Oběd ostatní → Pizza → Minutky.
+
+**Custom JS tooltipy** ([menicka_view.html](menicka_view.html)) — nahrazují native HTML `title` (rychlejší appearance, viewport-clamping, mobile long-press support). Single shared `<div class="tooltip">` v body, MutationObserver auto-migruje `title` → `data-tooltip` na všech elementech (i dynamicky vkládaných v renderCard / renderSettings). Hover (desktop, 400 ms delay) / focus (klávesnice, a11y) / long-press (mobil, 500 ms). Pozicování: nad cíl, flip pod při nedostatku místa, clamp k MARGIN od edge viewportu.
+
+**Refresh-bar pod hlavičkou karty během aktualizace** — když uživatel ručně refreshne menu nebo se právě fetchuje po addRestaurant, pod card-headerem se objeví decentní lišta s Lucide `hourglass` ikonou (animace flip 0°→180°→360°) a textem „Aktualizuji jídelníček, po dokončení se překreslí." Skryje se v okamžiku překreslení (= isLoading=false v dalším renderu).
+
+---
+
+## v20260429.003 – v20260429.004 — 2026-04-29
+
+**Brand cleanup: header plain text + footer trim** ([menicka_view.html](menicka_view.html)) — header má teď prostý text „meníčka BE" (žádný badge styling), tooltip s humorem („meníčka Blogic Edition nebo Bob Edition ...vyber si :-D"). Z patičky odebrán „meníčka BE · " separator — footer začíná rovnou Jídlogic linkem.
+
+**Bug fix: info-btn vypadalo nečitelně** — CSS `.add-row button` (purple-fill styling pro „Přidat") přebíjelo `.info-btn` (outline styling) kvůli stejné specificitě + pozdější deklaraci. Fix: `.add-row button:not(.info-btn)` selektor — info-btn si zachová svůj outline visual (info ikona čitelná na bílém pozadí), ostatní zůstávají purple-fill.
+
+**Gramáž inline za názvem jídla na desktopu** — `.item-tags` má media query: pod 700 px viewport block flex pod názvem (mobil), nad 700 px `inline-flex` po pravé straně názvu — kompaktnější layout pro užší sloupce.
+
+---
+
 ## v20260429.001 – v20260429.002 — 2026-04-29
 
 **Rebrand na meníčka BE** — _Blogic Edition_ (pro veřejnou tvář) / _Bob Edition_ (insider humor). Brand změny: header `meníčka` + outlinovaný badge `BE` (subtle, muted), `<title>`, error pages, GAS `setTitle`, RSS feed title, PWA manifest, footer (původní „meníčka by Bob" → „meníčka BE", BE už nese ten význam). Důsledné lowercase „meníčka" všude — odlišení od third-party brand `Meníčka.cz` (zdroj dat). Reference na zdroj `Meníčka.cz` v parser komentáři zachována.

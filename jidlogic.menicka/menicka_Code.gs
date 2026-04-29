@@ -95,7 +95,26 @@ function removeRestaurant(restauraceId) {
 }
 
 function updateRestaurant(restauraceId, payload) {
-  return Restaurants_setOverride_(currentUser_(), restauraceId, payload || {});
+  var email = currentUser_();
+  var rid = String(restauraceId);
+  Restaurants_setOverride_(email, rid, payload || {});
+
+  // Save → re-fetch katalogu z menicka.cz (jen prázdná pole — adresa, foto_url,
+  // lat/lon). Tahle cesta slouží jako "pasivní backfill" pro restaurace
+  // registrované před přidáním nových sloupců. Pokud cokoliv selže, override
+  // už proběhl, takže UI vždy dostane validní výsledek.
+  try {
+    Restaurants_refreshCatalogInfo_(rid);
+  } catch (e) {
+    Logger.log('updateRestaurant refresh fail: ' + e.message);
+  }
+
+  // Vrať aktuální verzi (po overrides + případném catalog refresh)
+  var resolved = Restaurants_resolveForUser_(email);
+  for (var i = 0; i < resolved.length; i++) {
+    if (resolved[i].id === rid) return resolved[i];
+  }
+  return null;
 }
 
 /**
@@ -114,6 +133,46 @@ function fetchMenuForRestaurant(restauraceId) {
 function refreshMenuFor(restauraceId) {
   currentUser_();
   return Restaurants_refreshMenuFor_(restauraceId);
+}
+
+/**
+ * Reverse geocoding: lat/lon → město. FE volá po získání user pozice, aby v
+ * status řádce mohlo zobrazit "kde si myslíme že jste". Cache 24 h.
+ */
+function reverseGeocode(lat, lon) {
+  currentUser_();
+  return Geo_reverseGeocode_(lat, lon);
+}
+
+/**
+ * Async geocoding pro jednu restauraci — FE volá po `addRestaurant` na pozadí,
+ * aby `addRestaurant` byl rychlý. Vrací { lat, lon } nebo null. Idempotentní:
+ * pokud už restaurace má souřadnice, vrátí je beze změny (žádný fetch).
+ *
+ * Geo: primárně přes plnou adresu (úroveň ulice), fallback město (city centrum).
+ */
+function geocodeRestaurant(restauraceId) {
+  currentUser_();
+  var rid = String(restauraceId);
+  var rec = Restaurants_byId_(rid);
+  if (!rec) throw new Error('Restaurace ' + rid + ' nenalezena.');
+  if (rec.lat != null && rec.lon != null) {
+    return { lat: rec.lat, lon: rec.lon, source: 'cached' };
+  }
+
+  var geo = Geo_geocodeRestaurant_(rec.adresa, rec.mesto);
+  if (!geo) return null;
+
+  // Najdi řádek a updatuj. Sheet read+write jednou — ne přes Restaurants_listActive_ cache.
+  var rows = _readAll_(SHEETS.RESTAURACE);
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].id) === rid) {
+      _setRowFields_(SHEETS.RESTAURACE, rows[i]._row, { lat: geo.lat, lon: geo.lon });
+      Restaurants_invalidate_();
+      return { lat: geo.lat, lon: geo.lon, source: rec.adresa ? 'address' : 'city' };
+    }
+  }
+  return null;
 }
 
 /**
