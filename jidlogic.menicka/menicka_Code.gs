@@ -23,7 +23,7 @@ function doGet() {
   t.bootstrapJson = JSON.stringify(data).replace(/</g, '\\u003c');
 
   return t.evaluate()
-    .setTitle('Meníčka')
+    .setTitle('meníčka BE')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
 }
@@ -64,15 +64,15 @@ function _renderError_(message) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return HtmlService.createHtmlOutput(
     '<!DOCTYPE html><html lang="cs"><head><meta charset="utf-8">' +
-    '<title>Meníčka — chyba</title>' +
+    '<title>meníčka BE — chyba</title>' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;' +
     'background:#F7F7FA;color:#2D2D3A;padding:32px;line-height:1.5}' +
     '.box{max-width:560px;margin:64px auto;padding:24px;background:#fff;' +
     'border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08)}' +
     'h1{color:#6B2D8B;margin-bottom:12px;font-size:1.2rem}</style></head><body>' +
-    '<div class="box"><h1>🍽️ Meníčka</h1><p>' + safeMsg + '</p></div></body></html>'
-  ).setTitle('Meníčka');
+    '<div class="box"><h1>🍽️ meníčka BE</h1><p>' + safeMsg + '</p></div></body></html>'
+  ).setTitle('meníčka BE');
 }
 
 // === Veřejné funkce volatelné z google.script.run ===

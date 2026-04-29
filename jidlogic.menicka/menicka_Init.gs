@@ -184,6 +184,38 @@ function bulkAddRestaurantsForUser() {
 }
 
 /**
+ * One-shot: pro každý řádek v Restaurace bez `foto_url` zkusí stáhnout
+ * tiskovou verzi profilu a doplnit URL loga. Skipuje řádky, kde už foto_url
+ * je vyplněné (= idempotentní, bezpečné spustit opakovaně).
+ *
+ * Spusť ručně po `initializeMenicka` (která přidala sloupec foto_url do listu).
+ */
+function backfillRestaurantPhotos() {
+  var rows = _readAll_(SHEETS.RESTAURACE);
+  var doplneno = 0, preskoceno = 0, selhalo = 0;
+
+  rows.forEach(function(r) {
+    if (r.foto_url) { preskoceno++; return; }
+    var id = String(r.id);
+    if (!id || id === MENZA_RESTAURACE_ID) { preskoceno++; return; }
+
+    var print = Scraper_fetchPrintProfile_(id);
+    if (print.foto_url) {
+      _setRowFields_(SHEETS.RESTAURACE, r._row, { foto_url: print.foto_url });
+      doplneno++;
+      Logger.log('foto_url pro id=' + id + ' → ' + print.foto_url);
+    } else {
+      selhalo++;
+      Logger.log('foto_url pro id=' + id + ' nenalezeno');
+    }
+  });
+
+  Restaurants_invalidate_();
+  Logger.log('backfillRestaurantPhotos hotovo: doplneno=' + doplneno + ', preskoceno=' + preskoceno + ', selhalo=' + selhalo);
+  return { doplneno: doplneno, preskoceno: preskoceno, selhalo: selhalo };
+}
+
+/**
  * Pro každého uživatele v listu Uživatelé odstraní ze `sledovane_restaurace`
  * ID, která neodpovídají žádné aktuální restauraci v listu Restaurace.
  * Spusť ručně, pokud máš podezření na orphan IDs (např. po manuálním smazání
@@ -255,6 +287,32 @@ function setupTriggers() {
   return setupTriggers_();
 }
 
+/**
+ * Vypíše do Logger.log (View → Executions) všechny aktuálně registrované
+ * triggery — funkci, typ a (pro time-based) hodinu + timezone. Diagnostika
+ * pro „proč mi nefungují automatické refreshe".
+ */
+function listTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  if (triggers.length === 0) {
+    Logger.log('ŽÁDNÉ TRIGGERY. Spusť setupTriggers().');
+    return { count: 0 };
+  }
+
+  var summary = [];
+  triggers.forEach(function(t) {
+    var line = t.getHandlerFunction() + ' | ' + t.getEventType();
+    try {
+      if (t.getTriggerSource() === ScriptApp.TriggerSource.CLOCK) {
+        line += ' | atHour=' + t.getTriggerSourceId();
+      }
+    } catch (e) { /* některé sourceId nejsou exposed */ }
+    summary.push(line);
+    Logger.log(line);
+  });
+  return { count: triggers.length, triggery: summary };
+}
+
 function setupTriggers_() {
   ScriptApp.getProjectTriggers().forEach(function(t) {
     var f = t.getHandlerFunction();
@@ -283,9 +341,13 @@ function setupTriggers_() {
   hours = hours.filter(function(h, i) { return hours.indexOf(h) === i; }).sort(function(a, b) { return a - b; });
 
   hours.forEach(function(h) {
+    // .nearMinute(0) → fire blízko :00 každé hodiny. Bez ní GAS rozhazuje fire
+    // čas náhodně v rámci celé hodiny (až ~45 min jitter). S nearMinute typicky
+    // ±5 min. Vzor podle parent Jídlogic projektu (Menza.feed.js).
     ScriptApp.newTrigger('refreshAllMenus')
       .timeBased()
       .atHour(h)
+      .nearMinute(0)
       .everyDays(1)
       .inTimezone(TZ)
       .create();
@@ -297,6 +359,7 @@ function setupTriggers_() {
   ScriptApp.newTrigger('clearTodaysCache')
     .timeBased()
     .atHour(endHour)
+    .nearMinute(0)
     .everyDays(1)
     .inTimezone(TZ)
     .create();

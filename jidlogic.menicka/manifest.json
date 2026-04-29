@@ -1,6 +1,6 @@
 {
-  "name": "Meníčka — Jídelníčky restaurací",
-  "short_name": "Meníčka",
+  "name": "meníčka BE — Jídelníčky restaurací",
+  "short_name": "meníčka BE",
   "description": "Jídelníčky restaurací z menicka.cz",
   "start_url": "./",
   "scope": "./",

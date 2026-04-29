@@ -6,6 +6,87 @@ Před přechodem na datumový formát byly verze `Menicka 0.5` až `Menicka 1.6`
 
 ---
 
+## v20260429.001 – v20260429.002 — 2026-04-29
+
+**Rebrand na meníčka BE** — _Blogic Edition_ (pro veřejnou tvář) / _Bob Edition_ (insider humor). Brand změny: header `meníčka` + outlinovaný badge `BE` (subtle, muted), `<title>`, error pages, GAS `setTitle`, RSS feed title, PWA manifest, footer (původní „meníčka by Bob" → „meníčka BE", BE už nese ten význam). Důsledné lowercase „meníčka" všude — odlišení od third-party brand `Meníčka.cz` (zdroj dat). Reference na zdroj `Meníčka.cz` v parser komentáři zachována.
+
+**Cols slider auto-bump po addRestaurant** ([menicka_view.html:2196](menicka_view.html#L2196)) — po úspěšném `addRestaurant` se `updateColsSlider() + setCols(maxCols())` automaticky promítne nový max. Předtím slider zůstal na původní hodnotě a nová karta padla na další řádek, dokud user ručně nesáhl na slider. Konzistentně s userovým očekáváním „přidám podnik, vidím ho vedle ostatních".
+
+**Info ikona 22 → 24px + stroke 2.2** ([menicka_view.html:315](menicka_view.html#L315)) — `.info-btn svg` v nastavení (přidat restauraci) byla na 22px optikou subjektivně malá, navýšeno + tlustší stroke pro lepší čitelnost.
+
+---
+
+## v20260428.003 — 2026-04-28
+
+**`nearMinute(0)` na všech triggerech** ([menicka_Init.gs:347](menicka_Init.gs#L347)) — bez ní GAS scheduler rozhazuje fire čas v rámci celé hodiny (až ~45 min jitter), refresh i cleanup pak fired pozdě (např. 17:45 místo 17:00). S `nearMinute(0)` typicky ±5 min od cílové minuty. Vzor podle parent Jídlogic projektu (`Menza.feed.js`). **Pozor:** stávající registrované triggery zůstávají bez `nearMinute` dokud někdo ručně nespustí `setupTriggers()` z editoru.
+
+---
+
+## v20260428.002 — 2026-04-28
+
+**Bug fix: cleanup cache nemazal — `String(Date)` vs `_formatDate_`** ([menicka_Cache.gs](menicka_Cache.gs)) — `_today_()` vrací `"2026-04-28"`, ale Google Sheets autoformátuje takový string na Date object při zápisu. Při čtení `getValues()` vrátil Date instance, takže `String(dates[i][0])` produkovalo `"Mon Apr 28 2026 …"` — nikdy se nenamatchovalo se string datumem. `Cache_getMenuMap_` používal `_formatDate_(r.datum) === datum`, takže čtení menu fungovalo. 5 míst, co mazalo / hledalo existující řádek používalo naivně `String(...)`: `Cache_storeMenu_` (find existing), `Cache_pruneOld_`, `Cache_pruneStale_`, `clearTodaysCache`, `Cache_removeForRestaurant_` — všechna teď používají `_formatDate_()` pro porovnání. Cleanup v 17:00 logoval „smazáno 0 řádků" a tvářil se, že běžel.
+
+---
+
+## v20260428.001 — 2026-04-28
+
+**Drawer Nastavení** ([menicka_view.html](menicka_view.html)) — předěláno z inline `display:none/block` na drawer pattern:
+- **Desktop**: roll-down panel pod hlavičkou (max-width 800px, max-height `calc(100vh - 80px)`, `transform: translateY(-110% → 0)`, header z-index 700 → modál se zaroluje pod hlavičku jako pod „dveře"). Trigger: cog ikona v hlavičce. Zavírá se přes chevron-up close-handle obdélník vyčnívající ze spodního okraje (vyrůstá z modálu, default muted, hover accent), Esc, klik na backdrop.
+- **Mobil**: slide-out z prava (max-width 560px, fullwidth pod 540px, transform translateX 100%→0). Trigger: avatar s iniciálami z emailu (`emailToInitials`, vzor podle Jídlogic Obedy.html). Drawer header obsahuje avatar 42×42 + jméno (derivované z email local part, `emailToDisplayName`) + email + close X. Mobile zavírá X v drawer-headeru.
+- **Container queries** na `.settings` (`container-name: drawer`) → `.fav-list` grid 1/2/3 sloupce podle reálné šířky panelu (ne viewport).
+
+**Drag karet za záhlaví** (desktop only) — Sortable.js na `#restaurants` gridu, handle `.card-header`, filter pro klikatelné prvky (`.card-link, .card-hide-btn, .card-refresh-btn`). Reorder mapuje pořadí přes `visibleIds()` zpět do `sledovane_restaurace` tak, aby skryté/odfiltrované karty zůstaly na svých absolutních pozicích.
+
+**Eye-off ikona v hlavičce karty** (desktop only) — klik = uloží do `skryte_restaurace` + toast „Skryto. Znovu zobrazit v Nastavení."
+
+**Padding 20px mezi sticky hlavičkou a kartami** — `.restaurants-wrap` má `padding-top: 20px` (předtím 0, karty nalepené na header).
+
+**Logo restaurace v UI zakomentováno** — backend dál fetchuje `foto_url`, jen se nerendruje (komentáře v kódu instruují, co odkomentovat pro re-enable).
+
+---
+
+## v20260427.009 – v20260427.015 — 2026-04-27
+
+**Menza dělená do 4 sekcí** ([menicka_Menza.gs](menicka_Menza.gs)) — Polévky / Oběd / Oběd ostatní / Pizza, podle členění UTB webkredit. Nové menu klíče `obed`, `obed_ostatni`, `pizza` (vedle stávajícího `polevky`); `hlavni_jidla` zůstává pro non-menza zdroje. Per-kategorie counter pro číslování (oběd 1–5, oběd ostatní 1–2, pizza 1–2). FE `MAIN_KEYS` = `['hlavni_jidla', 'obed', 'obed_ostatni', 'pizza']` — `isMenuEmpty`, `hasFavoriteMain`, `hasFavoriteAny` a `onlyDish` filter berou všechny hlavní sekce.
+
+**Trailing allergen strip** ([menicka_Parser.gs:124](menicka_Parser.gs#L124)) — některé restaurace dávají alergeny jako prostý text na konec názvu (`"Italská minestrone 1, 9"`). Parser detekuje koncový pattern `\s+\d{1,2}(,\s*\d{1,2})*\s*$`, validuje 1–14 (EU číslování) a strippuje. Pokud `<em>` parser z původního HTML nic nedostal, uloží stripnuté hodnoty jako `alergeny`.
+
+**Failure detection v cooldownu** ([menicka_Restaurants.gs:172](menicka_Restaurants.gs#L172)) — když poslední fetch byl chyba (UTB blip, parser exception, generic „nepodařilo načíst" / „selhal" string), `Restaurants_refreshMenuFor_` přeskakuje 15-min cooldown. `Menza_fetchTodayMenu_` označuje fetch failures `menu.transient_error = true`. FE má symetrickou detekci v `isFailedMenu(menu)` + `canRefreshMenu(ts, menu)`, label tlačítka říká „Poslední pokus se nepodařil" a tooltip „Klikni pro nové stažení". Bez toho se zaseknutý error cache na 15 min stal blokujícím.
+
+**Gramáž z UTB Menzy** ([menicka_Menza.gs:39](menicka_Menza.gs#L39)) — regex zachytává hodnotu i jednotku zvlášť (např. `120g`, `0.33l`), místo aby se stripovala. Hodnota se uloží do `mnozstvi` jako u iframe parseru. Nový toggle „Zobrazit gramáž / objem u jídel" v Nastavení (default ON, localStorage `menicka_show_mnozstvi`) — vypne malé štítky pod položkami.
+
+**Justice for Nature v patičce** — odkaz + logo z `justicefornature.org`. Zdrojové logo je bílé, takže CSS filter `invert(1)` v light módu na tmavé, dark mód nativní. Vlastní třída `footer-logo-j4n` (ne sdílená s `footer-logo-img` u blogicu, kde se aplikuje `invert(1) hue-rotate(180deg)` jen v dark).
+
+---
+
+## v20260427.003 – v20260427.008 — 2026-04-27
+
+**Footer paralelní s Jídlogic** ([menicka_view.html](menicka_view.html)) — `meníčka by Bob · Jídlogic · blogic logo`. Logo míří na blogic.cz, prostřední odkaz na Jídlogic deploy (`?app=obedy`). Dark mode má `filter: invert(1) hue-rotate(180deg)` na PNG logu — černé části se invertují na bílé, oranžová tečka zůstává.
+
+**Banner / tooltip používají hodinová okna místo přesných časů.** Místo "9:00" teď "9:00–10:00" (Google atHour() trigger fire window má až ~15 min jitter, přesný čas nejde určit). Subtext pod bannerem to vysvětluje jednou pro všechny stavy. Refresh tlačítko mimo okno hlásí "Aktualizovat lze jen v okně 9:00–17:00".
+
+**Diagnostika triggerů** — `listTriggers()` admin funkce vypíše do Logger.log všechny registrované triggery. Pomohlo identifikovat, že po změně schedule se musí ručně spustit `setupTriggers()`.
+
+**Filtr „Skrýt jídla, která nejsou oblíbená"** ([menicka_view.html:830](menicka_view.html#L830)) — přejmenováno z "Skrýt neoblíbená hlavní jídla", přidána Lucide `info` ikona vpravo s nativním tooltipem: „Pokud má restaurace oblíbenou jen polévku, zobrazí se pro daný podnik kompletní jídelníček." `stopPropagation` zabrání toggle při kliku na ikonu.
+
+**Logo restaurace z menicka.cz tisk-profilu** ([menicka_Parser.gs:206](menicka_Parser.gs#L206), [menicka_Scraper.gs:46](menicka_Scraper.gs#L46)):
+- Nový sloupec `foto_url` v listu Restaurace.
+- `Parser_extractPrintProfile_` čte `<h1>` (název) + `<img class='logo_restaurace'>` (foto). Print verze `tisk-profil.php?restaurace=<id>` má čisté HTML bez nav/JS.
+- Při registraci restaurace 2 fetche: `profile.html` (název + město) + `tisk-profil.php` (foto). Pokud profile parser selže s názvem, fallback je print parser, pak slug.
+- `backfillRestaurantPhotos()` admin funkce — idempotentní doplnění fota pro existující restaurace.
+- 40×40 zaoblený thumbnail vlevo v hlavičce karty, lazy-loaded, `onerror="this.remove()"` při 404.
+- **Defaultně skrytý** — toggle v Nastavení „Zobrazit logo restaurace v hlavičce karty" (localStorage `menicka_show_thumb`, default OFF). Pod ním poznámka: „Logo se ukáže jen u restaurací, pro které se ho podařilo získat z menicka.cz."
+
+**Refresh ikona — loading state + tooltipy per stav** ([menicka_view.html:1228](menicka_view.html#L1228)):
+- `STATE.loadingMenu[id]` flag track in-flight fetchů (manual refresh i fetch po addRestaurant).
+- CSS `@keyframes refresh-spin` — ikona se otáčí 1 s/rev během loadingu.
+- Každý ze stavů má vlastní tooltip i label: loading („Stahuji jídelníček…"), can-refresh („Aktualizovat jídelníček…"), čerstvé („Jídelníček je čerstvý…"), mimo okno (range message), nikdy nestaženo („Jídelníček ještě nebyl stažen — refresh proběhne automaticky v dalším okně.").
+- Refresh row se ukáže vždy (i bez menu), aby uživatel měl konzistentní UX.
+
+**Vlastní číslování restaurace má prioritu** ([menicka_view.html:1306](menicka_view.html#L1306)) — pokud `item.nazev` začíná na `^\d+\.\s+` (např. „1. Grilovaná kotleta"), použije se to jako display number a z textu se odstraní. Jinak fallback na `item.cislo` z parseru. Řeší duplicitu „1.   1. Grilovaná…", kterou vytvářely restaurace, co si číslují jídla samy.
+
+---
+
 ## v20260427.001 – v20260427.002 — 2026-04-27
 
 **`clearAllCaches` čistí i list `Menu Cache`** ([menicka_Init.gs:53](menicka_Init.gs#L53)).
@@ -46,7 +127,7 @@ Předtím mazal jen CacheService klíče (in-memory) a v listu zůstávaly persi
 
 ## v20260426.001 — 2026-04-26
 
-**Verzování přepnuto na datumový formát** (tisíciny pro Meníčka, parent Jídlogic používá setiny).
+**Verzování přepnuto na datumový formát** (tisíciny pro meníčka, parent Jídlogic používá setiny).
 - `deploy.sh` parsuje `vYYYYMMDD.NNN`, bumpuje counter pro stejný den nebo resetuje na `.001` pro nový den.
 - `LC_NUMERIC=C` v awk eliminuje českou čárku v desetinných číslech.
 

@@ -30,6 +30,7 @@ function Restaurants_listActive_() {
         nazev: r['název'] || '',
         mesto: r['město'] || '',
         url: r.url || '',
+        foto_url: r.foto_url || '',
         vychozi: _truthy_(r['výchozí'])
       };
     });
@@ -77,8 +78,10 @@ function Restaurants_register_(input) {
   var existing2 = Restaurants_byId_(parsed.id);
   if (existing2) return existing2;
 
-  // Stáhne info z profile stránky. Pokud fetch padne nebo parser nedoká
-  // nazev / mesto vytáhnout, máme fallback ze slugu URL.
+  // Stáhne info z profile stránky (název + město). Print profil je 2. zdroj
+  // pro název a jediný zdroj pro foto_url (logo restaurace).
+  // Pokud cokoliv padne, máme fallback ze slugu URL pro název, prázdné pro
+  // ostatní pole.
   var info = { nazev: null, mesto: null };
   try {
     info = Scraper_fetchRestaurantInfo_(parsed.url);
@@ -86,9 +89,10 @@ function Restaurants_register_(input) {
     Logger.log('Info fetch selhal pro id=' + parsed.id + ': ' + e.message);
   }
 
-  if (!info.nazev) {
-    info.nazev = _slugToName_(parsed.slug);
-  }
+  var print = Scraper_fetchPrintProfile_(parsed.id);  // soft-fail uvnitř
+
+  if (!info.nazev) info.nazev = print.nazev;
+  if (!info.nazev) info.nazev = _slugToName_(parsed.slug);
   if (!info.nazev) {
     throw new Error('Nepodařilo se zjistit ani odvodit název restaurace.');
   }
@@ -99,6 +103,7 @@ function Restaurants_register_(input) {
     nazev: info.nazev,
     mesto: info.mesto || '',
     url: parsed.url,
+    foto_url: print.foto_url || '',
     vychozi: false
   };
 
@@ -107,6 +112,7 @@ function Restaurants_register_(input) {
     'název': rec.nazev,
     'město': rec.mesto,
     url: rec.url,
+    foto_url: rec.foto_url,
     'aktivní': 1,
     'výchozí': 0
   });
@@ -176,7 +182,19 @@ function Restaurants_refreshMenuFor_(restauraceId) {
     };
   }
 
-  if (existing && existing.aktualizovano) {
+  // Cooldown přeskoč, pokud poslední fetch byl chyba (UTB API blip, parse
+  // failure, …) — uživatel by jinak čekal 15 min na nic. Detekce přes:
+  //   - explicitní `transient_error` (nový flag z Menza fetche)
+  //   - `chyba` (parser exception z menicka.cz iframe)
+  //   - info string obsahující "nepodařilo" / "chyba" / "selhalo" — pokrývá
+  //     i staré cache záznamy bez explicitního flagu
+  var isFailureCache = existing && (
+    existing.transient_error === true ||
+    !!existing.chyba ||
+    (existing.info && /nepoda[řr]ilo|chyba|selhal/i.test(existing.info))
+  );
+
+  if (existing && existing.aktualizovano && !isFailureCache) {
     var ageMs = Date.now() - new Date(existing.aktualizovano).getTime();
     if (ageMs < REFRESH_MIN_AGE_MS) {
       return {
@@ -348,6 +366,7 @@ function _applyOverride_(rec, override) {
     nazev: override.nazev || rec.nazev,
     mesto: (override.mesto !== undefined) ? override.mesto : rec.mesto,
     url: rec.url,
+    foto_url: rec.foto_url || '',
     vychozi: rec.vychozi,
     custom: true
   };
@@ -391,6 +410,7 @@ function _registerMenza_() {
     nazev: MENZA_INFO.nazev,
     mesto: MENZA_INFO.mesto,
     url: MENZA_INFO.url,
+    foto_url: '',
     vychozi: false
   };
   _appendRowMapped_(SHEETS.RESTAURACE, {
@@ -398,6 +418,7 @@ function _registerMenza_() {
     'název': rec.nazev,
     'město': rec.mesto,
     url: rec.url,
+    foto_url: '',
     'aktivní': 1,
     'výchozí': 0
   });

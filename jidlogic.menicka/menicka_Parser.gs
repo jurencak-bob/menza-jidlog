@@ -121,6 +121,24 @@ function _parseRow_(rowHtml) {
     .replace(/\s+/g, ' ')
     .trim();
 
+  // Některé restaurace dávají alergeny jako prostý text na konec názvu
+  // ("Italská minestrone 1, 9" / "Pizza 4 sezóny 1, 7"). Strip + případně
+  // doplnit do alergeny, pokud parser z <em> nic nevytáhl. Validace 1–14
+  // (EU číslování alergenů) brání falešně pozitivnímu shodu na koncové číslo
+  // v samotném názvu.
+  var trailingAllergens = foodText.match(/\s+(\d{1,2}(?:\s*,\s*\d{1,2})*)\s*$/);
+  if (trailingAllergens) {
+    var nums = trailingAllergens[1].split(/\s*,\s*/).map(function(s) { return s.trim(); }).filter(Boolean);
+    var allValid = nums.length > 0 && nums.every(function(n) {
+      var v = parseInt(n, 10);
+      return v >= 1 && v <= 14;
+    });
+    if (allValid) {
+      foodText = foodText.substring(0, foodText.length - trailingAllergens[0].length).trim();
+      if (alergeny.length === 0) alergeny = nums;
+    }
+  }
+
   // Detekce množství:
   //   - "0, 33l", "0,33l", "0.33l" → polévka v litrech
   //   - "300g" → hlavní jídlo v gramech
@@ -198,6 +216,45 @@ function Parser_extractRestaurantInfo_(html) {
   }
 
   return { nazev: nazev || null, mesto: mesto || null };
+}
+
+/**
+ * Parser pro tiskovou verzi profilu (`tisk-profil.php?restaurace=<id>`).
+ *
+ * HTML je velmi jednoduché:
+ *   <h1>Bowling Pizza Komín</h1>
+ *   <img class='logo_restaurace' src='foto/logo/5757-jl_strana1.jpg' ... />
+ *
+ * Vrací `{ nazev, foto_url }` s absolutní URL obrázku. Pokud něco chybí,
+ * vrací null v daném poli (caller dělá merge s ostatními zdroji).
+ */
+function Parser_extractPrintProfile_(html) {
+  var nazev = null;
+  var fotoUrl = null;
+
+  var h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  if (h1) {
+    var t = _decodeHtml_(h1[1].replace(/<[^>]+>/g, '')).trim();
+    if (t) nazev = t.replace(/^Restaurace\s+/i, '');
+  }
+
+  // <img class='logo_restaurace' src='...'> — class a src můžou být v libovolném pořadí
+  var imgTag = html.match(/<img[^>]*class=['"][^'"]*logo_restaurace[^'"]*['"][^>]*>/i);
+  if (imgTag) {
+    var srcMatch = imgTag[0].match(/src=['"]([^'"]+)['"]/i);
+    if (srcMatch) {
+      var src = srcMatch[1].trim();
+      if (src) {
+        if (/^https?:\/\//i.test(src)) {
+          fotoUrl = src;
+        } else {
+          fotoUrl = 'https://www.menicka.cz/' + src.replace(/^\/+/, '');
+        }
+      }
+    }
+  }
+
+  return { nazev: nazev, foto_url: fotoUrl };
 }
 
 function _decodeHtml_(s) {

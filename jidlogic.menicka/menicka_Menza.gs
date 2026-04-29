@@ -6,12 +6,13 @@
  *   GET /Ordering?CanteenId=<id>      → seznam dostupných dnů
  *   GET /Menu?Dates=<dt>&CanteenId=<id> → položky pro daný den
  *
- * API kategorie → naše schéma:
+ * API kategorie → naše schéma (Menza si zachovává členění, ostatní zdroje
+ * mají jen `polevky` + `hlavni_jidla`):
  *   "polévka"        → polevky
- *   "oběd"           → hlavni_jidla
- *   "oběd ostatní"   → hlavni_jidla
- *   "pizza"          → hlavni_jidla
- *   "minutky"/"minutka" → ignorováno
+ *   "oběd"           → obed
+ *   "oběd ostatní"   → obed_ostatni
+ *   "pizza"          → pizza
+ *   ostatní (steril., obaly, minutky, …) → ignorováno
  *   menza nemá pití ani dezerty
  *
  * Pokud API vrací prázdno (víkend, prázdniny), `menu.info` obsahuje hlášku.
@@ -30,13 +31,14 @@ var MENZA_INFO = {
 // Kategorie z API → klíč v našem menu objektu. Hodnoty mimo mapu se ignorují.
 var MENZA_KIND_MAP = {
   'polévka':      'polevky',
-  'oběd':         'hlavni_jidla',
-  'oběd ostatní': 'hlavni_jidla',
-  'pizza':        'hlavni_jidla'
+  'oběd':         'obed',
+  'oběd ostatní': 'obed_ostatni',
+  'pizza':        'pizza'
 };
 
-// "120g Svíčková" → "Svíčková"
-var MENZA_WEIGHT_RE = /^\d+[,.]?\d*\s*(g|kg|ml|l|dcl)\s+/i;
+// "120g Svíčková" → mnozstvi="120g", nazev="Svíčková". Group 1 = hodnota,
+// group 2 = jednotka. Hodnotu normalizujeme čárka→tečka.
+var MENZA_WEIGHT_RE = /^(\d+[,.]?\d*)\s*(g|kg|ml|l|dcl)\s+/i;
 
 function Menza_fetchTodayMenu_() {
   var dnes = _today_();
@@ -44,7 +46,10 @@ function Menza_fetchTodayMenu_() {
     restaurace_id: MENZA_RESTAURACE_ID,
     datum: dnes,
     polevky: [],
-    hlavni_jidla: [],
+    obed: [],
+    obed_ostatni: [],
+    pizza: [],
+    hlavni_jidla: [],  // prázdné pro Menzu (FE renderuje obed/obed_ostatni/pizza zvlášť)
     piti: [],
     dezerty: []
   };
@@ -53,6 +58,7 @@ function Menza_fetchTodayMenu_() {
   var orderResp = _menzaFetchJson_(MENZA_BASE_URL + '/Ordering?CanteenId=' + MENZA_CANTEEN_ID);
   if (!orderResp) {
     menu.info = 'Menzu se nepodařilo načíst.';
+    menu.transient_error = true;
     return menu;
   }
 
@@ -79,6 +85,7 @@ function Menza_fetchTodayMenu_() {
   var menuResp = _menzaFetchJson_(menuUrl);
   if (!menuResp) {
     menu.info = 'Menzu se nepodařilo načíst.';
+    menu.transient_error = true;
     return menu;
   }
 
@@ -94,21 +101,29 @@ function Menza_fetchTodayMenu_() {
     return menu;
   }
 
-  // Krok 3: roztřiď do kategorií + číslování (jen pro hlavní jídla)
-  var hlavniCounter = 0;
+  // Krok 3: roztřiď do kategorií + per-kategorie číslování (1. 2. … oddělené
+  // pro Oběd vs. Oběd ostatní vs. Pizza, jak to ukazuje webkredit menzy).
+  var counters = { obed: 0, obed_ostatni: 0, pizza: 0 };
   items.forEach(function(item) {
     var kind = String(item.mealKindName || '').trim().toLowerCase();
     var category = MENZA_KIND_MAP[kind];
     if (!category) return;
 
-    var name = String(item.mealName || '').trim().replace(MENZA_WEIGHT_RE, '');
+    var fullName = String(item.mealName || '').trim();
+    var mnozstvi = null;
+    var weightMatch = fullName.match(MENZA_WEIGHT_RE);
+    var name = fullName;
+    if (weightMatch) {
+      mnozstvi = weightMatch[1].replace(',', '.') + weightMatch[2].toLowerCase();
+      name = fullName.substring(weightMatch[0].length).trim();
+    }
     if (!name) return;
     name = name.charAt(0).toUpperCase() + name.slice(1);
 
     var cislo = null;
-    if (category === 'hlavni_jidla') {
-      hlavniCounter++;
-      cislo = String(hlavniCounter);
+    if (counters.hasOwnProperty(category)) {
+      counters[category]++;
+      cislo = String(counters[category]);
     }
 
     // Vždy bereme plnou cenu (price2). Studentská cena (price) se nezobrazuje.
@@ -119,15 +134,16 @@ function Menza_fetchTodayMenu_() {
       cislo: cislo,
       nazev: name,
       cena: cena,
-      mnozstvi: null,
+      mnozstvi: mnozstvi,
       alergeny: null
     });
   });
 
   // Pokud po filtraci žádná položka neprošla mapou, info — uživatel by jinak
   // viděl prázdnou kartu bez vysvětlení.
-  if (menu.polevky.length === 0 && menu.hlavni_jidla.length === 0) {
-    menu.info = 'Menza dnes nemá v nabídce polévky ani hlavní jídla.';
+  if (menu.polevky.length === 0 && menu.obed.length === 0
+      && menu.obed_ostatni.length === 0 && menu.pizza.length === 0) {
+    menu.info = 'Menza dnes nemá v nabídce polévky, obědy ani pizzy.';
   }
 
   return menu;

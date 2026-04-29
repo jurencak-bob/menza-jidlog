@@ -1,4 +1,4 @@
-# Soubory, které se NEPUSHUJÍ do Apps Script projektu Meníčka.
+# Soubory, které se NEPUSHUJÍ do Apps Script projektu meníčka.
 # clasp push nahraje vše z rootDir, co tady NENÍ uvedeno. GAS akceptuje jen
 # .gs (servr.JS) + .html (HtmlService) + appsscript.json (manifest).
 

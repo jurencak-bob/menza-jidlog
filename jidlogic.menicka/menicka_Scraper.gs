@@ -44,6 +44,28 @@ function Scraper_fetchRestaurantInfo_(profileUrl) {
 }
 
 /**
+ * Stáhne tiskovou verzi profilu (`tisk-profil.php?restaurace=<id>`) a vrátí
+ * `{ nazev, foto_url }`. Print HTML je čisté (žádné nav/JS), použije se jako:
+ *   - fallback pro název, když `Scraper_fetchRestaurantInfo_` nedá nazev
+ *   - jediný zdroj pro foto_url (logo restaurace)
+ *
+ * Soft-fail: pokud fetch padne, vrací `{ nazev: null, foto_url: null }`.
+ * Caller pak nemá blokující registrace.
+ */
+function Scraper_fetchPrintProfile_(restauraceId) {
+  var url = 'https://www.menicka.cz/tisk-profil.php?restaurace=' + encodeURIComponent(restauraceId);
+  try {
+    var resp = _menickaFetch_(url);
+    if (resp.getResponseCode() !== 200) return { nazev: null, foto_url: null };
+    var html = Utilities.newBlob(resp.getContent()).getDataAsString('windows-1250');
+    return Parser_extractPrintProfile_(html);
+  } catch (e) {
+    Logger.log('Print profile fetch selhal pro ' + restauraceId + ': ' + e.message);
+    return { nazev: null, foto_url: null };
+  }
+}
+
+/**
  * Sjednocená množina ID, pro která se má stahovat menu:
  *   - výchozí restaurace (Restaurace.výchozí=1)
  *   - sjednocení sledovane_restaurace všech uživatelů

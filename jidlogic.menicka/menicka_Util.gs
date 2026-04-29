@@ -14,7 +14,7 @@ var SHEETS = {
 
 var SHEET_HEADERS = {
   KONFIGURACE: ['klíč', 'hodnota'],
-  RESTAURACE:  ['id', 'název', 'město', 'url', 'aktivní', 'výchozí'],
+  RESTAURACE:  ['id', 'název', 'město', 'url', 'aktivní', 'výchozí', 'foto_url'],
   UZIVATELE:   ['email', 'sledovane_restaurace', 'skryte_restaurace', 'oblibena_jidla', 'dieta', 'vytvoreno', 'posledni_pristup', 'pocet_navstev', 'rss_drive_id', 'restaurace_overrides'],
   MENU_CACHE:  ['datum', 'restaurace_id', 'data', 'aktualizovano']
 };

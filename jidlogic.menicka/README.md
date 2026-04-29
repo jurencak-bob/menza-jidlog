@@ -1,4 +1,4 @@
-# Meníčka
+# meníčka
 
 Web app pro agregaci denních menu z restaurací (zdroje: [menicka.cz](https://www.menicka.cz) iframe + UTB Menza JSON API). Hostovaná v Google Apps Script (server + HtmlService UI), zabalená jako PWA wrapper na GitHub Pages pro mobil.
 
@@ -17,7 +17,7 @@ Container-bound Apps Script projekt nad Google Sheetem. Cron-trigger každou hod
 | List | Účel | Klíčové sloupce |
 |---|---|---|
 | `⚙️ Konfigurace` | Globální settings | `klíč`, `hodnota` (klíče: `trigger_casy` CSV např. `9,10,11,12,13,14`, `cache_konec_hodina` např. `17`, `debug_id`, …) |
-| `Restaurace` | Globální katalog | `id`, `název`, `město`, `url`, `aktivní`, `výchozí` |
+| `Restaurace` | Globální katalog | `id`, `název`, `město`, `url`, `aktivní`, `výchozí`, `foto_url` |
 | `Uživatelé` | Per-user state | `email`, `sledovane_restaurace`, `skryte_restaurace`, `oblibena_jidla`, `dieta`, `vytvoreno`, `posledni_pristup`, `pocet_navstev`, `rss_drive_id`, `restaurace_overrides` |
 | `Menu Cache` | JSON snapshoty menu | `datum`, `restaurace_id`, `data`, `aktualizovano` |
 
@@ -98,12 +98,12 @@ Trigger `clearTodaysCache` ([menicka_Cache.gs:122](menicka_Cache.gs#L122)) v hod
 ### Manuální refresh per karta
 
 🔄 ikona uvnitř každé karty volá `refreshMenuFor` ([menicka_Restaurants.gs:160](menicka_Restaurants.gs#L160)). Server-side ochrana:
-- **Mimo refresh okno** (před `triggerHours[0]` / od `cache_konec_hodina`) → `outsideHours: true`. FE zobrazí toast „Aktualizace je možná jen mezi X:00 a Y:00."
-- **15-min cooldown** od posledního stažení → `tooEarly` flag s `ageMin`.
+- **Mimo refresh okno** (před `triggerHours[0]` / od `cache_konec_hodina`) → `outsideHours: true`. FE zobrazí toast „Aktualizovat lze jen v okně X:00–Y:00."
+- **15-min cooldown** od posledního stažení → `tooEarly` flag s `ageMin`. **Bypass:** pokud poslední fetch byl chyba (UTB blip, parser exception, info string „nepodařilo načíst" / „selhal"), cooldown se přeskakuje a uživatel může klikat dokud nedostane funkční odpověď.
 - **Soft-lock** přes CacheService 30 s → `locked` flag (zabrání paralelnímu fetchi téže restaurace z více klientů).
 - Jinak → fetch + `Cache_storeMenu_` + `refreshed: true`.
 
-FE má symetrický check (`canRefreshMenu` + `isOutsideRefreshWindow` v menicka_view.html). Ikona je purple když lze, šedá s tooltipem jinak.
+FE má symetrický check (`canRefreshMenu(ts, menu)` + `isFailedMenu(menu)` + `isOutsideRefreshWindow` v menicka_view.html). Ikona je purple když lze, šedá s tooltipem jinak. Po failed fetchi label vedle ikony hlásí „Poslední pokus se nepodařil" + tlačítko se rovnou nabízí ke kliknutí.
 
 ### Schedule banner
 
@@ -115,11 +115,23 @@ Texty obsahují konkrétní hodiny z Konfigurace, takže reagují na změnu sche
 
 ### Stahování menicka.cz
 
-Iframe URL `https://www.menicka.cz/api/iframe/?id=<id>`. **Vyžaduje browser User-Agent**, jinak server odpovídá `Pro tento den nebylo zadáno menu` na všech dnech (bot detection). Encoding `windows-1250` → konverze přes `Utilities.newBlob().getDataAsString()`. Detaily viz memory **reference_menicka_cz_endpoints**.
+Tři endpointy, všechny vyžadují browser User-Agent + `windows-1250` decoding:
 
-Parser hledá `<span class='dnes'>` markeru u `<h2>` aby určil dnešní den, pak iteruje `<tr class='soup'>` a `<tr class='main'>` v sousední `<table class='menu'>`.
+| Endpoint | Použití | Co vrací |
+|---|---|---|
+| `api/iframe/?id=<id>` | denní menu | iframe HTML s tabulkou menu pro celý týden |
+| `<id>-<slug>.html` | registrace | profile stránka — název + město z meta description / title |
+| `tisk-profil.php?restaurace=<id>` | registrace + backfill | čistá tisková verze — `<h1>` název + `<img class='logo_restaurace'>` URL loga |
 
-Info řádky bez ceny (`Pro tento den nebylo zadáno menu.`, `Restaurace má tento den zavřeno.`) detekuje `INFO_RE` a uloží do `menu.info` místo polévky.
+Detaily HTML struktury viz memory **reference_menicka_cz_endpoints**.
+
+**Iframe parser** ([menicka_Parser.gs](menicka_Parser.gs)) hledá `<span class='dnes'>` markeru u `<h2>` aby určil dnešní den, pak iteruje `<tr class='soup'>` a `<tr class='main'>` v sousední `<table class='menu'>`. Info řádky bez ceny (`Pro tento den nebylo zadáno menu.`, `zavřeno`, `dovolená`) detekuje `INFO_RE` a uloží do `menu.info` místo polévky.
+
+**Print parser** (`Parser_extractPrintProfile_`) vrací `{ nazev, foto_url }`. Soft-fail (vrací nuly při chybě) — caller v `Restaurants_register_` kombinuje s primárním profile parserem.
+
+### Vlastní číslování restaurace má prioritu
+
+Některé restaurace si v menicka.cz číslují jídla rovnou v `<td class='food'>` (např. „1. Grilovaná kotleta"). Frontend ([menicka_view.html](menicka_view.html), `renderCategory`) detekuje `^\d+\.\s+` na začátku `item.nazev`, použije to číslo a z textu odstraní — jinak by se zdvojovalo s `item.cislo` z `<td class='no'>`.
 
 ### Stahování UTB Menzy
 
@@ -127,8 +139,10 @@ Info řádky bez ceny (`Pro tento den nebylo zadáno menu.`, `Restaurace má ten
 1. `GET /Ordering?CanteenId=3` → seznam dostupných dnů.
 2. Najít dnešní datum, pokud chybí → `info: "Menza dnes nevaří."`.
 3. `GET /Menu?Dates=<dt>&CanteenId=3` → položky.
-4. Mapping: `polévka` → polevky, `oběd` / `oběd ostatní` / `pizza` → hlavni_jidla, `minutky` → ignorováno.
+4. Mapping: `polévka` → polevky, `oběd` → obed, `oběd ostatní` → obed_ostatni, `pizza` → pizza, ostatní (steril., obaly, minutky) → ignorováno. UI renderuje 4 sekce zvlášť, číslování per-kategorie (oběd 1–5, oběd ostatní 1–2, …).
 5. Cena: `item.price2` (plná, nikoli studentská).
+6. Z `mealName` se odřezává prefix gramáže (`120g`, `0.33l`) a uloží do `mnozstvi` jako u iframe parseru.
+7. Při fetch failure se `menu.transient_error = true` flag zapíše do cache, takže další manuální refresh přeskočí 15-min cooldown.
 
 ### Per-user overrides
 
@@ -181,6 +195,8 @@ Spouštět ručně z Apps Script editoru:
 |---|---|---|
 | `initializeMenicka` | [menicka_Init.gs:7](menicka_Init.gs#L7) | Vytvořit / migrovat listy + nastavit triggery |
 | `setupTriggers` | [menicka_Init.gs:243](menicka_Init.gs#L243) | Re-registrovat refresh + cleanup triggery podle aktuální Konfigurace (volej po změně `trigger_casy` / `cache_konec_hodina`) |
+| `listTriggers` | [menicka_Init.gs:259](menicka_Init.gs#L259) | Vypíše všechny registrované triggery do Logger.log — diagnostika „proč mi nefungují automatické refreshe" |
+| `backfillRestaurantPhotos` | [menicka_Init.gs:181](menicka_Init.gs#L181) | Pro řádky bez `foto_url` zkusí stáhnout logo z `tisk-profil.php` (idempotentní) |
 | `clearAllCaches` | [menicka_Init.gs:53](menicka_Init.gs#L53) | Vyčistit CacheService klíče **a smazat všechny řádky z listu `Menu Cache`** |
 | `clearTodaysCache` | [menicka_Cache.gs:122](menicka_Cache.gs#L122) | Smaže jen dnešní řádky z `Menu Cache` (volá ho denní cleanup trigger v 17:00) |
 | `repairRestaurants` | [menicka_Init.gs:78](menicka_Init.gs#L78) | Pro placeholder řádky v Restaurace zkusit doplnit info nebo smazat |
