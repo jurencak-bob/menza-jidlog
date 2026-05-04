@@ -27,7 +27,7 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v16';
+var CACHE_NAME = 'jidlogic-shell-v17';
 var CORE_SHELL = [
   './',
   'index.html',
