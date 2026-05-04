@@ -486,14 +486,12 @@ function _removeRestaurantFromAllUsers_(restauraceId) {
 /**
  * Zaregistruje speciální Menzu UTB do listu Restaurace.
  */
-// Hard-coded defaults pro Menzu UTB — adresa Fakulty aplikované informatiky
-// (Nad Stráněmi 4511, Zlín), kde menza U5 reálně sídlí. DB má přednost: pokud
-// uživatel přepíše hodnotu v listu, zachová se. Pokud řádek menzy v DB chybí
-// (nikdy neregistrována) nebo má prázdné cell, naplní se z těchto defaultů.
+// Hard-coded default pro Menzu UTB — jen adresa Fakulty aplikované informatiky
+// (Nad Stráněmi 4511, Zlín), kde menza U5 reálně sídlí. Souřadnice se získávají
+// dynamicky přes Nominatim/Photon stejně jako u ostatních restaurací (registrace
+// uloží lat=null, FE async / půlnoční backfill geocoduje).
 var MENZA_DEFAULTS = {
-  adresa: 'Nad Stráněmi 4511, 760 05 Zlín',
-  lat: 49.2308,
-  lon: 17.6510
+  adresa: 'Nad Stráněmi 4511, 760 05 Zlín'
 };
 
 function _registerMenza_() {
@@ -504,8 +502,8 @@ function _registerMenza_() {
     adresa: MENZA_DEFAULTS.adresa,
     url: MENZA_INFO.url,
     foto_url: '',
-    lat: MENZA_DEFAULTS.lat,
-    lon: MENZA_DEFAULTS.lon,
+    lat: null,
+    lon: null,
     vychozi: false
   };
   _appendRowMapped_(SHEETS.RESTAURACE, {
@@ -515,8 +513,8 @@ function _registerMenza_() {
     'adresa': rec.adresa,
     url: rec.url,
     foto_url: '',
-    lat: rec.lat,
-    lon: rec.lon,
+    lat: '',
+    lon: '',
     'aktivní': 1,
     'výchozí': 0
   });
@@ -525,12 +523,13 @@ function _registerMenza_() {
 }
 
 /**
- * Pokud řádek menzy v listu Restaurace má prázdná pole (adresa / lat / lon),
- * doplní je z `MENZA_DEFAULTS`. DB hodnoty zůstanou nedotčené (priorita DB,
- * default jen jako fallback). Idempotentní — po prvním běhu nedělá nic.
+ * Pokud řádek menzy v listu Restaurace má prázdné pole `adresa`, doplní ho
+ * z `MENZA_DEFAULTS.adresa`. DB hodnoty zůstanou nedotčené. Souřadnice se
+ * neřeší — ty doplní backfill (Nominatim/Photon z adresy), stejně jako u
+ * ostatních restaurací. Idempotentní.
  *
  * Volá se z `initializeMenicka` (schema migration) a z `Restaurants_register_`
- * když user přidá Menzu a ona už v listu je (pasivní fix prázdných cells).
+ * když user přidá Menzu a ona už v listu je.
  */
 function Restaurants_reconcileMenza_() {
   var rows = _readAll_(SHEETS.RESTAURACE);
@@ -539,15 +538,14 @@ function Restaurants_reconcileMenza_() {
     var r = rows[i];
     var updates = {};
     if (!r['adresa']) updates['adresa'] = MENZA_DEFAULTS.adresa;
-    if (r.lat === '' || r.lat == null) updates.lat = MENZA_DEFAULTS.lat;
-    if (r.lon === '' || r.lon == null) updates.lon = MENZA_DEFAULTS.lon;
+    // lat/lon se neřeší — doplní backfillRestaurantCoords() přes geocoding
     if (Object.keys(updates).length > 0) {
       _setRowFields_(SHEETS.RESTAURACE, r._row, updates);
       Restaurants_invalidate_();
       Logger.log('Menza reconcile: doplněno z defaultů → ' + Object.keys(updates).join(', '));
       return updates;
     }
-    return null;  // Menza existuje, vše vyplněné — žádné updates
+    return null;  // Menza existuje, adresa vyplněná
   }
   return null;  // Menza v listu vůbec není (nikdy nebyla registrovaná)
 }

@@ -6,6 +6,40 @@ Před přechodem na datumový formát byly verze `Menicka 0.5` až `Menicka 1.6`
 
 ---
 
+## v20260504.001 – v20260504.004 — 2026-05-04
+
+**Rebrand UI: „meníčka BE" → „LunchHunter PE"** ([menicka_view.html](menicka_view.html), [menicka_Code.gs](menicka_Code.gs)) — Poacher Edition (data tahá z menicka.cz, „bereme tam, kde nemáme"). Tooltip na header názvu vysvětluje. **Code, repo subprojekt, localStorage klíče, funkce a interní komentáře zůstávají „meníčka"** — dev terminologie nemění brand pivot.
+
+**Mobilní fix fav-list — akce se ořezávaly zprava** ([menicka_view.html](menicka_view.html)) — `actionsRow` byl strukturně uvnitř `.fav-text` (které má `overflow: hidden`); na úzkých mobilech to ořezávalo trash ikonu. Restrukturováno na flex-sibling `.fav-text` v `.fav` → fixní intrinsic šířka, název/město shrinkují/truncatují, akce vždy viditelné. Plus `@media (max-width: 540px)` redukuje paddingy drawer-scroll / fieldset / .fav (~30 px navíc horizontálně). `.add-row` input dostal `flex: 1 1 0; min-width: 0`, „Přidat" tlačítko `flex: 0 0 auto` — input shrinkuje, tlačítko je vždy plně vidět.
+
+**Hide-empty checkbox o víkendu už není disabled** ([menicka_view.html:3447](menicka_view.html#L3447)) — `applyHideEmptyState` nastavoval `checkbox.disabled = weekend`, takže uživatel ho nemohl odškrtnout. Disabled atribut odstraněn; checkbox je auto-checked, ale klikatelný. Filter `effectiveHideEmpty()` (OR s víkendem) zachován, takže odškrtnutí neaktivuje prázdné restaurace zpět. Tooltip zkrácen na „O víkendech a státních svátcích je tato volba zapnutá automaticky.".
+
+---
+
+## v20260430.013 – v20260430.014 — 2026-04-30
+
+**Neoblíbená jídla — symetrická feature s favorites** ([menicka_view.html](menicka_view.html)) — klíčová slova v Nastavení (`oddělené čárkou, normalizováno bez diakritiky, case-insensitive`), Lucide `frown` ikona vedle názvu jídla + decentní podbarvení řádku. Curated paleta 7 barev (sdílí 6 fav + `gray` jako default — méně agresivní), CSS vars `--dis-c-*` a `--dis-b-*` per theme (light/dark). Nezávisle nastavitelné: barva textu, pozadí, **B (tučné), S (přeškrtnutí)**, „Skrýt z výpisu" (filter — polévky se nikdy neskrývají). Persist v localStorage (na rozdíl od favorites.keywords, které jsou server-side v `oblibena_jidla`).
+
+**Conflict marker — když fav i dis matchují stejné jídlo** — pulsující amber `triangle-alert` ikona (stroke-width 3, 16 px) místo hearti i frownu. Žádné podbarvení (neutrální řádek). Tooltip dynamicky vypisuje konkrétní matchující slova z obou stran (nový helper `matchingKeywords_(item, kws)`). Název jídla je podtržený v amber barvě a klikatelný — otevře Nastavení, přepne na tab Jídla a zaostří `#opt-dis-keywords`. Filter `Skrýt neoblíbená` se na conflict nevztahuje (jinak by uživatel netušil, že má co řešit). Animace 1 s, respektuje `prefers-reduced-motion`.
+
+**Side-by-side fav + dis fieldsety na desktopu** — `.taste-grid` wrapper (CSS Grid 1fr / 1fr nad 700 px, jinak 1 sloupec). Drawer max 800 px = ~370 px per fieldset, color row se vejde přesně. Zaroveň na sebe vizuálně navazují (sdílí strukturu a paletu).
+
+**Tabs v Nastavení** ([menicka_view.html](menicka_view.html)) — drawer rozbila do 3 sticky tabů s Lucide ikonami: **Restaurace** (`store`, sledované + Přidat URL), **Zobrazení** (`layout-grid`, hide-empty + filter polohy + sloupcové zobrazení), **Jídla** (`utensils`, taste-grid). Aktivní tab persistován v localStorage `menicka_settings_active_tab` — drawer se otevře tam, kde uživatel skončil. Conflict-link click přepne na tab Jídla automaticky. Sticky pod drawer-headerem na desktop, na mobilu (≤700 px) plynule pod hlavičkou.
+
+---
+
+## v20260430.001 – v20260430.012 — 2026-04-30
+
+**Color picker pro oblíbená jídla — barva textu i pozadí** ([menicka_view.html](menicka_view.html)) — curated paleta 7 barev (red, purple, orange, green, blue, pink) per theme, default červená pro text + žádné pozadí. CSS vars `--fav-c-*`, `--fav-b-*` resolvují per-theme hodnoty. Default swatch (přeškrtnutý) = bez vlastní barvy → fallback na text-color, ne accent. Migrace z hex hodnot (před touto verzí) → přemapováno na key `'red'`. Plus B (bold) toggle s aria-pressed, „Obnovit výchozí" tlačítko = reset color/bg/bold dohromady.
+
+**Single-line dense fav-list (Variant A)** ([menicka_view.html](menicka_view.html)) — v Nastavení sledované restaurace nově `[≡] [N.] Název (Město) ............ [👁][✏][🗑]` v jednom řádku. Šetří vertikální místo (klíčové na mobilu při 14+ restauracích). `.fav-text` má `flex: 1 1 auto; min-width: 0; overflow: hidden`; `.fav-meta` (město v závorkách) má `flex: 0 100 auto` → mizí 100× rychleji než název při scrollu. Multi-line tooltip přes `data-tooltip` ukazuje plné jméno + město. Nad 14 restaurací max-height 480 px + scrollbar. Drag-from-anywhere (`filter: 'button, input, a'` + `preventOnFilter: false`).
+
+**Heart placement bug fix** — srdíčko bylo flex-sibling `.item-text` (vizuální offset), teď je inline element UVNITŘ textBlocku před textem (`vertical-align: -2px`). Vždy na baseline prvního písmene jména, i při zalomení textu na víc řádek.
+
+**Sledované restaurace zabaleno do fieldsetu** — sjednoceno s ostatními sekcemi nastavení (legend „Sledované restaurace" místo h3).
+
+---
+
 ## v20260429.020 – v20260429.021 — 2026-04-29
 
 **Geo slider 1/2/3/4/5/∞ km, jeden ovladač** ([menicka_view.html](menicka_view.html)) — předchozí hodnoty `5/10/15/25/50` km zrušeny (50 km nikdo nedojede k obědu). Toggle „Filtrovat podle polohy" odstraněn — slider sám funguje jako on/off: ∞ pozice = filter vypnutý (bez fetche pozice, bez status řádku), 1-5 km = filter zapnutý. `localStorage menicka_geo_radius` ukládá `'inf'` nebo `'1'..'5'`. `STATE.geo.enabled` je teď derivace `radiusKm !== Infinity`.

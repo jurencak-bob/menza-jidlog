@@ -23,7 +23,7 @@ function doGet() {
   t.bootstrapJson = JSON.stringify(data).replace(/</g, '\\u003c');
 
   return t.evaluate()
-    .setTitle('meníčka BE')
+    .setTitle('LunchHunter PE')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
 }
@@ -64,15 +64,15 @@ function _renderError_(message) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return HtmlService.createHtmlOutput(
     '<!DOCTYPE html><html lang="cs"><head><meta charset="utf-8">' +
-    '<title>meníčka BE — chyba</title>' +
+    '<title>LunchHunter PE — chyba</title>' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;' +
     'background:#F7F7FA;color:#2D2D3A;padding:32px;line-height:1.5}' +
     '.box{max-width:560px;margin:64px auto;padding:24px;background:#fff;' +
     'border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08)}' +
     'h1{color:#6B2D8B;margin-bottom:12px;font-size:1.2rem}</style></head><body>' +
-    '<div class="box"><h1>🍽️ meníčka BE</h1><p>' + safeMsg + '</p></div></body></html>'
-  ).setTitle('meníčka BE');
+    '<div class="box"><h1>LunchHunter PE</h1><p>' + safeMsg + '</p></div></body></html>'
+  ).setTitle('LunchHunter PE');
 }
 
 // === Veřejné funkce volatelné z google.script.run ===
@@ -142,6 +142,31 @@ function refreshMenuFor(restauraceId) {
 function reverseGeocode(lat, lon) {
   currentUser_();
   return Geo_reverseGeocode_(lat, lon);
+}
+
+/**
+ * Lehký endpoint — pro každý dnešní záznam v Menu Cache vrátí jen `aktualizovano`
+ * timestamp. FE polluje a porovnává s lokálními ts; když najde novější, ví že
+ * server-side proběhla aktualizace (trigger v 9-14 nebo manual refresh jiného
+ * uživatele) a může re-fetchnout to konkrétní menu bez F5.
+ *
+ * Vrací { restauraceId: ISOtimestamp, ... }. Bez plného menu data — minimální
+ * payload pro časté volání (typicky 50-200 B).
+ */
+function getMenuTimestamps() {
+  currentUser_();
+  var dnes = _today_();
+  var rows = _readAll_(SHEETS.MENU_CACHE);
+  var result = {};
+  rows.forEach(function(r) {
+    if (_formatDate_(r.datum) !== dnes) return;
+    var data;
+    try { data = JSON.parse(r.data); } catch (e) { return; }
+    if (data && data.aktualizovano) {
+      result[String(r.restaurace_id)] = data.aktualizovano;
+    }
+  });
+  return result;
 }
 
 /**

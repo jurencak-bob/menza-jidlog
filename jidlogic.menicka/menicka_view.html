@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>meníčka BE</title>
+  <title>LunchHunter PE</title>
   <meta name="theme-color" content="#6B2D8B">
   <meta name="description" content="Jídelníčky restaurací z menicka.cz">
 
@@ -87,6 +87,12 @@
     }
     .icon-btn:hover { background: var(--border); color: var(--text); }
 
+    /* Geo indikátor v header-actions — accent fialový, vyznačí, že je filter
+       aktivní. Hover přebarví na tmavší (jako jiné active states v appce). */
+    #btn-geo-indicator { color: var(--accent); }
+    #btn-geo-indicator:hover { background: var(--cat-bg); color: var(--purple-dark); }
+    #btn-geo-indicator[hidden] { display: none; }
+
     /* Avatar v hlavičce — místo burger ikony na mobilu, kulatý s iniciálami
        z emailu. Vzor podle Jídlogic Obedy.html (.user-avatar). Bez kredit-tier
        (meníčka kredit nesleduje), jednotná brand fialová. */
@@ -161,21 +167,116 @@
     }
     .toggle-info svg { width: 16px; height: 16px; }
     .toggle-info:hover { color: var(--accent); }
+    /* Slider layout: input nahoře, ticky absolutně pod ním. Slider-wrap má
+       proto height = jen výška inputu (= bar) → label v toggle-row se center
+       align s barem, ne s celkem (input + ticky). Padding-bottom dává místo
+       absolutním tickům, aby na ně ostatní řádky nelezly. */
     .slider-wrap {
       flex: 1;
-      display: flex; flex-direction: column; gap: 2px;
+      position: relative;
+      padding-bottom: 22px;
     }
     .slider-wrap input[type="range"] {
       width: 100%; accent-color: var(--accent); cursor: pointer; margin: 0;
+      /* Vyšší click target — uživatel se nemusí trefovat přesně na bar.
+         Track i thumb jsou stále stejně velké, jen click area je větší. */
+      height: 24px;
+      display: block;
     }
     .slider-ticks {
-      display: flex; justify-content: space-between;
+      position: absolute;
+      left: 0; right: 0;
+      bottom: 0;
+      height: 22px;
       font-size: 0.75rem; color: var(--text-muted);
-      padding: 0 4px;
       font-variant-numeric: tabular-nums;
     }
-    .slider-ticks span { min-width: 1ch; text-align: center; }
+    /* Každý tick absolutně pozicován via JS na pozici, kde by byl thumb pro
+       danou hodnotu — tj. střed textu = střed thumbu. translateX(-50%)
+       centruje text na vypočtenou left pozici. */
+    .slider-ticks span {
+      position: absolute;
+      top: 0;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      padding: 4px 6px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .slider-ticks span:hover { background: var(--cat-bg); color: var(--text); }
     .slider-ticks span.active { color: var(--accent); font-weight: 700; }
+
+    /* Slider toggle-rows: label zarovnán s barem (= top of slider-wrap), ne
+       se středem celku včetně ticků. */
+    #cols-row, #geo-radius-row { align-items: flex-start; }
+    #cols-row > span:first-child,
+    #geo-radius-row > span:first-child { padding-top: 4px; line-height: 1; }
+
+    /* Vzhled oblíbeného jídla — řádky label + swatches + bold + reset. */
+    .fav-style-row {
+      display: flex; align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      font-size: 0.9rem;
+      flex-wrap: wrap;
+    }
+    .fav-style-row > .fav-style-label {
+      min-width: 90px;
+      color: var(--text-secondary);
+    }
+    .fav-swatches {
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .fav-swatch {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      padding: 0;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .fav-swatch:hover { transform: scale(1.12); }
+    .fav-swatch[aria-pressed="true"] {
+      box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--text);
+    }
+    /* "Default" = inherit text color (neutrální). Šedý gradient ať vyniká od barevných. */
+    .fav-swatch-default {
+      background: linear-gradient(135deg, var(--text-muted) 0 50%, transparent 50% 100%);
+    }
+    /* "None" pro pozadí — bílý čtverec s diagonální čárou. */
+    .fav-swatch-none {
+      background: var(--bg-card);
+      position: relative;
+      overflow: hidden;
+    }
+    .fav-swatch-none::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 0; right: 0;
+      height: 1px;
+      background: var(--text-muted);
+      transform: rotate(-45deg);
+    }
+    .fav-bold-btn {
+      width: 32px; height: 28px;
+      border: 1px solid var(--border); background: var(--bg-card);
+      color: var(--text-muted); cursor: pointer;
+      border-radius: 4px;
+      font-weight: 700; font-family: serif;
+      font-size: 0.95rem;
+      transition: all 0.15s;
+    }
+    .fav-bold-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .fav-bold-btn[aria-pressed="true"] {
+      background: var(--cat-bg); color: var(--accent); border-color: var(--accent);
+    }
+    /* "S" tlačítko (přeškrtnutí názvu) — stejný look jako B, jen samotné písmeno
+       je přeškrtnuté, aby uživatel hned viděl funkci. */
+    .fav-bold-btn.is-strike-btn {
+      text-decoration: line-through;
+      text-decoration-thickness: 1.5px;
+    }
 
     .font-btn {
       width: 32px; height: 32px;
@@ -210,6 +311,10 @@
       font-size: 0.78rem; color: var(--text-muted);
       margin: 4px 0 2px; line-height: 1.3;
     }
+    /* Note bezprostředně po toggle-row patří k tomu checkboxu — odsadit pod
+       text labelu (= šířka checkbox 18 px + gap 10 px = 28 px), aby nepodtékal
+       pod samotný checkbox. */
+    .toggle-row + .settings-group-note { padding-left: 28px; }
     .settings-input-row {
       display: flex; flex-direction: column; gap: 4px;
       padding: 8px 0; font-size: 0.9rem;
@@ -224,6 +329,20 @@
       outline: 2px solid var(--accent); border-color: transparent;
     }
 
+    /* Side-by-side mřížka pro Oblíbená + Neoblíbená jídla na desktopu. Drawer
+       max-width = 800 px, takže 2 sloupce se vejdou. Na mobilu (≤700 px) zpět
+       do jednoho sloupce. Vlastní gap nahrazuje margin-top na .settings-group. */
+    .taste-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .taste-grid > .settings-group { margin-top: 0; }
+    @media (min-width: 701px) {
+      .taste-grid { grid-template-columns: 1fr 1fr; align-items: start; }
+    }
+
     /* Disabled stav skupiny: vizuálně grayed + neklikatelné. */
     .settings-group.disabled {
       pointer-events: none;
@@ -236,11 +355,75 @@
       font-weight: 500;
     }
 
-    /* Pulsující srdíčko vedle oblíbených jídel — Lucide heart, vyplněný */
+    /* Curated paleta pro vzhled oblíbených jídel — text + pozadí. Definované
+       per theme (light/dark) tak, aby barvy odpovídaly brand vzhledu appky.
+       Default text = červená (matchuje srdíčko). Default bg = žádné. */
+    :root {
+      --fav-c-red:    #E74C3C;
+      --fav-c-purple: #6B2D8B;
+      --fav-c-orange: #E67E22;
+      --fav-c-green:  #27AE60;
+      --fav-c-blue:   #3498DB;
+      --fav-c-pink:   #E91E63;
+      --fav-b-red:    rgba(231, 76, 60, 0.10);
+      --fav-b-purple: rgba(107, 45, 139, 0.10);
+      --fav-b-orange: rgba(230, 126, 34, 0.10);
+      --fav-b-green:  rgba(39, 174, 96, 0.10);
+      --fav-b-blue:   rgba(52, 152, 219, 0.10);
+      --fav-b-pink:   rgba(233, 30, 99, 0.10);
+      /* dislike — sdílí 6 fav barev + 'gray' (méně agresivní default) */
+      --dis-c-red:    #E74C3C;
+      --dis-c-purple: #6B2D8B;
+      --dis-c-orange: #E67E22;
+      --dis-c-green:  #27AE60;
+      --dis-c-blue:   #3498DB;
+      --dis-c-pink:   #E91E63;
+      --dis-c-gray:   #6E6E80;
+      --dis-b-red:    rgba(231, 76, 60, 0.10);
+      --dis-b-purple: rgba(107, 45, 139, 0.10);
+      --dis-b-orange: rgba(230, 126, 34, 0.10);
+      --dis-b-green:  rgba(39, 174, 96, 0.10);
+      --dis-b-blue:   rgba(52, 152, 219, 0.10);
+      --dis-b-pink:   rgba(233, 30, 99, 0.10);
+      --dis-b-gray:   rgba(110, 110, 128, 0.10);
+    }
+    [data-theme="dark"] {
+      --fav-c-red:    #FF7B6B;
+      --fav-c-purple: #B07DD8;
+      --fav-c-orange: #F5B041;
+      --fav-c-green:  #5DBF7C;
+      --fav-c-blue:   #5DADE2;
+      --fav-c-pink:   #F06292;
+      --fav-b-red:    rgba(255, 123, 107, 0.18);
+      --fav-b-purple: rgba(176, 125, 216, 0.18);
+      --fav-b-orange: rgba(245, 176, 65, 0.18);
+      --fav-b-green:  rgba(93, 191, 124, 0.18);
+      --fav-b-blue:   rgba(93, 173, 226, 0.18);
+      --fav-b-pink:   rgba(240, 98, 146, 0.18);
+      --dis-c-red:    #FF7B6B;
+      --dis-c-purple: #B07DD8;
+      --dis-c-orange: #F5B041;
+      --dis-c-green:  #5DBF7C;
+      --dis-c-blue:   #5DADE2;
+      --dis-c-pink:   #F06292;
+      --dis-c-gray:   #A0A0B8;
+      --dis-b-red:    rgba(255, 123, 107, 0.18);
+      --dis-b-purple: rgba(176, 125, 216, 0.18);
+      --dis-b-orange: rgba(245, 176, 65, 0.18);
+      --dis-b-green:  rgba(93, 191, 124, 0.18);
+      --dis-b-blue:   rgba(93, 173, 226, 0.18);
+      --dis-b-pink:   rgba(240, 98, 146, 0.18);
+      --dis-b-gray:   rgba(160, 160, 184, 0.18);
+    }
+
+    /* Pulsující srdíčko PŘED oblíbenými jídly — inline, takže je vždy
+       na baseline s první řádkem textu i při zalomení na víc řádek.
+       Barva matchuje fav-color (uživatel může změnit v Nastavení). */
     .item-fav-heart {
       display: inline-flex; align-items: center;
-      color: #E74C3C;
-      margin-left: 6px;
+      vertical-align: -2px;  /* drobné posunutí dolů pro vizuální alignment s textem */
+      color: var(--fav-color, var(--fav-c-red));
+      margin-right: 4px;
       animation: fav-heart-pulse 1.4s ease-in-out infinite;
     }
     .item-fav-heart svg { width: 14px; height: 14px; }
@@ -260,9 +443,77 @@
        na hrany karty (kompenzuje padding card-body), aby vlevo i vpravo
        podbarvení končilo přesně na edge — žádný vizuální asymetrický odsaz. */
     .item.is-favorite {
-      background: rgba(231, 76, 60, 0.06);
+      /* CSS vars z Nastavení: --fav-color, --fav-bg, --fav-weight. Pokud user
+         vybral "default" / "none", JS removeProperty → fallback na neutrální. */
+      background: var(--fav-bg, transparent);
       padding-left: 12px; padding-right: 12px;
       margin-left: -12px; margin-right: -12px;
+      color: var(--fav-color, var(--text));
+      font-weight: var(--fav-weight, 400);
+    }
+    /* Neoblíbené jídlo — symetrické s is-favorite, ale s dis-* vars. Při match
+       fav i dis zároveň se použije .is-conflict (viz níže), ne dislike styling. */
+    .item.is-disliked {
+      background: var(--dis-bg, transparent);
+      padding-left: 12px; padding-right: 12px;
+      margin-left: -12px; margin-right: -12px;
+      color: var(--dis-color, var(--text));
+      font-weight: var(--dis-weight, 400);
+    }
+    /* Přeškrtnutí názvu — text-decoration na .item-text. Inline-flex/flex
+       potomci (.item-dislike-mark, .item-tags) tvoří nový formátovací kontext,
+       takže se přes ně čára netáhne. */
+    .item.is-disliked .item-text {
+      text-decoration: var(--dis-strike, none);
+      text-decoration-thickness: 1.5px;
+    }
+    /* Dislike marker — Lucide `frown` ikona před názvem, statický signál
+       (bez pulse animace, na rozdíl od heart). */
+    .item-dislike-mark {
+      display: inline-flex; align-items: center;
+      vertical-align: -2px;
+      color: var(--dis-color, var(--dis-c-gray));
+      margin-right: 4px;
+    }
+    .item-dislike-mark svg { width: 14px; height: 14px; }
+
+    /* Conflict marker — match fav i dis zároveň. Žádné podbarvení (neutrální
+       řádek), jen blikající `triangle-alert` v amber barvě. Stroke-width 3
+       a 16 px velikost — výraznější než heart i frown, konflikt vyžaduje
+       pozornost a uživatel musí vyřešit klíčová slova. */
+    .item-conflict-mark {
+      display: inline-flex; align-items: center;
+      vertical-align: -3px;
+      color: #F59E0B;
+      margin-right: 4px;
+      animation: conflict-pulse 1s ease-in-out infinite;
+    }
+    .item-conflict-mark svg {
+      width: 16px; height: 16px;
+      stroke-width: 3;
+    }
+    @keyframes conflict-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.45; transform: scale(1.18); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .item-conflict-mark { animation: none; }
+    }
+    /* Klikatelný název konfliktního jídla — otevře nastavení s focusem na
+       neoblíbená klíčová slova. Podtržení v amber barvě = vizuální vazba na
+       blikající trojúhelník vlevo. */
+    .item-conflict-link {
+      cursor: pointer;
+      color: inherit;
+      text-decoration: underline;
+      text-decoration-color: #F59E0B;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+    }
+    .item-conflict-link:hover,
+    .item-conflict-link:focus-visible {
+      text-decoration-thickness: 3px;
+      outline: none;
     }
 
     .fav-handle {
@@ -304,6 +555,10 @@
       background: var(--bg-card); border-radius: var(--radius);
       box-shadow: var(--shadow); overflow: hidden;
       container-type: inline-size;  /* pro container queries v hlavičce */
+      /* Flex column → body roste na výšku karty (která se v gridu napíná
+         na nejvyšší kartu). Overlay (absolute v body) pak pokrývá celou
+         plochu, ne jen výšku obsahu menu. */
+      display: flex; flex-direction: column;
     }
     .card-header {
       padding: 12px 16px; background: var(--cat-bg);
@@ -385,31 +640,39 @@
     .card-refresh-btn.is-loading svg { animation: refresh-spin 1s linear infinite; }
     @keyframes refresh-spin { to { transform: rotate(360deg); } }
 
-    /* Info-lišta pod hlavičkou karty během aktualizace jídelníčku — uživatel
-       vidí stará data, bar oznamuje že nová přijdou. Skryje se v okamžiku
-       překreslení (next render má `isLoading=false`, bar se prostě nevyrendruje). */
-    .card-refresh-bar {
-      display: flex; align-items: center; gap: 8px;
-      padding: 6px 16px;
-      background: var(--cat-bg);
-      border-bottom: 1px solid var(--border);
-      font-size: 0.75em;
-      color: var(--text-secondary);
-      line-height: 1.3;
+    /* Refresh overlay — lehouinky šedá vrstva přes celý menu body (mimo header)
+       během aktualizace. Outer div drží pozadí + blur, inner badge nese text
+       s bílým neprůhledným pozadím. Konzistentní pozice 32px od horní hrany
+       body napříč kartami (badge je absolute uvnitř overlay). */
+    .card-refresh-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(180, 180, 195, 0.35);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      pointer-events: none;
+      z-index: 1;
     }
-    .card-refresh-bar svg {
-      width: 13px; height: 13px;
-      color: var(--accent);
-      flex-shrink: 0;
-      animation: hourglass-flip 2.4s ease-in-out infinite;
+    [data-theme="dark"] .card-refresh-overlay {
+      background: rgba(70, 70, 90, 0.45);
     }
-    @keyframes hourglass-flip {
-      0%, 40% { transform: rotate(0deg); }
-      50%, 90% { transform: rotate(180deg); }
-      100% { transform: rotate(360deg); }
+    .card-refresh-badge {
+      position: absolute;
+      top: 32px; left: 50%;
+      transform: translateX(-50%);
+      background: #fff;
+      color: var(--text);
+      padding: 7px 16px;
+      border-radius: 999px;
+      font-size: 0.95em; font-weight: 600;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
     }
-    @media (prefers-reduced-motion: reduce) {
-      .card-refresh-bar svg { animation: none; }
+    [data-theme="dark"] .card-refresh-badge {
+      background: var(--bg-card);
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
     }
 
     /* Eye-off ikona v hlavičce karty — skryje kartu z jídelníčku (desktop only).
@@ -444,7 +707,7 @@
     .card.card-sort-chosen { box-shadow: 0 0 0 2px var(--accent); }
     .card.card-sort-drag { opacity: 0.92; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18); }
 
-    .card-body { padding: 12px 12px; }
+    .card-body { padding: 12px 12px; position: relative; flex: 1; }
 
     .menu-cat { margin-bottom: 14px; }
     .menu-cat:last-child { margin-bottom: 0; }
@@ -591,6 +854,13 @@
     }
     @media (max-width: 540px) {
       .settings { max-width: none; }
+      /* Úzké mobily — méně paddingu, ať se akce/Přidat vejdou na řádek. */
+      .drawer-scroll { padding: 16px 12px 24px; }
+      .settings-group { padding: 4px 10px 10px; }
+      .fav { padding: 4px 6px; gap: 4px; }
+      .fav-handle svg { width: 16px; height: 16px; }
+      .fav-badge { flex: 0 0 26px; height: 26px; }
+      .fav-actions-row { gap: 1px; }
     }
 
     /* Drawer header: avatar + jméno + email + close X (sticky pod scroll). */
@@ -649,6 +919,49 @@
       margin: 4px 0 12px;
     }
 
+    /* Tab strip uvnitř drawer-scroll pod subtitlem. Každá záložka = jedna
+       sekce nastavení; oddělené, aby drawer nebyl přeplácaný. Sticky pod
+       drawer-headerem. */
+    .settings-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin: 0 0 12px;
+      position: sticky;
+      top: 56px;
+      background: var(--bg-card);
+      z-index: 5;
+    }
+    @media (max-width: 700px) {
+      .settings-tabs { top: 0; }
+    }
+    .settings-tab-btn {
+      flex: 1;
+      padding: 10px 8px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      font-family: inherit;
+      margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .settings-tab-btn:hover { color: var(--text); }
+    .settings-tab-btn[aria-selected="true"] {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      font-weight: 600;
+    }
+    .settings-tab-btn svg { width: 16px; height: 16px; }
+    .settings-tab-panel { display: block; }
+    .settings-tab-panel[hidden] { display: none; }
+
     /* Close handle — obdélník stejné barvy jako modál vyčnívá pod spodní hranu
        (horní polovina splývá s modálem, spodní polovina visí ven). Default
        muted, hover accent. Při zavřeném panelu skrytý (opacity 0). Mobil ho
@@ -691,54 +1004,86 @@
       color: var(--text-muted); margin: 16px 0 8px;
       text-transform: uppercase; letter-spacing: 0.5px;
     }
-    /* Fav-list grid se přizpůsobuje šířce drawer panelu (container queries),
-       takže na úzkém mobile drawer je 1 sloupec, na desktop 800px panel 3 sloupce. */
+    /* Fav-list — single-line dense layout (validováno v prototype variant A).
+       Max 2 sloupce (víc se nevejde čitelně do drawer). Scrollbar > 14
+       restaurací (.fav-list-overflow class přidává JS v renderSettings). */
     .fav-list {
       display: grid;
       grid-template-columns: 1fr;
+      grid-auto-flow: row;     /* explicit — items po řádcích (1, 2 první řádek, 3, 4 druhý) */
       gap: 6px;
     }
     @container drawer (min-width: 440px) {
       .fav-list { grid-template-columns: repeat(2, 1fr); }
     }
-    @container drawer (min-width: 700px) {
-      .fav-list { grid-template-columns: repeat(3, 1fr); }
+    .fav-list-overflow {
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 4px;
     }
+
+    /* Single-line layout: [≡] [N.] Název (Město) ............ [👁][✏][🗑]
+       Vše na jedné vertikální středové linii (line-height:1 + flex-center).
+       overflow:hidden zajistí, že badge řada nepřeteče přes pravý okraj
+       (pojistka pro úzké mobily, kde meta nestihne shrinknout dost rychle). */
     .fav {
-      display: flex; align-items: flex-start; gap: 10px;
-      padding: 10px 12px; background: var(--bg); border-radius: 8px;
+      display: flex; flex-direction: row; align-items: center;
+      gap: 6px;
+      padding: 4px 8px; background: var(--bg); border-radius: 8px;
       min-width: 0;
+      overflow: hidden;
     }
     .fav-handle {
+      padding: 0;
       display: flex; align-items: center;
-      padding-top: 2px;  /* mírné odsazení na úroveň názvu */
     }
     .fav-order-side {
-      padding-top: 1px;
+      padding: 0;
+      line-height: 1;
+      display: flex; align-items: center; justify-content: flex-end;
       font-weight: 600; color: var(--text-muted);
       font-size: 0.9rem;
       font-variant-numeric: tabular-nums;
-      min-width: 1.6em; text-align: right;
+      min-width: 1.6em;
     }
+    /* Name + city collapsed do single line s ellipsis. Name má prioritu
+       (flex-shrink menší), takže meta zmizí dřív než dojde na truncate name. */
     .fav-text {
-      flex: 1; min-width: 0;
-      display: flex; flex-direction: column;
-      gap: 2px;
+      display: flex; flex-direction: row; align-items: center;
+      gap: 4px; flex-wrap: nowrap;
+      flex: 1 1 auto; min-width: 0;
+      overflow: hidden;
+      line-height: 1;
     }
     .fav-name {
-      font-size: 0.9rem; line-height: 1.2; font-weight: 500;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-size: 0.85rem; font-weight: 500;
+      flex: 0 1 auto; min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1;
     }
-    .fav-meta { font-size: 0.8rem; color: var(--text-muted); line-height: 1.2; }
+    .fav-meta {
+      font-size: 0.78rem; color: var(--text-muted);
+      flex: 0 100 auto;        /* shrinks 100× rychleji než name → mizí první */
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: nowrap;
+      line-height: 1;
+    }
+    .fav-meta::before { content: '('; }
+    .fav-meta::after { content: ')'; }
 
-    /* Řada badge tlačítek pod názvem + městem — všechny stejně široké, vyplní celou šířku textu */
     .fav-actions-row {
-      display: flex; gap: 6px; margin-top: 8px;
+      display: flex; align-items: center;
+      margin-left: auto;       /* push akce doprava */
+      gap: 2px;
     }
     .fav-badge {
-      flex: 1;
+      flex: 0 0 28px; height: 26px;
       display: flex; align-items: center; justify-content: center;
-      height: 28px; padding: 0 8px;
+      padding: 0;
       border: 1px solid var(--border);
       border-radius: 6px;
       background: transparent;
@@ -746,9 +1091,10 @@
       cursor: pointer;
       font-size: 0.8rem; font-weight: 600;
       font-family: inherit;
+      line-height: 1;
       transition: all 0.15s;
     }
-    .fav-badge svg { width: 16px; height: 16px; }
+    .fav-badge svg { width: 14px; height: 14px; }
 
     .fav-toggle-badge[data-visible="true"] {
       background: var(--purple-pale);
@@ -877,11 +1223,59 @@
     #opt-geo-refresh svg { width: 14px; height: 14px; }
     #opt-geo-refresh[hidden] { display: none; }
 
-    .add-row { display: flex; gap: 8px; margin-top: 10px; }
+    /* Geo permission tlačítko — label + chování řízené přes data-state
+       (prompt | granted | denied). Visual symetrie s opt-geo-refresh. */
+    .geo-permission-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 6px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      font-size: 0.85rem; font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .geo-permission-btn svg { width: 14px; height: 14px; }
+    .geo-permission-btn[hidden] { display: none; }
+    /* Granted = pasivní status, šedý ✓, ne-klikací look (hover bez efektu). */
+    .geo-permission-btn[data-state="granted"] {
+      background: rgba(39, 174, 96, 0.10);
+      border-color: rgba(39, 174, 96, 0.40);
+      color: #27AE60;
+      cursor: default;
+    }
+    [data-theme="dark"] .geo-permission-btn[data-state="granted"] {
+      background: rgba(93, 191, 124, 0.18);
+      border-color: rgba(93, 191, 124, 0.40);
+      color: #5DBF7C;
+    }
+    /* Prompt = výzva, accent purple. */
+    .geo-permission-btn[data-state="prompt"] {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .geo-permission-btn[data-state="prompt"]:hover {
+      background: var(--purple-pale);
+    }
+    /* Denied = warning, oranžová (Lucide alert-triangle). Klik otevře help. */
+    .geo-permission-btn[data-state="denied"] {
+      background: rgba(230, 126, 34, 0.10);
+      border-color: rgba(230, 126, 34, 0.50);
+      color: #E67E22;
+    }
+    .geo-permission-btn[data-state="denied"]:hover {
+      background: rgba(230, 126, 34, 0.20);
+    }
+
+    .add-row { display: flex; gap: 8px; margin-top: 10px; min-width: 0; }
     .add-row input {
-      flex: 1; padding: 10px 12px; border: 1px solid var(--border);
+      flex: 1 1 0; min-width: 0;
+      padding: 10px 12px; border: 1px solid var(--border);
       border-radius: 8px; font-size: 0.9rem; background: var(--bg); color: var(--text);
     }
+    .add-row button:not(.info-btn) { flex: 0 0 auto; }
     .add-row input:focus { outline: 2px solid var(--accent); border-color: transparent; }
     /* `:not(.info-btn)` aby tahle plné fialové stylování se nepřebilo na info
        tlačítko (info-btn má výrazně jiný visual: outline + nápovědný tooltip). */
@@ -940,7 +1334,7 @@
       position: fixed;
       background: var(--text); color: var(--bg-card);
       padding: 6px 10px; border-radius: 6px;
-      font-size: 0.8rem; line-height: 1.3;
+      font-size: 0.8rem; line-height: 1.4;
       max-width: min(280px, calc(100vw - 24px));
       pointer-events: none;
       opacity: 0;
@@ -949,7 +1343,9 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
       font-family: inherit; font-weight: 400;
       text-align: center;
-      white-space: normal;
+      /* pre-line zachová zalomení řádku z `\n` v textu (v data-tooltip), ale
+         složí spaces — tooltip může být vícřádkový pomocí `&#10;` v atributu. */
+      white-space: pre-line;
       word-wrap: break-word;
       left: 0; top: 0;
     }
@@ -1073,9 +1469,14 @@
     <div class="header-inner">
       <div class="header-title">
         <i data-lucide="utensils-crossed" aria-hidden="true"></i>
-        <span title="meníčka Blogic Edition nebo Bob Edition ...vyber si :-D">meníčka BE</span>
+        <span title="LunchHunter Poacher Edition&#10;Poacher - data bereme tam, kde úplně nemáme.&#10;&#10;Pro potřeby kolegů asi neva :)">LunchHunter PE</span>
       </div>
       <div class="header-actions">
+        <!-- Geo filter indikátor — viditelný jen když je filtr aktivní (radius != ∞).
+             Klik otevře Nastavení. Tooltip ukazuje aktuální okruh + město. -->
+        <button class="icon-btn" id="btn-geo-indicator" type="button" hidden title="Filtr podle polohy aktivní">
+          <i data-lucide="locate-fixed"></i>
+        </button>
         <button class="icon-btn" id="btn-theme" title="Přepnout tmavý režim" aria-label="Přepnout tmavý režim">
           <i data-lucide="moon"></i>
         </button>
@@ -1112,46 +1513,67 @@
       </div>
       <div class="drawer-subtitle" id="settings-title">Nastavení</div>
 
-      <h3>Sledované restaurace</h3>
-      <div class="fav-list" id="fav-list"></div>
-
-      <div class="add-row">
-        <input type="url" id="add-url" placeholder="URL restaurace z menicka.cz" autocomplete="off" spellcheck="false">
-        <button class="info-btn" id="btn-info" type="button" aria-label="Nápověda" aria-expanded="false" title="Jak najít a přidat restauraci">
-          <i data-lucide="info"></i>
+      <div class="settings-tabs" role="tablist" aria-label="Sekce nastavení">
+        <button class="settings-tab-btn" type="button" role="tab" data-tab="restaurace" aria-selected="true" aria-controls="settings-panel-restaurace">
+          <i data-lucide="store"></i>Restaurace
         </button>
-        <button id="btn-add" title="Přidat restauraci podle vložené URL">Přidat</button>
+        <button class="settings-tab-btn" type="button" role="tab" data-tab="zobrazeni" aria-selected="false" aria-controls="settings-panel-zobrazeni">
+          <i data-lucide="layout-grid"></i>Zobrazení
+        </button>
+        <button class="settings-tab-btn" type="button" role="tab" data-tab="jidla" aria-selected="false" aria-controls="settings-panel-jidla">
+          <i data-lucide="utensils"></i>Jídla
+        </button>
       </div>
-      <div class="add-popover" id="add-popover" hidden>
-        <p>Otevři <a href="https://www.menicka.cz" target="_blank" rel="noopener">menicka.cz</a>, najdi svou restauraci a sem vlož URL z adresního řádku.</p>
-        <p>Nebo přidej <button id="btn-add-menza" class="link-btn" type="button" title="Přidat speciální restauraci Menza UTB (jiný zdroj než menicka.cz)">Menzu UTB</button>.</p>
-      </div>
 
-      <h3>Zobrazení</h3>
-      <label class="toggle-row">
-        <input type="checkbox" id="opt-hide-empty">
-        <span>Skrýt restaurace bez dnešního menu (zavřeno, nezadáno)</span>
-        <span class="toggle-info" title="O víkendech a státních svátcích je tato volba zapnutá automaticky (a uzamčená) — většina restaurací tehdy nevaří. Po skončení svátku se vrátí tvoje původní nastavení." aria-label="Detail" onclick="event.stopPropagation()">
-          <i data-lucide="info"></i>
-        </span>
-      </label>
+      <section class="settings-tab-panel" id="settings-panel-restaurace" role="tabpanel" data-tab-panel="restaurace">
+      <fieldset class="settings-group">
+        <legend>Sledované restaurace</legend>
 
-      <!-- Logo restaurace v UI zatím skryto. Backend dál fetchuje foto_url
-           (Parser_extractPrintProfile_), data se ukládají, jen se nezobrazují.
-           Až bude potřeba znovu zapnout, odkomentovat tento toggle, render
-           v renderCard (.card-thumb blok) a JS handler níže.
-      <label class="toggle-row">
-        <input type="checkbox" id="opt-show-thumb">
-        <span>Zobrazit logo restaurace v hlavičce karty</span>
-      </label>
-      <div class="settings-group-note">Logo se ukáže jen u restaurací, pro které se ho podařilo získat z menicka.cz.</div>
-      -->
+        <div class="fav-list" id="fav-list"></div>
 
-      <label class="toggle-row">
-        <input type="checkbox" id="opt-show-mnozstvi">
-        <span>Zobrazit gramáž / objem u jídel</span>
-      </label>
-      <div class="settings-group-note">Malý štítek („300g", „0.33l", …) pod každou položkou jídelníčku, pokud zdroj uvádí.</div>
+        <div class="add-row">
+          <input type="url" id="add-url" placeholder="URL restaurace z menicka.cz" autocomplete="off" spellcheck="false">
+          <button class="info-btn" id="btn-info" type="button" aria-label="Nápověda" aria-expanded="false" title="Jak najít a přidat restauraci">
+            <i data-lucide="info"></i>
+          </button>
+          <button id="btn-add" title="Přidat restauraci podle vložené URL">Přidat</button>
+        </div>
+        <div class="add-popover" id="add-popover" hidden>
+          <p>Otevři <a href="https://www.menicka.cz" target="_blank" rel="noopener">menicka.cz</a>, najdi svou restauraci a sem vlož URL z adresního řádku.</p>
+          <p>Nebo přidej <button id="btn-add-menza" class="link-btn" type="button" title="Přidat speciální restauraci Menza UTB (jiný zdroj než menicka.cz)">Menzu UTB</button>.</p>
+        </div>
+      </fieldset>
+      </section>
+
+      <section class="settings-tab-panel" id="settings-panel-zobrazeni" role="tabpanel" data-tab-panel="zobrazeni" hidden>
+      <fieldset class="settings-group">
+        <legend>Zobrazení</legend>
+
+        <label class="toggle-row">
+          <input type="checkbox" id="opt-hide-empty">
+          <span>Skrýt restaurace bez dnešního menu (zavřeno, nezadáno)</span>
+          <span class="toggle-info" title="O víkendech a státních svátcích je tato volba zapnutá automaticky." aria-label="Detail" onclick="event.stopPropagation()">
+            <i data-lucide="info"></i>
+          </span>
+        </label>
+
+        <!-- Logo restaurace v UI zatím skryto. Backend dál fetchuje foto_url
+             (Parser_extractPrintProfile_), data se ukládají, jen se nezobrazují.
+             Až bude potřeba znovu zapnout, odkomentovat tento toggle, render
+             v renderCard (.card-thumb blok) a JS handler níže.
+        <label class="toggle-row">
+          <input type="checkbox" id="opt-show-thumb">
+          <span>Zobrazit logo restaurace v hlavičce karty</span>
+        </label>
+        <div class="settings-group-note">Logo se ukáže jen u restaurací, pro které se ho podařilo získat z menicka.cz.</div>
+        -->
+
+        <label class="toggle-row">
+          <input type="checkbox" id="opt-show-mnozstvi">
+          <span>Zobrazit gramáž / objem u jídel</span>
+        </label>
+        <div class="settings-group-note">Malý štítek („300g", „0.33l", …) u jídla — na desktopu vedle názvu, na mobilu pod ním. Zobrazí se jen pokud zdroj údaj uvádí.</div>
+      </fieldset>
 
       <fieldset class="settings-group" id="geo-group">
         <legend>Filtr podle polohy</legend>
@@ -1168,6 +1590,11 @@
         <div class="settings-group-note" id="opt-geo-status" style="min-height: 1em;"></div>
         <button id="opt-geo-refresh" class="link-btn" type="button" hidden title="Vyžádat aktuální polohu znovu — pokud ses pohnul a appka ještě neobnovila polohu sama.">
           <i data-lucide="navigation"></i> Obnovit polohu teď
+        </button>
+        <!-- Permission button — label/akce se mění podle navigator.permissions.query
+             (prompt = klikatelný „Povolit", granted = ✓ status, denied = otevřít browser nastavení). -->
+        <button id="opt-geo-permission" class="geo-permission-btn" type="button" data-state="prompt" hidden>
+          <i data-lucide="map-pin"></i><span class="geo-permission-label">Povolit přístup k poloze</span>
         </button>
       </fieldset>
 
@@ -1193,7 +1620,10 @@
           <button id="opt-font-plus" type="button" class="font-btn" title="Zvětšit písmo o 10 %" aria-label="Zvětšit písmo">+</button>
         </label>
       </fieldset>
+      </section>
 
+      <section class="settings-tab-panel" id="settings-panel-jidla" role="tabpanel" data-tab-panel="jidla" hidden>
+      <div class="taste-grid">
       <fieldset class="settings-group">
         <legend>Oblíbená jídla</legend>
 
@@ -1207,6 +1637,35 @@
           <input type="checkbox" id="opt-fav-mark" checked>
           <span>Označit oblíbená jídla srdíčkem</span>
         </label>
+        <div class="fav-style-row">
+          <span class="fav-style-label">Barva textu:</span>
+          <div class="fav-swatches" id="fav-swatches-color">
+            <button class="fav-swatch fav-swatch-default" data-key="default" type="button" aria-pressed="false" title="Výchozí barva textu (bez zvýraznění)"></button>
+            <button class="fav-swatch" data-key="red"    type="button" aria-pressed="false" title="Červená" style="background: var(--fav-c-red);"></button>
+            <button class="fav-swatch" data-key="purple" type="button" aria-pressed="false" title="Fialová" style="background: var(--fav-c-purple);"></button>
+            <button class="fav-swatch" data-key="orange" type="button" aria-pressed="false" title="Oranžová" style="background: var(--fav-c-orange);"></button>
+            <button class="fav-swatch" data-key="green"  type="button" aria-pressed="false" title="Zelená" style="background: var(--fav-c-green);"></button>
+            <button class="fav-swatch" data-key="blue"   type="button" aria-pressed="false" title="Modrá" style="background: var(--fav-c-blue);"></button>
+            <button class="fav-swatch" data-key="pink"   type="button" aria-pressed="false" title="Růžová" style="background: var(--fav-c-pink);"></button>
+          </div>
+        </div>
+        <div class="fav-style-row">
+          <span class="fav-style-label">Pozadí:</span>
+          <div class="fav-swatches" id="fav-swatches-bg">
+            <button class="fav-swatch fav-swatch-none" data-key="none" type="button" aria-pressed="false" title="Žádné pozadí"></button>
+            <button class="fav-swatch" data-key="red"    type="button" aria-pressed="false" title="Červené" style="background: var(--fav-b-red);"></button>
+            <button class="fav-swatch" data-key="purple" type="button" aria-pressed="false" title="Fialové" style="background: var(--fav-b-purple);"></button>
+            <button class="fav-swatch" data-key="orange" type="button" aria-pressed="false" title="Oranžové" style="background: var(--fav-b-orange);"></button>
+            <button class="fav-swatch" data-key="green"  type="button" aria-pressed="false" title="Zelené" style="background: var(--fav-b-green);"></button>
+            <button class="fav-swatch" data-key="blue"   type="button" aria-pressed="false" title="Modré" style="background: var(--fav-b-blue);"></button>
+            <button class="fav-swatch" data-key="pink"   type="button" aria-pressed="false" title="Růžové" style="background: var(--fav-b-pink);"></button>
+          </div>
+        </div>
+        <div class="fav-style-row">
+          <span class="fav-style-label">Tučné písmo:</span>
+          <button id="opt-fav-bold" type="button" class="fav-bold-btn" title="Zapnout / vypnout tučné písmo" aria-pressed="false">B</button>
+          <button id="opt-fav-reset" class="link-btn" type="button" style="margin-left: auto;" title="Vrátit barvy a tučnost na výchozí hodnoty (červený text, žádné pozadí, normální písmo)">Obnovit výchozí</button>
+        </div>
         <label class="toggle-row" title="Skrýt karty restaurací, které dnes nevaří žádné z tvých oblíbených jídel (polévku ani hlavní).">
           <input type="checkbox" id="opt-fav-only-rest">
           <span>Skrýt restaurace bez oblíbeného jídla</span>
@@ -1219,6 +1678,62 @@
           </span>
         </label>
       </fieldset>
+
+      <fieldset class="settings-group">
+        <legend>Neoblíbená jídla</legend>
+
+        <label class="settings-input-row">
+          <span>Klíčová slova:</span>
+          <input type="text" id="opt-dis-keywords" placeholder="zelí, játra, květák…" autocomplete="off">
+        </label>
+        <div class="settings-group-note">Oddělené čárkou. Vyhledává se jako podřetězec, bez ohledu na velikost písmen a diakritiku.</div>
+
+        <label class="toggle-row" title="Vedle každého jídla, které matchuje klíčová slova, se objeví zamračený smajlík a řádek se jemně podbarví.">
+          <input type="checkbox" id="opt-dis-mark" checked>
+          <span>Označit neoblíbená jídla ikonou</span>
+        </label>
+        <div class="fav-style-row">
+          <span class="fav-style-label">Barva textu:</span>
+          <div class="fav-swatches" id="dis-swatches-color">
+            <button class="fav-swatch fav-swatch-default" data-key="default" type="button" aria-pressed="false" title="Výchozí barva textu (bez zvýraznění)"></button>
+            <button class="fav-swatch" data-key="gray"   type="button" aria-pressed="false" title="Šedá" style="background: var(--dis-c-gray);"></button>
+            <button class="fav-swatch" data-key="red"    type="button" aria-pressed="false" title="Červená" style="background: var(--dis-c-red);"></button>
+            <button class="fav-swatch" data-key="purple" type="button" aria-pressed="false" title="Fialová" style="background: var(--dis-c-purple);"></button>
+            <button class="fav-swatch" data-key="orange" type="button" aria-pressed="false" title="Oranžová" style="background: var(--dis-c-orange);"></button>
+            <button class="fav-swatch" data-key="green"  type="button" aria-pressed="false" title="Zelená" style="background: var(--dis-c-green);"></button>
+            <button class="fav-swatch" data-key="blue"   type="button" aria-pressed="false" title="Modrá" style="background: var(--dis-c-blue);"></button>
+            <button class="fav-swatch" data-key="pink"   type="button" aria-pressed="false" title="Růžová" style="background: var(--dis-c-pink);"></button>
+          </div>
+        </div>
+        <div class="fav-style-row">
+          <span class="fav-style-label">Pozadí:</span>
+          <div class="fav-swatches" id="dis-swatches-bg">
+            <button class="fav-swatch fav-swatch-none" data-key="none" type="button" aria-pressed="false" title="Žádné pozadí"></button>
+            <button class="fav-swatch" data-key="gray"   type="button" aria-pressed="false" title="Šedé" style="background: var(--dis-b-gray);"></button>
+            <button class="fav-swatch" data-key="red"    type="button" aria-pressed="false" title="Červené" style="background: var(--dis-b-red);"></button>
+            <button class="fav-swatch" data-key="purple" type="button" aria-pressed="false" title="Fialové" style="background: var(--dis-b-purple);"></button>
+            <button class="fav-swatch" data-key="orange" type="button" aria-pressed="false" title="Oranžové" style="background: var(--dis-b-orange);"></button>
+            <button class="fav-swatch" data-key="green"  type="button" aria-pressed="false" title="Zelené" style="background: var(--dis-b-green);"></button>
+            <button class="fav-swatch" data-key="blue"   type="button" aria-pressed="false" title="Modré" style="background: var(--dis-b-blue);"></button>
+            <button class="fav-swatch" data-key="pink"   type="button" aria-pressed="false" title="Růžové" style="background: var(--dis-b-pink);"></button>
+          </div>
+        </div>
+        <div class="fav-style-row">
+          <span class="fav-style-label">Styl písma:</span>
+          <button id="opt-dis-bold" type="button" class="fav-bold-btn" title="Zapnout / vypnout tučné písmo" aria-pressed="false">B</button>
+          <button id="opt-dis-strike" type="button" class="fav-bold-btn is-strike-btn" title="Zapnout / vypnout přeškrtnutí názvu jídla" aria-pressed="false">S</button>
+          <button id="opt-dis-reset" class="link-btn" type="button" style="margin-left: auto;" title="Vrátit barvy a styly na výchozí hodnoty">Obnovit výchozí</button>
+        </div>
+        <label class="toggle-row" title="Skrýt neoblíbená hlavní jídla úplně z výpisu. Polévky zůstávají vidět vždy.">
+          <input type="checkbox" id="opt-dis-hide">
+          <span>Skrýt neoblíbená jídla z výpisu</span>
+          <span class="toggle-info" title="Polévky se neskrývají — typicky je v menu jen jedna a její skrytí by mátlo." aria-label="Detail" onclick="event.stopPropagation()">
+            <i data-lucide="info"></i>
+          </span>
+        </label>
+      </fieldset>
+      </div><!-- /.taste-grid -->
+      </section>
 
       <div hidden data-feature="diet">
         <h3>Stravovací omezení</h3>
@@ -1290,12 +1805,40 @@
       showMnozstvi: localStorage.getItem('menicka_show_mnozstvi') !== 'false',
       wide: localStorage.getItem('menicka_wide') === 'true',
       fontScale: parseFloat(localStorage.getItem('menicka_font_scale') || '1'),
-      favorites: {
-        keywords: (BOOTSTRAP.user && BOOTSTRAP.user.oblibena_jidla) || '',
-        mark: localStorage.getItem('menicka_fav_mark') !== 'false',
-        onlyRest: localStorage.getItem('menicka_fav_only_rest') === 'true',
-        onlyDish: localStorage.getItem('menicka_fav_only_dish') === 'true'
-      },
+      favorites: (function() {
+        // Vzhled: color/bg jsou klíče palety ('red', 'purple', ...) nebo
+        // 'default'/'none'. CSS vars `--fav-color`, `--fav-bg`, `--fav-weight`
+        // mapují na konkrétní hodnoty per theme. Migrace z hex hodnot
+        // (před v20260430.010) → 'red' jako default.
+        var rawColor = localStorage.getItem('menicka_fav_color') || '';
+        var color = (rawColor && rawColor.charAt(0) !== '#') ? rawColor : 'red';
+        var bg = localStorage.getItem('menicka_fav_bg') || 'none';
+        return {
+          keywords: (BOOTSTRAP.user && BOOTSTRAP.user.oblibena_jidla) || '',
+          mark: localStorage.getItem('menicka_fav_mark') !== 'false',
+          onlyRest: localStorage.getItem('menicka_fav_only_rest') === 'true',
+          onlyDish: localStorage.getItem('menicka_fav_only_dish') === 'true',
+          color: color,
+          bg: bg,
+          bold: localStorage.getItem('menicka_fav_bold') === 'true'
+        };
+      })(),
+      // Symetrické s favorites — keywords + mark + barevný styling + filter.
+      // Default barva = gray (méně agresivní než fav red), default bg = none.
+      // Persistence pouze v localStorage (na rozdíl od favorites.keywords, které
+      // se ukládají i server-side přes oblibena_jidla); pokud bude potřeba
+      // cross-device sync, přidá se sloupec neoblibena_jidla později.
+      dislikes: (function() {
+        return {
+          keywords: localStorage.getItem('menicka_dis_keywords') || '',
+          mark: localStorage.getItem('menicka_dis_mark') !== 'false',
+          hide: localStorage.getItem('menicka_dis_hide') === 'true',
+          color: localStorage.getItem('menicka_dis_color') || 'gray',
+          bg: localStorage.getItem('menicka_dis_bg') || 'none',
+          bold: localStorage.getItem('menicka_dis_bold') === 'true',
+          strike: localStorage.getItem('menicka_dis_strike') === 'true'
+        };
+      })(),
       schedule: BOOTSTRAP.schedule || { triggerHours: [9, 10, 11, 12, 13, 14], cacheClearHour: 17 },
       // ID restaurací, pro které právě běží fetch menu (refreshMenuFor /
       // fetchMenuForRestaurant). Ikona se na nich točí, klik se ignoruje.
@@ -1381,12 +1924,14 @@
     }
     var REFRESH_MIN_AGE_MIN = 15;
 
-    /** "9" → "9:00–10:00" (Google triggery běží uvnitř hodinového okna). */
+    /** "9" → "9:00–10:00" (Google triggery běží uvnitř hodinového okna).
+     *  V scheduleBanner se nepoužívá od textové změny v20260429.025 (úspornější
+     *  formát "9 hod"), zachováno pro případné budoucí UI s explicitním oknem. */
     function hourRange(h) {
       return h + ':00–' + ((h + 1) % 24) + ':00';
     }
 
-    var JITTER_NOTE = 'Google si v rámci hodiny ponechává až ~15 min jitter, přesný čas se může lišit.';
+    var JITTER_NOTE = 'Časy nemusí sedět úplně přesně, provozovatel prostředí (Google) si to střílí od boku a klidně akce provádí až o 15 minut později. No co, je to zadarmo :-)';
 
     /**
      * Pokud čas je mimo refresh okno (před prvním triggerem dne nebo po
@@ -1404,13 +1949,13 @@
       if (hour >= endHour) {
         iconName = 'moon';
         title = 'Čas oběda už je za námi.';
-        body = 'Jídelníčky se mažou v okně ' + hourRange(endHour) + '. '
-             + 'Zítra začneme stahovat znovu v okně ' + hourRange(first) + ' a aktualizujeme po hodinách až do ' + hourRange(last) + '.';
+        body = 'Jídelníčky se mažou v ' + endHour + ' hod (normální člověk je tou dobou po obědě). '
+             + 'Zítra začneme stahovat znovu v ' + first + ' hod a aktualizovat jídelníčky po hodinách až do ' + last + ' hod.';
       } else if (hour < first) {
         iconName = 'sun';
         title = 'Dnešní jídelníčky se zatím nestahovaly.';
-        body = 'První stahování proběhne v okně ' + hourRange(first) + '. '
-             + 'Dál pokračuje po hodinách až do ' + hourRange(last) + '.';
+        body = 'První stahování proběhne v ' + first + ' hod. '
+             + 'Pak aktualizujeme jídelníčky po hodinách až do ' + last + ' hod.';
       } else {
         return null;  // jsme v refresh okně, ale cache je prázdná — ukáže se obyčejný empty stav
       }
@@ -1754,7 +2299,10 @@
 
       titleBlock.appendChild(el('div', { class: 'card-refresh' }, [
         refreshBtn,
-        el('span', { class: 'card-refresh-text', text: labelText })
+        // title=labelText: když se text v úzké kartě (mobile / víc sloupců) ořízne
+        // přes ellipsis, uživatel uvidí plnou hodnotu v tooltipu. Custom JS
+        // tooltip systém to automaticky převede na data-tooltip.
+        el('span', { class: 'card-refresh-text', text: labelText, title: labelText })
       ]));
 
       // Logo restaurace v UI zatím skryto — backend dál fetchuje `foto_url`
@@ -1834,21 +2382,18 @@
         if (!any) body.appendChild(el('div', { class: 'empty', text: 'Pro dnešek nejsou žádné položky.' }));
       }
 
-      // Info-lišta při aktualizaci existujícího menu (uživatel vidí stará
-       // data → bar oznamuje "překreslíme jakmile přijde nové"). Při initial
-       // fetchi (menu == null) bar nepouštíme — body už ukazuje "Načítám…".
-      var children = [header];
+      // Refresh overlay nad menu (jen když isLoading + máme stará data).
+      // Header zůstává plně viditelný — refresh ikona se v něm sama točí
+      // jako primární indikátor. Overlay v body je doplňková informace.
+      // Badge s bílým pozadím nese text, outer div pokrývá celou plochu body.
       if (isLoading && menu) {
-        var bar = el('div', { class: 'card-refresh-bar', 'aria-live': 'polite' });
-        var iconSpan = el('span', { class: 'card-refresh-bar-icon' });
-        iconSpan.innerHTML = '<i data-lucide="hourglass"></i>';
-        bar.appendChild(iconSpan);
-        bar.appendChild(el('span', { text: 'Aktualizuji jídelníček, po dokončení se překreslí.' }));
-        children.push(bar);
+        var overlay = el('div', { class: 'card-refresh-overlay', 'aria-live': 'polite' });
+        var badge = el('div', { class: 'card-refresh-badge', text: 'Aktualizuji jídelníček' });
+        overlay.appendChild(badge);
+        body.appendChild(overlay);
       }
-      children.push(body);
 
-      var card = el('div', { class: 'card' }, children);
+      var card = el('div', { class: 'card' }, [header, body]);
       card.dataset.id = rest.id;  // pro Sortable.js mapování při reorderu
       return card;
     }
@@ -1858,8 +2403,22 @@
       var cat = el('div', { class: 'menu-cat' }, [el('div', { class: 'menu-cat-title', text: title })]);
 
       items.forEach(function(item) {
-        var isFav = STATE.favorites.mark && isFavoriteDish(item);
-        var itemEl = el('div', { class: 'item' + (isFav ? ' is-favorite' : '') });
+        var matchDis = STATE.dislikes.mark && isDislikedDish(item);
+        var matchFav = STATE.favorites.mark && isFavoriteDish(item);
+        // Konflikt = match oboje. Nezobrazujeme fav ani dis stylování — řádek
+        // zůstává neutrální, jen blikající amber trojúhelník + amber podtržení
+        // názvu. Skrytí přes "skrýt neoblíbená" se na konflikt nevztahuje
+        // (jinak by uživatel netušil, že má co řešit).
+        var isConflict = matchDis && matchFav;
+        var isDis = !isConflict && matchDis;
+        var isFav = !isConflict && matchFav;
+        if (isDis && STATE.dislikes.hide && title !== 'Polévky') return;
+
+        var classes = 'item';
+        if (isConflict) classes += ' is-conflict';
+        else if (isDis) classes += ' is-disliked';
+        else if (isFav) classes += ' is-favorite';
+        var itemEl = el('div', { class: classes });
 
         // Pokud restaurace má vlastní číslování přímo v textu jídla
         // (např. "1. Grilovaná kotleta"), má to prioritu — použijeme jako cislo
@@ -1876,14 +2435,73 @@
         if (displayNo) {
           nameWrap.appendChild(el('span', { class: 'item-no', text: displayNo + '.' }));
         }
-        var textBlock = el('span', { class: 'item-text' }, [document.createTextNode(displayName)]);
-
-        if (isFav) {
+        var textBlock = el('span', { class: 'item-text' });
+        // Marker PŘED textem — tři výlučné stavy v prioritě:
+        //   konflikt (triangle-alert) > dislike (frown) > favorite (heart)
+        // Inline uvnitř textBlock — vždy na baseline s prvním slovem názvu,
+        // i při zalomení textu na víc řádek.
+        var conflictTip = '';
+        if (isConflict) {
+          var favMatches = matchingKeywords_(item, favoriteKeywords());
+          var disMatches = matchingKeywords_(item, dislikedKeywords());
+          var fmt = function(arr) {
+            return arr.map(function(k) { return '„' + k + '"'; }).join(', ');
+          };
+          conflictTip = 'Konflikt klíčových slov\n'
+            + 'Oblíbená: ' + fmt(favMatches) + '\n'
+            + 'Neoblíbená: ' + fmt(disMatches) + '\n'
+            + 'Upřesni klíčová slova v nastavení, aby se nepřekrývala.';
+          var conflictMark = el('span', {
+            class: 'item-conflict-mark',
+            title: conflictTip,
+            'aria-label': 'Konflikt klíčových slov'
+          });
+          conflictMark.innerHTML = '<i data-lucide="triangle-alert"></i>';
+          textBlock.appendChild(conflictMark);
+        } else if (isDis) {
+          var frown = el('span', { class: 'item-dislike-mark', title: 'Neoblíbené jídlo', 'aria-label': 'Neoblíbené' });
+          frown.innerHTML = '<i data-lucide="frown"></i>';
+          textBlock.appendChild(frown);
+        } else if (isFav) {
           var heart = el('span', { class: 'item-fav-heart', title: 'Oblíbené jídlo', 'aria-label': 'Oblíbené' });
           heart.innerHTML = '<i data-lucide="heart"></i>';
           textBlock.appendChild(heart);
         }
-
+        if (isConflict) {
+          // Klikatelný název s amber podtržením → otevře nastavení s focusem
+          // na neoblíbená klíčová slova. Tooltip duplikujeme i na text, aby
+          // hover kdekoli v řádku ukázal vysvětlení.
+          var nameLink = el('span', {
+            class: 'item-conflict-link',
+            title: conflictTip,
+            role: 'button',
+            tabindex: '0',
+            'aria-label': 'Otevřít nastavení neoblíbených jídel pro vyřešení konfliktu'
+          });
+          nameLink.textContent = displayName;
+          var openConflictSettings = function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            toggleSettings(true);
+            // Přepnout na tab Jídla, aby byl input viditelný hned po otevření.
+            setSettingsTab('jidla');
+            // Po slide-in animaci (300 ms) zaostříme input a scrollneme ho
+            // do středu drawer-scroll viewportu.
+            setTimeout(function() {
+              var input = $('opt-dis-keywords');
+              if (!input) return;
+              input.focus();
+              input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 320);
+          };
+          nameLink.addEventListener('click', openConflictSettings);
+          nameLink.addEventListener('keydown', function(ev) {
+            if (ev.key === 'Enter' || ev.key === ' ') openConflictSettings(ev);
+          });
+          textBlock.appendChild(nameLink);
+        } else {
+          textBlock.appendChild(document.createTextNode(displayName));
+        }
         nameWrap.appendChild(textBlock);
 
         var showAllergens = SHOW_ALLERGENS && item.alergeny && item.alergeny.length;
@@ -2004,10 +2622,20 @@
         actionsItems.push(rmBtn);
 
         var actionsRow = el('div', { class: 'fav-actions-row' }, actionsItems);
-        var textBlock = el('div', { class: 'fav-text' }, [nameEl, metaEl, actionsRow]);
+        // textBlock obsahuje pouze name+meta (ty se truncate / shrinkují); akce
+        // jsou flex-sibling .fav-text na úrovni .fav, aby měly fixní šířku
+        // a nepřetékaly přes pravý okraj na úzkých mobilech.
+        var textBlock = el('div', { class: 'fav-text' }, [nameEl, metaEl]);
 
-        var favEl = el('div', { class: 'fav' }, [handle, orderEl, textBlock]);
+        var favEl = el('div', { class: 'fav' }, [handle, orderEl, textBlock, actionsRow]);
         favEl.dataset.id = r.id;
+        // Tooltip s plným názvem + městem (multi-line). Užitečný hlavně proto,
+        // že single-line layout zkracuje název ellipsis a město skrývá když
+        // chybí místo. Custom JS tooltip systém zobrazí přes data-tooltip.
+        var tipName = r.nazev || '';
+        var tipCity = r.mesto || '';
+        if (tipName && tipCity) favEl.setAttribute('title', tipName + '\n(' + tipCity + ')');
+        else if (tipName) favEl.setAttribute('title', tipName);
 
         if (EDITING_ID === r.id && !r.orphan) {
           favEl.classList.add('editing');
@@ -2015,6 +2643,9 @@
 
         list.appendChild(favEl);
       });
+
+      // Scrollbar pokud > 14 restaurací — omezí výšku a aktivuje overflow.
+      list.classList.toggle('fav-list-overflow', listed.length > 14);
 
       // Edit form jako absolute overlay pod editovanou kartou
       if (EDITING_ID) {
@@ -2437,6 +3068,24 @@
       if (open) s.scrollTop = 0;
     }
 
+    /**
+     * Přepne aktivní tab v Nastavení. Persistuje volbu do localStorage,
+     * takže další otevření drawer ukáže stejný tab. Conflict link v menu
+     * volá tuto funkci s 'jidla' před zaostřením #opt-dis-keywords.
+     */
+    function setSettingsTab(name) {
+      var btns = document.querySelectorAll('.settings-tab-btn');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].setAttribute('aria-selected', String(btns[i].dataset.tab === name));
+      }
+      var panels = document.querySelectorAll('.settings-tab-panel');
+      for (var j = 0; j < panels.length; j++) {
+        if (panels[j].dataset.tabPanel === name) panels[j].removeAttribute('hidden');
+        else panels[j].setAttribute('hidden', '');
+      }
+      localStorage.setItem('menicka_settings_active_tab', name);
+    }
+
     function setCols(n) {
       var v = parseInt(n, 10);
       if (isNaN(v) || v < 1) v = 1;
@@ -2474,6 +3123,23 @@
       }
     }
 
+    /**
+     * Pozicuje absolutní tick spany tak, aby jejich střed text byl přesně tam,
+     * kde je střed thumbu pro danou hodnotu. Native range thumb v krajních
+     * pozicích je posunutý dovnitř o thumb-radius (~8 px). Tick na pozici i
+     * z N hodnot pak je v intervalu [thumbR, width - thumbR].
+     */
+    function positionSliderTicks_(spans) {
+      var n = spans.length;
+      if (n === 0) return;
+      if (n === 1) { spans[0].style.left = '50%'; return; }
+      var thumbR = 8;
+      spans.forEach(function(s, i) {
+        var pct = i / (n - 1);
+        s.style.left = 'calc(' + thumbR + 'px + (100% - ' + (2 * thumbR) + 'px) * ' + pct + ')';
+      });
+    }
+
     function updateColsSlider() {
       var slider = $('opt-cols-slider');
       var ticks = $('cols-ticks');
@@ -2482,13 +3148,20 @@
       var current = Math.min(STATE.cols || 1, max);
       slider.value = String(current);
 
-      // Re-build ticks 1..max
+      // Re-build ticks 1..max. Klik na číslo nastaví slider — stejný UX jako
+      // klik na bar, ale větší clickable area pro mobil i mimo přesnou polohu.
       while (ticks.firstChild) ticks.removeChild(ticks.firstChild);
+      var spans = [];
       for (var i = 1; i <= max; i++) {
         var tick = el('span', { text: String(i) });
         if (i === current) tick.classList.add('active');
+        (function(val) {
+          tick.addEventListener('click', function() { setCols(val); });
+        })(i);
         ticks.appendChild(tick);
+        spans.push(tick);
       }
+      positionSliderTicks_(spans);
     }
 
     function updateWideEnabled() {
@@ -2547,8 +3220,10 @@
      * podniků (ne-závislé na hideEmpty, protože uživatelovo "preferované max"
      * by mělo zůstat stabilní mezi dny, kdy nevaří někdo jiný).
      */
+    var MAX_COLS_HARD_LIMIT = 12;  // Nad 12 sloupců už karty nečitelně úzké, ani na ultrawide nemá smysl.
     function maxCols() {
-      return Math.max(1, sledovaneIds().filter(function(id) { return !isHidden(id); }).length);
+      var watched = sledovaneIds().filter(function(id) { return !isHidden(id); }).length;
+      return Math.min(MAX_COLS_HARD_LIMIT, Math.max(1, watched));
     }
 
     /**
@@ -2592,6 +3267,27 @@
       return hasFavoriteMain(menu);
     }
 
+    function dislikedKeywords() {
+      return STATE.dislikes.keywords.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    }
+    function isDislikedDish(item) {
+      if (!item || !item.nazev) return false;
+      var kws = dislikedKeywords();
+      if (kws.length === 0) return false;
+      var norm = _normalize(item.nazev);
+      return kws.some(function(kw) { return norm.indexOf(_normalize(kw)) !== -1; });
+    }
+    /** Vrátí konkrétní klíčová slova ze sady, která v názvu jídla skutečně
+     *  matchují (po normalizaci). Pro conflict tooltip — ať uživatel hned vidí,
+     *  která slova konflikt způsobují. */
+    function matchingKeywords_(item, kws) {
+      if (!item || !item.nazev || !kws || kws.length === 0) return [];
+      var norm = _normalize(item.nazev);
+      return kws.filter(function(kw) {
+        return norm.indexOf(_normalize(kw)) !== -1;
+      });
+    }
+
     function setFavKeywords(value) {
       var v = String(value || '');
       STATE.favorites.keywords = v;
@@ -2605,6 +3301,136 @@
       var lsKey = ({ mark: 'menicka_fav_mark', onlyRest: 'menicka_fav_only_rest', onlyDish: 'menicka_fav_only_dish' })[key];
       if (lsKey) localStorage.setItem(lsKey, STATE.favorites[key] ? 'true' : 'false');
       renderRestaurants();
+    }
+
+    var FAV_COLOR_KEYS = ['default', 'red', 'purple', 'orange', 'green', 'blue', 'pink'];
+    var FAV_BG_KEYS = ['none', 'red', 'purple', 'orange', 'green', 'blue', 'pink'];
+    var FAV_DEFAULTS = { color: 'red', bg: 'none', bold: false };
+
+    /** Aplikuje key barvy na CSS var nebo removeProperty pro 'default'/'none'. */
+    function applyFavColor_(key) {
+      if (key === 'default' || !key) {
+        document.documentElement.style.removeProperty('--fav-color');
+      } else {
+        document.documentElement.style.setProperty('--fav-color', 'var(--fav-c-' + key + ')');
+      }
+    }
+    function applyFavBg_(key) {
+      if (key === 'none' || !key) {
+        document.documentElement.style.removeProperty('--fav-bg');
+      } else {
+        document.documentElement.style.setProperty('--fav-bg', 'var(--fav-b-' + key + ')');
+      }
+    }
+    function applyFavBold_(on) {
+      document.documentElement.style.setProperty('--fav-weight', on ? '700' : '400');
+    }
+
+    function setFavColor(key) {
+      STATE.favorites.color = key;
+      localStorage.setItem('menicka_fav_color', key);
+      applyFavColor_(key);
+      refreshFavSwatches();
+    }
+    function setFavBg(key) {
+      STATE.favorites.bg = key;
+      localStorage.setItem('menicka_fav_bg', key);
+      applyFavBg_(key);
+      refreshFavSwatches();
+    }
+    function setFavBold(on) {
+      STATE.favorites.bold = !!on;
+      localStorage.setItem('menicka_fav_bold', STATE.favorites.bold ? 'true' : 'false');
+      applyFavBold_(STATE.favorites.bold);
+      var btn = $('opt-fav-bold');
+      if (btn) btn.setAttribute('aria-pressed', String(STATE.favorites.bold));
+    }
+    function resetFavStyle() {
+      setFavColor(FAV_DEFAULTS.color);
+      setFavBg(FAV_DEFAULTS.bg);
+      setFavBold(FAV_DEFAULTS.bold);
+    }
+    function refreshFavSwatches() {
+      var colorSwatches = document.querySelectorAll('#fav-swatches-color .fav-swatch');
+      for (var i = 0; i < colorSwatches.length; i++) {
+        colorSwatches[i].setAttribute('aria-pressed', String(colorSwatches[i].dataset.key === STATE.favorites.color));
+      }
+      var bgSwatches = document.querySelectorAll('#fav-swatches-bg .fav-swatch');
+      for (var j = 0; j < bgSwatches.length; j++) {
+        bgSwatches[j].setAttribute('aria-pressed', String(bgSwatches[j].dataset.key === STATE.favorites.bg));
+      }
+    }
+
+    // === Neoblíbená jídla — symetrické s favorites ===
+    var DIS_DEFAULTS = { color: 'gray', bg: 'none', bold: false, strike: false };
+    function applyDisColor_(key) {
+      if (key === 'default' || !key) {
+        document.documentElement.style.removeProperty('--dis-color');
+      } else {
+        document.documentElement.style.setProperty('--dis-color', 'var(--dis-c-' + key + ')');
+      }
+    }
+    function applyDisBg_(key) {
+      if (key === 'none' || !key) {
+        document.documentElement.style.removeProperty('--dis-bg');
+      } else {
+        document.documentElement.style.setProperty('--dis-bg', 'var(--dis-b-' + key + ')');
+      }
+    }
+    function applyDisBold_(on) {
+      document.documentElement.style.setProperty('--dis-weight', on ? '700' : '400');
+    }
+    function applyDisStrike_(on) {
+      document.documentElement.style.setProperty('--dis-strike', on ? 'line-through' : 'none');
+    }
+    function setDisColor(key) {
+      STATE.dislikes.color = key;
+      localStorage.setItem('menicka_dis_color', key);
+      applyDisColor_(key);
+      refreshDisSwatches();
+    }
+    function setDisBg(key) {
+      STATE.dislikes.bg = key;
+      localStorage.setItem('menicka_dis_bg', key);
+      applyDisBg_(key);
+      refreshDisSwatches();
+    }
+    function setDisBold(on) {
+      STATE.dislikes.bold = !!on;
+      localStorage.setItem('menicka_dis_bold', STATE.dislikes.bold ? 'true' : 'false');
+      applyDisBold_(STATE.dislikes.bold);
+      var btn = $('opt-dis-bold');
+      if (btn) btn.setAttribute('aria-pressed', String(STATE.dislikes.bold));
+    }
+    function setDisStrike(on) {
+      STATE.dislikes.strike = !!on;
+      localStorage.setItem('menicka_dis_strike', STATE.dislikes.strike ? 'true' : 'false');
+      applyDisStrike_(STATE.dislikes.strike);
+      var btn = $('opt-dis-strike');
+      if (btn) btn.setAttribute('aria-pressed', String(STATE.dislikes.strike));
+    }
+    function setDisOption(key, on) {
+      STATE.dislikes[key] = !!on;
+      var lsKey = ({ mark: 'menicka_dis_mark', hide: 'menicka_dis_hide' })[key];
+      if (lsKey) localStorage.setItem(lsKey, STATE.dislikes[key] ? 'true' : 'false');
+      renderRestaurants();
+    }
+    function setDisKeywords(value) {
+      STATE.dislikes.keywords = String(value || '');
+      localStorage.setItem('menicka_dis_keywords', STATE.dislikes.keywords);
+      renderRestaurants();
+    }
+    function resetDisStyle() {
+      setDisColor(DIS_DEFAULTS.color);
+      setDisBg(DIS_DEFAULTS.bg);
+      setDisBold(DIS_DEFAULTS.bold);
+      setDisStrike(DIS_DEFAULTS.strike);
+    }
+    function refreshDisSwatches() {
+      var c = document.querySelectorAll('#dis-swatches-color .fav-swatch');
+      for (var i = 0; i < c.length; i++) c[i].setAttribute('aria-pressed', String(c[i].dataset.key === STATE.dislikes.color));
+      var b = document.querySelectorAll('#dis-swatches-bg .fav-swatch');
+      for (var j = 0; j < b.length; j++) b[j].setAttribute('aria-pressed', String(b[j].dataset.key === STATE.dislikes.bg));
     }
 
     function setHideEmpty(on) {
@@ -2676,7 +3502,6 @@
       var checkbox = $('opt-hide-empty');
       if (!checkbox) return;
       var weekend = _isWeekendOrHoliday_();
-      checkbox.disabled = weekend;
       checkbox.checked = weekend ? true : STATE.hideEmpty;
     }
 
@@ -2805,7 +3630,7 @@
      */
     function setGeoRadius(km) {
       var radius = (km === Infinity || km == null) ? Infinity :
-                   Math.max(1, Math.min(5, parseInt(km, 10) || 1));
+                   Math.max(1, parseInt(km, 10) || 1);
       STATE.geo.radiusKm = radius;
       STATE.geo.enabled = radius !== Infinity;
       localStorage.setItem('menicka_geo_radius', radius === Infinity ? 'inf' : String(radius));
@@ -2852,8 +3677,77 @@
       });
     }
 
+    /**
+     * Header indikátor — viditelný jen když filter aktivní. Tooltip dynamický
+     * (ukazuje aktuální okruh + město). Volá se při každém renderGeoStatus.
+     */
+    function updateGeoIndicator() {
+      var btn = $('btn-geo-indicator');
+      if (!btn) return;
+      if (!STATE.geo.enabled) {
+        btn.setAttribute('hidden', '');
+        return;
+      }
+      btn.removeAttribute('hidden');
+      var loc = STATE.geo.city
+        || (STATE.geo.userLat != null ? 'tvojí polohy' : '? polohy')
+        || 'tvojí polohy';
+      btn.setAttribute('data-tooltip', 'Filtr podle polohy aktivní — okruh ' + STATE.geo.radiusKm + ' km od ' + loc + '. Klikni pro otevření Nastavení.');
+      btn.removeAttribute('title');  // data-tooltip má přednost (custom JS tooltip)
+    }
+
+    /**
+     * Permissions API wrapper. Vrátí promise s 'prompt' | 'granted' | 'denied'
+     * | 'unsupported' (Safari starší 16, některé in-app browsery). Při unsupported
+     * fallbackneme na 'prompt' state (uživatel klikne, getCurrentPosition
+     * sám zjistí — buď proběhne, nebo vrátí error.code === 1).
+     */
+    function _queryGeoPermission_() {
+      if (!navigator.permissions || !navigator.permissions.query) {
+        return Promise.resolve('unsupported');
+      }
+      return navigator.permissions.query({ name: 'geolocation' })
+        .then(function(result) { return result.state; })
+        .catch(function() { return 'unsupported'; });
+    }
+
+    /**
+     * Updatuje label + data-state na #opt-geo-permission tlačítku podle aktuálního
+     * stavu Permissions API. Prompt = visible & accent (klik triggerne prompt),
+     * granted = visible & green status, denied = visible & warning + click
+     * otevře toast s instrukcí, unsupported = hidden (browser to neumí — uživatel
+     * stejně dostane prompt při prvním pohybu slideru).
+     */
+    function _updateGeoPermissionBtn_() {
+      var btn = $('opt-geo-permission');
+      if (!btn) return;
+      _queryGeoPermission_().then(function(state) {
+        var label = btn.querySelector('.geo-permission-label');
+        if (state === 'unsupported') {
+          btn.setAttribute('hidden', '');
+          return;
+        }
+        btn.removeAttribute('hidden');
+        btn.dataset.state = state;
+        if (state === 'granted') {
+          if (label) label.textContent = 'Poloha povolena';
+          btn.setAttribute('data-tooltip', 'Prohlížeč ti pro tuto stránku povolil přístup k poloze.');
+          btn.removeAttribute('title');
+        } else if (state === 'denied') {
+          if (label) label.textContent = 'Povolení odepřeno — otevři nastavení prohlížeče';
+          btn.setAttribute('data-tooltip', 'Klikni pro instrukci, jak povolení změnit.');
+          btn.removeAttribute('title');
+        } else {
+          if (label) label.textContent = 'Povolit přístup k poloze';
+          btn.setAttribute('data-tooltip', 'Klikni a prohlížeč se zeptá na povolení k poloze. Filter pak začne fungovat hned po výběru okruhu.');
+          btn.removeAttribute('title');
+        }
+      });
+    }
+
     /** Aktualizuje UI status řádek pod geo togglem (cached pos / error / off). */
     function renderGeoStatus() {
+      updateGeoIndicator();  // header indikátor sleduje stejné state changes
       var elem = $('opt-geo-status');
       var refreshBtn = $('opt-geo-refresh');
       if (refreshBtn) {
@@ -2861,6 +3755,7 @@
         if (STATE.geo.enabled) refreshBtn.removeAttribute('hidden');
         else refreshBtn.setAttribute('hidden', '');
       }
+      _updateGeoPermissionBtn_();  // permission stav refreshneme při každém renderu
       if (!elem) return;
       while (elem.firstChild) elem.removeChild(elem.firstChild);
       if (!STATE.geo.enabled) return;
@@ -2974,8 +3869,12 @@
       }
       if (!window.Sortable) return;
       _sortableInstance = Sortable.create(listEl, {
-        handle: isMobileMode() ? undefined : '.fav-handle',
+        // Drag z kdekoli na kartě (desktop i mobil), kromě klikatelných prvků
+        // (eye/edit/trash badges, edit form inputs, info link). preventOnFilter:
+        // false zachovává normální click chování na vyloučených prvcích.
         draggable: '.fav',
+        filter: 'button, input, a',
+        preventOnFilter: false,
         animation: 150,
         ghostClass: 'sort-ghost',
         chosenClass: 'sort-chosen',
@@ -3009,12 +3908,12 @@
     }
 
     var toastTimer = null;
-    function showToast(msg, type) {
+    function showToast(msg, type, durationMs) {
       var t = $('toast');
       t.textContent = msg;
       t.className = 'toast show' + (type === 'error' ? ' error' : '');
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(function() { t.classList.remove('show'); }, 3000);
+      toastTimer = setTimeout(function() { t.classList.remove('show'); }, durationMs || 3000);
     }
 
     setTheme(STATE.theme);
@@ -3023,6 +3922,12 @@
     $('btn-settings-mob').addEventListener('click', function() { toggleSettings(); });
     $('btn-settings-close').addEventListener('click', function() { toggleSettings(false); });
     $('btn-settings-close-bottom').addEventListener('click', function() { toggleSettings(false); });
+
+    // Settings tabs: obnovit poslední aktivní tab z localStorage + wire klik
+    setSettingsTab(localStorage.getItem('menicka_settings_active_tab') || 'restaurace');
+    document.querySelectorAll('.settings-tab-btn').forEach(function(b) {
+      b.addEventListener('click', function() { setSettingsTab(b.dataset.tab); });
+    });
     $('drawer-backdrop').addEventListener('click', function() { toggleSettings(false); });
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape' && $('settings').classList.contains('open')) {
@@ -3033,6 +3938,10 @@
     });
     $('btn-theme').addEventListener('click', function() {
       setTheme(STATE.theme === 'dark' ? 'light' : 'dark');
+    });
+    $('btn-geo-indicator').addEventListener('click', function() {
+      // Klik = otevři Nastavení (uživatel rovnou vidí slider + status)
+      toggleSettings(true);
     });
     $('btn-add').addEventListener('click', addRestaurantByUrl);
     $('add-url').addEventListener('keydown', function(e) {
@@ -3079,9 +3988,9 @@
     $('opt-show-mnozstvi').checked = STATE.showMnozstvi;
     $('opt-show-mnozstvi').addEventListener('change', function() { setShowMnozstvi(this.checked); });
 
-    // Geo filter — 6 pozic sliderů: 1/2/3/4/5 km, posledná ∞ = filter off.
+    // Geo filter — 6 pozic slideru: 1/2/5/10/20 km, poslední ∞ = filter off.
     // Default ∞ (žádná geolokace dokud user explicitně nepřesune slider).
-    var GEO_RADIUS_OPTIONS = [1, 2, 3, 4, 5, Infinity];
+    var GEO_RADIUS_OPTIONS = [1, 2, 5, 10, 20, Infinity];
     function setupGeoRadiusSlider() {
       var slider = $('opt-geo-radius');
       var ticks = $('geo-radius-ticks');
@@ -3090,13 +3999,23 @@
       if (idx < 0) idx = 5;  // default ∞
       slider.value = String(idx);
       while (ticks.firstChild) ticks.removeChild(ticks.firstChild);
+      var spans = [];
       for (var i = 0; i < GEO_RADIUS_OPTIONS.length; i++) {
         var v = GEO_RADIUS_OPTIONS[i];
         var label = v === Infinity ? '∞' : (v + ' km');
         var t = el('span', { text: label });
         if (i === idx) t.classList.add('active');
+        // Klik na tick = stejný flow jako klik na bar
+        (function(km) {
+          t.addEventListener('click', function() {
+            setGeoRadius(km);
+            setupGeoRadiusSlider();
+          });
+        })(v);
         ticks.appendChild(t);
+        spans.push(t);
       }
+      positionSliderTicks_(spans);
     }
     setupGeoRadiusSlider();
     $('opt-geo-radius').addEventListener('input', function() {
@@ -3119,6 +4038,42 @@
         }
       }, { timeout: 10000, maximumAge: 0 });
     });
+    // Geo permission tlačítko — branch podle aktuálního stavu
+    $('opt-geo-permission').addEventListener('click', function() {
+      var state = this.dataset.state;
+      if (state === 'granted') {
+        showToast('Poloha už je povolena. Posuň slider z ∞ pro aktivaci filtru.');
+      } else if (state === 'denied') {
+        // Browser už denied vyřešit programaticky nelze — ukážeme univerzální
+        // instrukci. Per-browser detail by byl pekelně kompikovaný (Chrome
+        // desktop / iOS Safari / Firefox / in-app browsery každý má jinou cestu).
+        showToast('Klikni na ikonu zámeček (nebo (i)) vlevo od adresy v prohlížeči → Nastavení webu → Poloha → Povolit. Pak refresh stránky.', 'error', 8000);
+      } else {
+        // prompt nebo unsupported → spustíme getCurrentPosition; browser ukáže
+        // permission prompt (pokud podporuje), pak buď ok callback nebo error.
+        showToast('Žádám o tvoji aktuální polohu…');
+        requestGeoPosition_(function(ok) {
+          _updateGeoPermissionBtn_();  // refresh stavu po decision
+          if (ok) {
+            renderGeoStatus();
+            renderRestaurants();
+            showToast('Poloha povolena. Posuň slider z ∞ pro aktivaci filtru.');
+          } else if (STATE.geo.error === 'denied') {
+            showToast('Povolení odepřeno. Můžeš to změnit v nastavení prohlížeče.', 'error');
+          } else {
+            showToast('Polohu se nepodařilo získat.', 'error');
+          }
+        }, { timeout: 10000, maximumAge: 0 });
+      }
+    });
+    // Subscribe na permission změny — pokud user změní povolení v browser
+    // settings (např. revokuje), label se sám updatne bez refreshe.
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
+        result.onchange = function() { _updateGeoPermissionBtn_(); };
+      }).catch(function() { /* unsupported, žádné subscribe */ });
+    }
+    _updateGeoPermissionBtn_();  // initial render
     // Pokud byl geo filter zapnutý z minulé session a v sessionStorage je
     // čerstvá poloha, načti ji rovnou (žádný nový permission prompt). Pokud ne,
     // toggle zůstane zapnutý ale neaplikuje se filter, dokud user nezapne znovu.
@@ -3146,13 +4101,68 @@
     // s otevřenou aplikací". Browser ne-promptuje (permission už je).
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState !== 'visible') return;
-      if (!STATE.geo.enabled) return;
-      var stale = !STATE.geo.fetchedAt || (Date.now() - STATE.geo.fetchedAt > 15 * 60 * 1000);
-      if (!stale) return;
-      requestGeoPosition_(function(ok) {
-        if (ok) { renderGeoStatus(); renderRestaurants(); }
-      });
+      if (STATE.geo.enabled) {
+        var stale = !STATE.geo.fetchedAt || (Date.now() - STATE.geo.fetchedAt > 15 * 60 * 1000);
+        if (stale) {
+          requestGeoPosition_(function(ok) {
+            if (ok) { renderGeoStatus(); renderRestaurants(); }
+          });
+        }
+      }
+      // Při návratu na tab vždy zkontroluj timestampy menu (možná proběhl
+      // server trigger nebo jiný uživatel manuálně refreshnul, my máme stale).
+      pollMenuTimestamps_();
     });
+
+    /**
+     * Polluje server pro `aktualizovano` timestampy všech dnešních menu. Když
+     * server má novější verzi než lokální STATE, automaticky fetchne fresh menu
+     * pro daný card → uživatel uvidí refresh overlay + nový obsah, bez F5.
+     *
+     * Use case: trigger 9-14 hodin proběhne s otevřeným tabem; nebo manual
+     * refresh jiného uživatele; nebo addRestaurant proběhne v jiné session.
+     */
+    var MENU_POLL_INTERVAL_MS = 2 * 60 * 1000;  // 2 min — kompromis čerstvosti × server load
+    var _menuPollTimer = null;
+    function pollMenuTimestamps_() {
+      if (document.visibilityState !== 'visible') return;
+      google.script.run
+        .withSuccessHandler(function(timestamps) {
+          if (!timestamps || typeof timestamps !== 'object') return;
+          var changedIds = [];
+          Object.keys(timestamps).forEach(function(rid) {
+            var localTs = (STATE.menu[rid] && STATE.menu[rid].aktualizovano) || null;
+            var serverTs = timestamps[rid];
+            if (serverTs && serverTs !== localTs) changedIds.push(rid);
+          });
+          if (changedIds.length === 0) return;
+
+          // Show overlay + fetch fresh menu pro každou změněnou kartu.
+          // Loading flag se nastaví hromadně, render proběhne 1×, pak se po
+          // success handlerech jednotlivě uklízí.
+          changedIds.forEach(function(rid) { STATE.loadingMenu[rid] = true; });
+          renderRestaurants();
+
+          changedIds.forEach(function(rid) {
+            google.script.run
+              .withSuccessHandler(function(result) {
+                delete STATE.loadingMenu[rid];
+                if (result && result.menu) STATE.menu[rid] = result.menu;
+                renderRestaurants();
+              })
+              .withFailureHandler(function() {
+                delete STATE.loadingMenu[rid];
+                renderRestaurants();
+              })
+              .fetchMenuForRestaurant(rid);
+          });
+        })
+        .withFailureHandler(function() { /* network blip — další poll to chytí */ })
+        .getMenuTimestamps();
+    }
+    // Periodický polling (jen když tab visible — visibilitychange dělá immediate
+    // poll při focus, takže návrat na tab po dlouhé pauze vyvolá update hned).
+    _menuPollTimer = setInterval(pollMenuTimestamps_, MENU_POLL_INTERVAL_MS);
 
     $('opt-cols-slider').addEventListener('input', function() {
       setCols(this.value);
@@ -3176,7 +4186,54 @@
     });
     $('opt-fav-mark').addEventListener('change', function() { setFavOption('mark', this.checked); });
     $('opt-fav-only-rest').addEventListener('change', function() { setFavOption('onlyRest', this.checked); });
+    // Vzhled oblíbeného jídla — swatches + B toggle + reset. Apply uložených
+    // hodnot na startu (CSS vars), pak click handlery pro live updaty.
+    applyFavColor_(STATE.favorites.color);
+    applyFavBg_(STATE.favorites.bg);
+    applyFavBold_(STATE.favorites.bold);
+    $('opt-fav-bold').setAttribute('aria-pressed', String(STATE.favorites.bold));
+    $('opt-fav-bold').addEventListener('click', function() { setFavBold(!STATE.favorites.bold); });
+    $('opt-fav-reset').addEventListener('click', resetFavStyle);
+    document.querySelectorAll('#fav-swatches-color .fav-swatch').forEach(function(s) {
+      s.addEventListener('click', function() { setFavColor(this.dataset.key); });
+    });
+    document.querySelectorAll('#fav-swatches-bg .fav-swatch').forEach(function(s) {
+      s.addEventListener('click', function() { setFavBg(this.dataset.key); });
+    });
+    refreshFavSwatches();  // initial highlight
     $('opt-fav-only-dish').addEventListener('change', function() { setFavOption('onlyDish', this.checked); });
+
+    // Dislikes — symetrické s favorites: keywords + mark + barevný styling +
+    // strike + filter "skrýt z výpisu".
+    $('opt-dis-keywords').value = STATE.dislikes.keywords;
+    $('opt-dis-mark').checked = STATE.dislikes.mark;
+    $('opt-dis-hide').checked = STATE.dislikes.hide;
+
+    var _disKwTimer = null;
+    $('opt-dis-keywords').addEventListener('input', function() {
+      var v = this.value;
+      clearTimeout(_disKwTimer);
+      _disKwTimer = setTimeout(function() { setDisKeywords(v); }, 250);
+    });
+    $('opt-dis-mark').addEventListener('change', function() { setDisOption('mark', this.checked); });
+    $('opt-dis-hide').addEventListener('change', function() { setDisOption('hide', this.checked); });
+
+    applyDisColor_(STATE.dislikes.color);
+    applyDisBg_(STATE.dislikes.bg);
+    applyDisBold_(STATE.dislikes.bold);
+    applyDisStrike_(STATE.dislikes.strike);
+    $('opt-dis-bold').setAttribute('aria-pressed', String(STATE.dislikes.bold));
+    $('opt-dis-bold').addEventListener('click', function() { setDisBold(!STATE.dislikes.bold); });
+    $('opt-dis-strike').setAttribute('aria-pressed', String(STATE.dislikes.strike));
+    $('opt-dis-strike').addEventListener('click', function() { setDisStrike(!STATE.dislikes.strike); });
+    $('opt-dis-reset').addEventListener('click', resetDisStyle);
+    document.querySelectorAll('#dis-swatches-color .fav-swatch').forEach(function(s) {
+      s.addEventListener('click', function() { setDisColor(this.dataset.key); });
+    });
+    document.querySelectorAll('#dis-swatches-bg .fav-swatch').forEach(function(s) {
+      s.addEventListener('click', function() { setDisBg(this.dataset.key); });
+    });
+    refreshDisSwatches();
 
     // Mobile detection — disabled stav skupiny "Sloupcové zobrazení"
     var _mobileMql = window.matchMedia('(max-width: 700px)');
@@ -3203,8 +4260,10 @@
     // (renderSettings volá createIcons() pro nově přidané fav položky.)
     if (window.lucide) lucide.createIcons();
 
-    // Handshake s PWA wrapperem (menicka.html v parent GitHub Pages):
+    // Handshake s PWA wrapperem (lunchhunter.html v parent GitHub Pages):
     // wrapper má loading overlay, který fade-outne po obdržení této zprávy.
+    // Type zůstává 'menicka-ready' kvůli backward-compat (wrapper poslouchá
+    // oba 'jidlogic-ready' i 'menicka-ready').
     try { window.parent.postMessage({ type: 'menicka-ready' }, '*'); } catch (e) {}
 
     if (STATE.user && STATE.user.novy) {

@@ -1,4 +1,9 @@
 // Jídlogic — Service Worker (PWA shell cache)
+// v15 — 2026-05-04: menicka.html přejmenováno na lunchhunter.html (UI rebrand
+// na LunchHunter PE). Manifest taky → lunchhunter-manifest.json. Bump cache
+// vyvolá u stávajících uživatelů re-cache + activate, takže si stáhnou novou
+// shell URL bez nutnosti hard-refresh. Pozor: existující bookmarks na staré
+// menicka.html teď vrací 404 (GitHub Pages neredirektuje samo).
 // v14 — 2026-04-26: přidáno menicka.html + menicka-manifest.json do shell cache
 // (samostatná Meníčka PWA na stejném GitHub Pages origin). Iframe target je
 // jiný GAS deploy (AKfycbw4… místo AKfycbxq…), ale wrapper se chová stejně.
@@ -18,13 +23,13 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v14';
+var CACHE_NAME = 'jidlogic-shell-v15';
 var CORE_SHELL = [
   './',
   'index.html',
   'manifest.json',
-  'menicka.html',
-  'menicka-manifest.json',
+  'lunchhunter.html',
+  'lunchhunter-manifest.json',
   'icon.svg?v=20260422',
 ];
 
