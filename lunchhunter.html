@@ -60,13 +60,39 @@
       font-size: 1.05rem;
       color: #6E6E80;
     }
+    /* Progress bar — vizuální zpětná vazba, že se něco děje. CSS animace
+       fillne 0→70 % rychle (první 2 s), pak pomalu 70→95 % do 5 s a tam
+       zůstane. 100 % nikdy nedosáhne — final stav je ready event z iframu
+       nebo timeout fadeOut, oba schovají celý overlay. */
+    .wrapper-progress {
+      width: 240px;
+      max-width: calc(100vw - 48px);
+      height: 4px;
+      background: rgba(107, 45, 139, 0.15);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 18px;
+    }
+    .wrapper-progress-bar {
+      height: 100%;
+      width: 0;
+      background: #6B2D8B;
+      border-radius: 2px;
+      animation: progress-fill 5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    @keyframes progress-fill {
+      0%   { width: 0; }
+      40%  { width: 70%; }
+      100% { width: 95%; }
+    }
     @media (prefers-reduced-motion: reduce) {
       .wrapper-loading-emoji { animation: none; }
+      .wrapper-progress-bar { animation: none; width: 60%; }
     }
 
     /* Fallback panel — zobrazí se po timeoutu, pokud iframe nenajede.
-       Některé prohlížeče (Chrome Mobile s Tracking Protection) blokují
-       cookies pro Google uvnitř iframe. */
+       Reformulace: nečekávané dlouhé načítání + možná příčina (cookies
+       v iframu blokované Tracking Protection) + escape hatch. */
     .fallback-panel {
       display: none;
       max-width: 460px; padding: 20px 24px;
@@ -101,9 +127,12 @@
   <div class="wrapper-loading" id="wrapper-loading">
     <div class="wrapper-loading-emoji" aria-hidden="true">🍽️</div>
     <div class="wrapper-loading-text">Otevírám LunchHunter PE…</div>
+    <div class="wrapper-progress" aria-hidden="true">
+      <div class="wrapper-progress-bar"></div>
+    </div>
     <div class="fallback-panel" id="fallback-panel">
-      <h2>Načítání trvá příliš dlouho</h2>
-      <p>Některé prohlížeče (Chrome Mobile s Tracking Protection) blokují cookies pro Google uvnitř iframe. Pokud místo jídelníčku vidíš Google přihlašovací obrazovku, otevři LunchHunter PE přímo:</p>
+      <h2>Trvá ti to dlouho?</h2>
+      <p>Většinou stačí počkat ještě sekundu nebo dvě. Pokud místo jídelníčku vidíš Google přihlašovací obrazovku (některé prohlížeče blokují cookies v iframe) nebo to chceš mít hned, můžeš LunchHunter PE otevřít napřímo:</p>
       <a href="https://script.google.com/a/macros/blogic.cz/s/AKfycbw4_Y3RRfN4KXfQTeL2eS_fpyZmzpWtHBDQrCm8YAiVfycWi6_xKvVPke4o2Ipoi9vt8Q/exec" target="_blank" rel="noopener">Otevřít v novém tabu →</a>
     </div>
   </div>
@@ -136,14 +165,17 @@
       if (msg === 'jidlogic-ready' || msg === 'menicka-ready') fadeOut();
     });
 
-    // Fallback: pokud handshake nedorazí do 3 s, ukázat fallback panel a
-    // po dalších 5 s fade-out, ať user vidí iframe content (sign-in, error).
+    // Fallback: pokud handshake nedorazí do 5 s (typicky GAS load 1-3 s,
+    // s rezervou ~2 s pro pomalejší síť), ukázat fallback panel s escape
+    // hatchem na přímý GAS link. Po dalších 5 s force fade-out, ať user
+    // vidí iframe content (sign-in, error). 5 s je kompromis: dost dlouho
+    // aby se to nespouštělo zbytečně, ale ne tak dlouho aby user paniřil.
     setTimeout(function() {
       if (!faded) fallbackEl.classList.add('show');
-    }, 3000);
+    }, 5000);
     setTimeout(function() {
       if (!faded) fadeOut();
-    }, 8000);
+    }, 10000);
   </script>
 </body>
 </html>
