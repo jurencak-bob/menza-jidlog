@@ -117,11 +117,17 @@
   </style>
 </head>
 <body>
-  <!-- GAS meníčka v iframe — vlastní deploy AKfycbw4… -->
+  <!-- GAS meníčka v iframe — vlastní deploy AKfycbw4…
+       allow="geolocation": iframe musí mít explicitní permission delegation,
+       jinak Chromium 90+ striktně blokuje navigator.geolocation v cross-origin
+       iframu (parent github.io, child script.google.com). I když user povolil
+       polohu pro stránku v browser nastavení, getCurrentPosition uvnitř iframu
+       silently failne bez tohoto atributu. -->
   <iframe
     id="app-iframe"
     src="https://script.google.com/a/macros/blogic.cz/s/AKfycbw4_Y3RRfN4KXfQTeL2eS_fpyZmzpWtHBDQrCm8YAiVfycWi6_xKvVPke4o2Ipoi9vt8Q/exec"
     title="LunchHunter PE"
+    allow="geolocation"
   ></iframe>
 
   <div class="wrapper-loading" id="wrapper-loading">
