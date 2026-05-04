@@ -27,7 +27,7 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v20';
+var CACHE_NAME = 'jidlogic-shell-v21';
 var CORE_SHELL = [
   './',
   'index.html',
@@ -35,6 +35,9 @@ var CORE_SHELL = [
   'lunchhunter.html',
   'lunchhunter-manifest.json',
   'lunchhunter-icon.svg?v=20260504',
+  'lunchhunter-apple-touch-icon.png?v=20260504',
+  'lunchhunter-icon-192.png?v=20260504',
+  'lunchhunter-icon-512.png?v=20260504',
   'icon.svg?v=20260422',
 ];
 

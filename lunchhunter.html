@@ -15,15 +15,14 @@
   <meta name="application-name" content="LunchHunter PE">
   <meta name="description" content="Jídelníčky restaurací z menicka.cz + UTB Menza">
 
-  <!-- LunchHunter PE má vlastní SVG ikonu (utensils-crossed na brand purple).
-       PNG fallbacky stále z Jídlogic shared assets — pro browsery, co SVG
-       favicon neumí (rare, ale Safari < 13). PWA install na iOS ale použije
-       apple-touch-icon, takže je tam stále Jídlogic — TODO udělat PNG variantu. -->
+  <!-- LunchHunter PE má vlastní ikony — SVG primárně (browser favicon),
+       PNG varianty 180/192/512 pro iOS PWA install (apple-touch-icon)
+       a Android Add to Home Screen (manifest icons). Vygenerované přes
+       rsvg-convert ze sdíleného lunchhunter-icon.svg, takže visual stays
+       in sync s wrapperem i headerem appky. -->
   <link rel="icon" type="image/svg+xml" href="lunchhunter-icon.svg?v=20260504">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=20260422">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=20260422">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20260422">
-  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=20260422">
+  <link rel="apple-touch-icon" sizes="180x180" href="lunchhunter-apple-touch-icon.png?v=20260504">
+  <link rel="apple-touch-icon" sizes="192x192" href="lunchhunter-icon-192.png?v=20260504">
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
