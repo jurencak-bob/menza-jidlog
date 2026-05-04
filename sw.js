@@ -1,4 +1,8 @@
 // Jídlogic — Service Worker (PWA shell cache)
+// v16 — 2026-05-04: lunchhunter.html — progress bar + delší fallback timeout
+// (3 s → 5 s pro panel, 8 s → 10 s pro forced fade-out) + reformulace textu
+// z alarmujícího „Načítání trvá příliš dlouho" na vlídnější „Trvá ti to
+// dlouho?" Bump aby si user stáhl nový shell.
 // v15 — 2026-05-04: menicka.html přejmenováno na lunchhunter.html (UI rebrand
 // na LunchHunter PE). Manifest taky → lunchhunter-manifest.json. Bump cache
 // vyvolá u stávajících uživatelů re-cache + activate, takže si stáhnou novou
@@ -23,7 +27,7 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v15';
+var CACHE_NAME = 'jidlogic-shell-v16';
 var CORE_SHELL = [
   './',
   'index.html',
