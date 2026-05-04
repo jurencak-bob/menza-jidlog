@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#
+# pre-commit hook — automaticky bumpne sw.js cache verzi, pokud se mění
+# wrapper soubory (lunchhunter.html, manifest, ikony). Bez toho by user
+# musel pamatovat ručně inkrementovat CACHE_NAME v sw.js a stávající
+# PWA users by dostávali stale shell.
+#
+# Aktivace v každém clonu repa: `git config core.hooksPath .githooks`
+# (jednorázově po cloně).
+
+set -e
+
+# Cesta k bump skriptu (relativně k repo rootu)
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+BUMP_SCRIPT="$REPO_ROOT/bump-sw.sh"
+
+if [[ -x "$BUMP_SCRIPT" ]]; then
+  "$BUMP_SCRIPT"
+fi
