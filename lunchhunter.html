@@ -15,8 +15,11 @@
   <meta name="application-name" content="LunchHunter PE">
   <meta name="description" content="Jídelníčky restaurací z menicka.cz + UTB Menza">
 
-  <!-- Sdílené ikony s Jídlogic (stejné brand) -->
-  <link rel="icon" type="image/svg+xml" href="icon.svg?v=20260422">
+  <!-- LunchHunter PE má vlastní SVG ikonu (utensils-crossed na brand purple).
+       PNG fallbacky stále z Jídlogic shared assets — pro browsery, co SVG
+       favicon neumí (rare, ale Safari < 13). PWA install na iOS ale použije
+       apple-touch-icon, takže je tam stále Jídlogic — TODO udělat PNG variantu. -->
+  <link rel="icon" type="image/svg+xml" href="lunchhunter-icon.svg?v=20260504">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=20260422">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=20260422">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20260422">
