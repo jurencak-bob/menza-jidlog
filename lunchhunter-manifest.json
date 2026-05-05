@@ -1,6 +1,6 @@
 {
-  "name": "LunchHunter PE — Jídelníčky",
-  "short_name": "LunchHunter PE",
+  "name": "Luncher PE — Jídelníčky",
+  "short_name": "Luncher PE",
   "description": "Jídelníčky restaurací z menicka.cz + UTB Menza",
   "start_url": "lunchhunter.html",
   "scope": "lunchhunter.html",
