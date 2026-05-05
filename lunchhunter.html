@@ -24,6 +24,28 @@
   <link rel="apple-touch-icon" sizes="180x180" href="lunchhunter-apple-touch-icon.png?v=20260504">
   <link rel="apple-touch-icon" sizes="192x192" href="lunchhunter-icon-192.png?v=20260504">
 
+  <!-- iOS PWA splash screens. Bez nich iOS ukazuje bílou stránku s apple-touch-icon
+       během launch — fallback může spadnout na root /apple-touch-icon.png (Jídlogic).
+       Pre-rendered PNG s brand purple ikonou na light background, generované přes
+       gen-lunchhunter-splash.sh. Media queries cílí na native pixel resolutions
+       konkrétních iPhone modelů; iOS si vybere nejvhodnější. -->
+  <link rel="apple-touch-startup-image" href="lunchhunter-startup-750x1334.png?v=20260505"
+    media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="lunchhunter-startup-828x1792.png?v=20260505"
+    media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="lunchhunter-startup-1125x2436.png?v=20260505"
+    media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="lunchhunter-startup-1170x2532.png?v=20260505"
+    media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="lunchhunter-startup-1179x2556.png?v=20260505"
+    media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="lunchhunter-startup-1242x2688.png?v=20260505"
+    media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="lunchhunter-startup-1284x2778.png?v=20260505"
+    media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="lunchhunter-startup-1290x2796.png?v=20260505"
+    media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; overflow: hidden; background: #F7F7FA; }
