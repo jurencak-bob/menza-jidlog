@@ -1,10 +1,10 @@
 // Jídlogic — Service Worker (PWA shell cache)
-// v16 — 2026-05-04: lunchhunter.html — progress bar + delší fallback timeout
+// v16 — 2026-05-04: luncher.html — progress bar + delší fallback timeout
 // (3 s → 5 s pro panel, 8 s → 10 s pro forced fade-out) + reformulace textu
 // z alarmujícího „Načítání trvá příliš dlouho" na vlídnější „Trvá ti to
 // dlouho?" Bump aby si user stáhl nový shell.
-// v15 — 2026-05-04: menicka.html přejmenováno na lunchhunter.html (UI rebrand
-// na LunchHunter PE). Manifest taky → lunchhunter-manifest.json. Bump cache
+// v15 — 2026-05-04: menicka.html přejmenováno na luncher.html (UI rebrand
+// na LunchHunter PE). Manifest taky → luncher-manifest.json. Bump cache
 // vyvolá u stávajících uživatelů re-cache + activate, takže si stáhnou novou
 // shell URL bez nutnosti hard-refresh. Pozor: existující bookmarks na staré
 // menicka.html teď vrací 404 (GitHub Pages neredirektuje samo).
@@ -27,17 +27,17 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v24';
+var CACHE_NAME = 'jidlogic-shell-v25';
 var CORE_SHELL = [
   './',
   'index.html',
   'manifest.json',
-  'lunchhunter.html',
-  'lunchhunter-manifest.json',
-  'lunchhunter-icon.svg?v=20260504',
-  'lunchhunter-apple-touch-icon.png?v=20260504',
-  'lunchhunter-icon-192.png?v=20260504',
-  'lunchhunter-icon-512.png?v=20260504',
+  'luncher.html',
+  'luncher-manifest.json',
+  'luncher-icon.svg?v=20260504',
+  'luncher-apple-touch-icon.png?v=20260504',
+  'luncher-icon-192.png?v=20260504',
+  'luncher-icon-512.png?v=20260504',
   'icon.svg?v=20260422',
 ];
 

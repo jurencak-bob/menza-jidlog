@@ -2,8 +2,8 @@
   "name": "Luncher PE — Jídelníčky",
   "short_name": "Luncher PE",
   "description": "Jídelníčky restaurací z menicka.cz + UTB Menza",
-  "start_url": "lunchhunter.html",
-  "scope": "lunchhunter.html",
+  "start_url": "luncher.html",
+  "scope": "luncher.html",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#6B2D8B",
@@ -11,31 +11,31 @@
   "lang": "cs",
   "icons": [
     {
-      "src": "lunchhunter-icon.svg?v=20260504",
+      "src": "luncher-icon.svg?v=20260504",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "lunchhunter-icon-192.png?v=20260504",
+      "src": "luncher-icon-192.png?v=20260504",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "lunchhunter-icon-192.png?v=20260504",
+      "src": "luncher-icon-192.png?v=20260504",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "lunchhunter-icon-512.png?v=20260504",
+      "src": "luncher-icon-512.png?v=20260504",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "lunchhunter-icon-512.png?v=20260504",
+      "src": "luncher-icon-512.png?v=20260504",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

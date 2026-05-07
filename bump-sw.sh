@@ -10,19 +10,19 @@
 # wrapperu — easy to forget → stávající uživatelé dostanou stale shell ze SW
 # cache.
 #
-# Watched soubory: lunchhunter.html, manifest, ikony. sw.js sám se nepočítá
+# Watched soubory: luncher.html, manifest, ikony. sw.js sám se nepočítá
 # (jinak by se cyklil).
 
 set -euo pipefail
 cd "$(dirname "$0")"
 
 WATCHED_FILES=(
-  "lunchhunter.html"
-  "lunchhunter-manifest.json"
-  "lunchhunter-icon.svg"
-  "lunchhunter-apple-touch-icon.png"
-  "lunchhunter-icon-192.png"
-  "lunchhunter-icon-512.png"
+  "luncher.html"
+  "luncher-manifest.json"
+  "luncher-icon.svg"
+  "luncher-apple-touch-icon.png"
+  "luncher-icon-192.png"
+  "luncher-icon-512.png"
 )
 
 # Detekuj změnu (staged or unstaged) v některém z watched souborů.
