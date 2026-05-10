@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <title>Luncher PE — URL se změnila</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#6B2D8B">
+  <meta http-equiv="refresh" content="12; url=luncher.html">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      background:linear-gradient(135deg,#F7F7FA 0%,#EFE9F5 100%);
+      color:#2D2D3A;min-height:100vh;
+      display:flex;align-items:center;justify-content:center;
+      padding:24px;line-height:1.55;
+    }
+    .box{
+      max-width:520px;width:100%;
+      padding:32px 32px 28px;
+      background:#fff;
+      border-radius:16px;
+      box-shadow:0 8px 32px rgba(107,45,139,0.12);
+    }
+    .brand{
+      display:flex;align-items:center;gap:10px;
+      margin-bottom:20px;
+    }
+    .brand-logo{
+      width:40px;height:40px;
+      background:linear-gradient(135deg,#6B2D8B,#B07DD8);
+      border-radius:10px;
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;font-weight:700;font-size:1.1rem;
+      box-shadow:0 2px 8px rgba(107,45,139,0.25);
+    }
+    .brand-name{font-weight:700;color:#2D2D3A;font-size:1.1rem}
+    h1{font-size:1.45rem;font-weight:700;line-height:1.25;margin-bottom:14px}
+    p{color:#4E4E5E;font-size:0.95rem;margin-bottom:14px}
+    .url-row{
+      margin:18px 0;padding:14px 16px;
+      background:#FAF7FC;border-left:4px solid #6B2D8B;
+      border-radius:8px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+      font-size:0.82rem;
+      word-break:break-all;
+    }
+    .url-old{color:#8D8DA0;text-decoration:line-through;display:block;margin-bottom:6px}
+    .url-new{color:#6B2D8B;font-weight:600;display:block}
+    .url-label{color:#8D8DA0;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;display:block}
+    .actions{
+      display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;
+    }
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      padding:12px 20px;
+      border-radius:10px;
+      font-weight:600;font-size:0.95rem;
+      text-decoration:none;cursor:pointer;border:none;
+      transition:transform 0.15s,box-shadow 0.15s,background 0.15s;
+      flex:1;min-width:140px;
+    }
+    .btn-primary{background:#6B2D8B;color:#fff}
+    .btn-primary:hover{background:#7A3A9D;transform:translateY(-1px);box-shadow:0 4px 16px rgba(107,45,139,0.25)}
+    .btn-secondary{background:#F0EAF5;color:#6B2D8B}
+    .btn-secondary:hover{background:#E6DBEF}
+    .checklist{
+      margin:6px 0 14px;padding:14px 18px;
+      background:#FAFAFC;border:1px solid #E5E5EC;border-radius:8px;
+    }
+    .checklist-title{font-weight:600;color:#2D2D3A;font-size:0.9rem;margin-bottom:8px}
+    .checklist ul{list-style:none;padding:0}
+    .checklist li{
+      padding:4px 0 4px 24px;position:relative;font-size:0.88rem;color:#4E4E5E;
+    }
+    .checklist li::before{
+      content:"✓";position:absolute;left:4px;
+      color:#6B2D8B;font-weight:700;
+    }
+    .countdown{
+      margin-top:18px;text-align:center;
+      font-size:0.78rem;color:#8D8DA0;
+    }
+    .countdown-num{color:#6B2D8B;font-weight:700;font-variant-numeric:tabular-nums}
+    @media (prefers-color-scheme:dark){
+      body{background:linear-gradient(135deg,#1A1A22 0%,#2A1F36 100%);color:#E8E8EE}
+      .box{background:#252531;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+      .brand-name,h1{color:#E8E8EE}
+      p{color:#B0B0C0}
+      .url-row{background:#1A1A22}
+      .url-new{color:#C99FE0}
+      .url-old{color:#6E6E80}
+      .url-label{color:#6E6E80}
+      .checklist{background:#1A1A22;border-color:#3A2A4A}
+      .checklist-title{color:#E8E8EE}
+      .checklist li{color:#B0B0C0}
+      .checklist li::before{color:#C99FE0}
+      .btn-secondary{background:#3A2A4A;color:#C99FE0}
+      .btn-secondary:hover{background:#4A3A5A}
+      .countdown{color:#6E6E80}
+      .countdown-num{color:#C99FE0}
+    }
+    @media (prefers-reduced-motion:reduce){
+      .btn{transition:none}
+      .btn:hover{transform:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="brand">
+      <div class="brand-logo">L</div>
+      <div class="brand-name">Luncher PE</div>
+    </div>
+    <h1>Aplikace má novou adresu</h1>
+    <p>URL <code>lunchhunter.html</code> se přejmenovala na <code>luncher.html</code> kvůli sjednocení brandu. <b>Před tím, než budeš pokračovat, uprav si prosím odkaz, kterým appku otevíráš</b>, ať tě tahle stránka příště nepřivítá.</p>
+
+    <div class="url-row">
+      <span class="url-label">Stará (tato stránka)</span>
+      <span class="url-old">jurencak-bob.github.io/menza-jidlog/lunchhunter.html</span>
+      <span class="url-label">Nová (uprav si na ni shortcut)</span>
+      <span class="url-new">jurencak-bob.github.io/menza-jidlog/luncher.html</span>
+    </div>
+
+    <div class="checklist">
+      <div class="checklist-title">Co máš upravit (podle toho, jak Luncher používáš):</div>
+      <ul>
+        <li><b>iPhone PWA</b> (ikona na ploše) — smaž starou ikonu, otevři novou URL v Safari, klikni „Sdílet" → „Přidat na plochu"</li>
+        <li><b>Android PWA</b> — smaž starou ikonu, otevři novou URL v Chrome, klikni menu → „Přidat na plochu"</li>
+        <li><b>Záložka v prohlížeči</b> — uprav cílovou URL na novou nebo vytvoř novou</li>
+        <li><b>Odkaz ze Slacku / mailu</b> — pošli kolegům novou URL</li>
+      </ul>
+    </div>
+
+    <div class="actions">
+      <a href="luncher.html" class="btn btn-primary">Pokračovat na novou URL →</a>
+      <button type="button" class="btn btn-secondary" id="btn-copy">Zkopírovat novou URL</button>
+    </div>
+
+    <div class="countdown">Automatické přesměrování za <span class="countdown-num" id="cd">12</span> s</div>
+  </div>
+
+  <script>
+    // Countdown — synchronizovaný s meta refresh (12 s).
+    var seconds = 12;
+    var cdEl = document.getElementById('cd');
+    var iv = setInterval(function() {
+      seconds--;
+      if (cdEl) cdEl.textContent = Math.max(0, seconds);
+      if (seconds <= 0) clearInterval(iv);
+    }, 1000);
+
+    // Copy URL button
+    document.getElementById('btn-copy').addEventListener('click', function() {
+      var url = 'https://jurencak-bob.github.io/menza-jidlog/luncher.html';
+      var btn = this;
+      var orig = btn.textContent;
+      var done = function(ok) {
+        btn.textContent = ok ? '✓ Zkopírováno' : 'Kopírování selhalo';
+        setTimeout(function() { btn.textContent = orig; }, 2000);
+      };
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(function() { done(true); }).catch(function() { done(false); });
+      } else {
+        // Fallback: select + execCommand (legacy browsers)
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = url; document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+          done(true);
+        } catch (e) { done(false); }
+      }
+    });
+  </script>
+</body>
+</html>
