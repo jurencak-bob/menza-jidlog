@@ -2,237 +2,175 @@
 <html lang="cs">
 <head>
   <meta charset="utf-8">
+  <title>Luncher PE — URL se změnila</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Luncher PE</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="luncher-manifest.json">
   <meta name="theme-color" content="#6B2D8B">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Luncher PE">
-  <meta name="application-name" content="Luncher PE">
-  <meta name="description" content="Jídelníčky restaurací z menicka.cz + UTB Menza">
-
-  <!-- Luncher PE má vlastní ikony — SVG primárně (browser favicon),
-       PNG varianty 180/192/512 pro iOS PWA install (apple-touch-icon)
-       a Android Add to Home Screen (manifest icons). Vygenerované přes
-       rsvg-convert ze sdíleného luncher-icon.svg, takže visual stays
-       in sync s wrapperem i headerem appky. -->
-  <link rel="icon" type="image/svg+xml" href="luncher-icon.svg?v=20260504">
-  <link rel="apple-touch-icon" sizes="180x180" href="luncher-apple-touch-icon.png?v=20260504">
-  <link rel="apple-touch-icon" sizes="192x192" href="luncher-icon-192.png?v=20260504">
-
-  <!-- iOS PWA splash screens. Bez nich iOS ukazuje bílou stránku s apple-touch-icon
-       během launch — fallback může spadnout na root /apple-touch-icon.png (Jídlogic).
-       Pre-rendered PNG s brand purple ikonou na light background, generované přes
-       gen-luncher-splash.sh. Media queries cílí na native pixel resolutions
-       konkrétních iPhone modelů; iOS si vybere nejvhodnější. -->
-  <link rel="apple-touch-startup-image" href="luncher-startup-750x1334.png?v=20260505"
-    media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
-  <link rel="apple-touch-startup-image" href="luncher-startup-828x1792.png?v=20260505"
-    media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
-  <link rel="apple-touch-startup-image" href="luncher-startup-1125x2436.png?v=20260505"
-    media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
-  <link rel="apple-touch-startup-image" href="luncher-startup-1170x2532.png?v=20260505"
-    media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
-  <link rel="apple-touch-startup-image" href="luncher-startup-1179x2556.png?v=20260505"
-    media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
-  <link rel="apple-touch-startup-image" href="luncher-startup-1242x2688.png?v=20260505"
-    media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
-  <link rel="apple-touch-startup-image" href="luncher-startup-1284x2778.png?v=20260505"
-    media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
-  <link rel="apple-touch-startup-image" href="luncher-startup-1290x2796.png?v=20260505"
-    media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
-
+  <meta http-equiv="refresh" content="12; url=https://jurencak-bob.github.io/luncher/">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; overflow: hidden; background: #F7F7FA; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-
-    iframe {
-      width: 100%; height: 100%;
-      border: none;
-      position: fixed; inset: 0; z-index: 1;
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      background:linear-gradient(135deg,#F7F7FA 0%,#EFE9F5 100%);
+      color:#2D2D3A;min-height:100vh;
+      display:flex;align-items:center;justify-content:center;
+      padding:24px;line-height:1.55;
     }
-
-    /* Wrapper loading overlay — překryje iframe v prvních ~1-3 s, než
-       GAS doručí menicka_view.html. Fade-out se spouští buď postMessage
-       'jidlogic-ready' (menicka_view.html ji posílá hned po načtení),
-       nebo fallback timeout 3 s pro případy, kdy iframe selže (CSP,
-       cookie blocking, GAS 5xx). */
-    .wrapper-loading {
-      position: fixed; inset: 0; z-index: 10;
-      background: #F7F7FA;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      transition: opacity 0.4s ease;
+    .box{
+      max-width:520px;width:100%;
+      padding:32px 32px 28px;
+      background:#fff;
+      border-radius:16px;
+      box-shadow:0 8px 32px rgba(107,45,139,0.12);
     }
-    .wrapper-loading.fade-out { opacity: 0; pointer-events: none; }
-    /* Inline Lucide `utensils-crossed` SVG — žádná závislost na CDN, žádné
-       zpoždění splash screen. Brand fialová + plate-wobble animace. */
-    .wrapper-loading-icon {
-      width: 72px; height: 72px;
-      margin-bottom: 24px;
-      border-radius: 16px;
-      box-shadow: 0 8px 24px rgba(107, 45, 139, 0.3);
-      animation: plate-wobble 1.4s ease-in-out infinite;
+    .brand{
+      display:flex;align-items:center;gap:10px;
+      margin-bottom:20px;
     }
-    .wrapper-loading-icon svg {
-      width: 100%; height: 100%;
-      display: block;
-      border-radius: 16px;
+    .brand-logo{
+      width:40px;height:40px;
+      background:linear-gradient(135deg,#6B2D8B,#B07DD8);
+      border-radius:10px;
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;font-weight:700;font-size:1.1rem;
+      box-shadow:0 2px 8px rgba(107,45,139,0.25);
     }
-    @keyframes plate-wobble {
-      0%, 100% { transform: rotate(-8deg) scale(1); }
-      30%      { transform: rotate(6deg)  scale(1.08); }
-      60%      { transform: rotate(-4deg) scale(1.02); }
+    .brand-name{font-weight:700;color:#2D2D3A;font-size:1.1rem}
+    h1{font-size:1.45rem;font-weight:700;line-height:1.25;margin-bottom:14px}
+    p{color:#4E4E5E;font-size:0.95rem;margin-bottom:14px}
+    .url-row{
+      margin:18px 0;padding:14px 16px;
+      background:#FAF7FC;border-left:4px solid #6B2D8B;
+      border-radius:8px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+      font-size:0.82rem;
+      word-break:break-all;
     }
-    .wrapper-loading-text {
-      font-size: 1.05rem;
-      color: #6E6E80;
+    .url-old{color:#8D8DA0;text-decoration:line-through;display:block;margin-bottom:6px}
+    .url-new{color:#6B2D8B;font-weight:600;display:block}
+    .url-label{color:#8D8DA0;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;display:block}
+    .actions{
+      display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;
     }
-    /* Progress bar — vizuální zpětná vazba, že se něco děje. CSS animace
-       fillne 0→70 % rychle (první 2 s), pak pomalu 70→95 % do 5 s a tam
-       zůstane. 100 % nikdy nedosáhne — final stav je ready event z iframu
-       nebo timeout fadeOut, oba schovají celý overlay. */
-    .wrapper-progress {
-      width: 240px;
-      max-width: calc(100vw - 48px);
-      height: 4px;
-      background: rgba(107, 45, 139, 0.15);
-      border-radius: 2px;
-      overflow: hidden;
-      margin-top: 18px;
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      padding:12px 20px;
+      border-radius:10px;
+      font-weight:600;font-size:0.95rem;
+      text-decoration:none;cursor:pointer;border:none;
+      transition:transform 0.15s,box-shadow 0.15s,background 0.15s;
+      flex:1;min-width:140px;
     }
-    .wrapper-progress-bar {
-      height: 100%;
-      width: 0;
-      background: #6B2D8B;
-      border-radius: 2px;
-      animation: progress-fill 5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    .btn-primary{background:#6B2D8B;color:#fff}
+    .btn-primary:hover{background:#7A3A9D;transform:translateY(-1px);box-shadow:0 4px 16px rgba(107,45,139,0.25)}
+    .btn-secondary{background:#F0EAF5;color:#6B2D8B}
+    .btn-secondary:hover{background:#E6DBEF}
+    .checklist{
+      margin:6px 0 14px;padding:14px 18px;
+      background:#FAFAFC;border:1px solid #E5E5EC;border-radius:8px;
     }
-    @keyframes progress-fill {
-      0%   { width: 0; }
-      40%  { width: 70%; }
-      100% { width: 95%; }
+    .checklist-title{font-weight:600;color:#2D2D3A;font-size:0.9rem;margin-bottom:8px}
+    .checklist ul{list-style:none;padding:0}
+    .checklist li{
+      padding:4px 0 4px 24px;position:relative;font-size:0.88rem;color:#4E4E5E;
     }
-    @media (prefers-reduced-motion: reduce) {
-      .wrapper-loading-icon { animation: none; }
-      .wrapper-progress-bar { animation: none; width: 60%; }
+    .checklist li::before{
+      content:"✓";position:absolute;left:4px;
+      color:#6B2D8B;font-weight:700;
     }
-
-    /* Fallback panel — zobrazí se po timeoutu, pokud iframe nenajede.
-       Reformulace: nečekávané dlouhé načítání + možná příčina (cookies
-       v iframu blokované Tracking Protection) + escape hatch. */
-    .fallback-panel {
-      display: none;
-      max-width: 460px; padding: 20px 24px;
-      background: #fff; border-radius: 12px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-      margin: 24px;
+    .countdown{
+      margin-top:18px;text-align:center;
+      font-size:0.78rem;color:#8D8DA0;
     }
-    .fallback-panel.show { display: block; }
-    .fallback-panel h2 {
-      font-size: 1rem; color: #2D2D3A; margin-bottom: 8px;
+    .countdown-num{color:#6B2D8B;font-weight:700;font-variant-numeric:tabular-nums}
+    @media (prefers-color-scheme:dark){
+      body{background:linear-gradient(135deg,#1A1A22 0%,#2A1F36 100%);color:#E8E8EE}
+      .box{background:#252531;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+      .brand-name,h1{color:#E8E8EE}
+      p{color:#B0B0C0}
+      .url-row{background:#1A1A22}
+      .url-new{color:#C99FE0}
+      .url-old{color:#6E6E80}
+      .url-label{color:#6E6E80}
+      .checklist{background:#1A1A22;border-color:#3A2A4A}
+      .checklist-title{color:#E8E8EE}
+      .checklist li{color:#B0B0C0}
+      .checklist li::before{color:#C99FE0}
+      .btn-secondary{background:#3A2A4A;color:#C99FE0}
+      .btn-secondary:hover{background:#4A3A5A}
+      .countdown{color:#6E6E80}
+      .countdown-num{color:#C99FE0}
     }
-    .fallback-panel p {
-      font-size: 0.9rem; color: #6E6E80; line-height: 1.4;
-      margin-bottom: 12px;
+    @media (prefers-reduced-motion:reduce){
+      .btn{transition:none}
+      .btn:hover{transform:none}
     }
-    .fallback-panel a {
-      display: inline-block; padding: 10px 16px;
-      background: #6B2D8B; color: #fff;
-      border-radius: 8px; text-decoration: none; font-weight: 500;
-    }
-    .fallback-panel a:hover { background: #8E44AD; }
   </style>
 </head>
 <body>
-  <!-- GAS meníčka v iframe — vlastní deploy AKfycbw4…
-       allow="geolocation": iframe musí mít explicitní permission delegation,
-       jinak Chromium 90+ striktně blokuje navigator.geolocation v cross-origin
-       iframu (parent github.io, child script.google.com). I když user povolil
-       polohu pro stránku v browser nastavení, getCurrentPosition uvnitř iframu
-       silently failne bez tohoto atributu. -->
-  <iframe
-    id="app-iframe"
-    src="https://script.google.com/a/macros/blogic.cz/s/AKfycbw4_Y3RRfN4KXfQTeL2eS_fpyZmzpWtHBDQrCm8YAiVfycWi6_xKvVPke4o2Ipoi9vt8Q/exec"
-    title="Luncher PE"
-    allow="geolocation"
-  ></iframe>
+  <div class="box">
+    <div class="brand">
+      <div class="brand-logo">L</div>
+      <div class="brand-name">Luncher PE</div>
+    </div>
+    <h1>Aplikace má novou adresu</h1>
+    <p>Luncher PE má kanonickou URL na samostatné doméně. <b>Před tím, než budeš pokračovat, uprav si prosím odkaz, kterým appku otevíráš</b>, ať tě tahle stránka příště nepřivítá.</p>
 
-  <div class="wrapper-loading" id="wrapper-loading">
-    <div class="wrapper-loading-icon" aria-hidden="true">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-        <defs>
-          <linearGradient id="loaderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#6B2D8B"/>
-            <stop offset="100%" stop-color="#B07DD8"/>
-          </linearGradient>
-        </defs>
-        <rect width="64" height="64" rx="16" fill="url(#loaderGrad)"/>
-        <g transform="translate(14 14) scale(1.5)" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/>
-          <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/>
-          <path d="m2.1 21.8 6.4-6.3"/>
-          <path d="m19 5-7 7"/>
-        </g>
-      </svg>
+    <div class="url-row">
+      <span class="url-label">Stará (tato stránka)</span>
+      <span class="url-old">jurencak-bob.github.io/menza-jidlog/luncher.html</span>
+      <span class="url-label">Nová (uprav si na ni shortcut)</span>
+      <span class="url-new">jurencak-bob.github.io/luncher/</span>
     </div>
-    <div class="wrapper-loading-text">Otevírám Luncher PE…</div>
-    <div class="wrapper-progress" aria-hidden="true">
-      <div class="wrapper-progress-bar"></div>
+
+    <div class="checklist">
+      <div class="checklist-title">Co máš upravit (podle toho, jak Luncher používáš):</div>
+      <ul>
+        <li><b>iPhone PWA</b> (ikona na ploše) — smaž starou ikonu, otevři novou URL v Safari, klikni „Sdílet" → „Přidat na plochu"</li>
+        <li><b>Android PWA</b> — smaž starou ikonu, otevři novou URL v Chrome, klikni menu → „Přidat na plochu"</li>
+        <li><b>Záložka v prohlížeči</b> — uprav cílovou URL na novou nebo vytvoř novou</li>
+        <li><b>Odkaz ze Slacku / mailu</b> — pošli kolegům novou URL</li>
+      </ul>
     </div>
-    <div class="fallback-panel" id="fallback-panel">
-      <h2>Přijde ti, že se to načítá dlouho?</h2>
-      <p>Většinou stačí počkat ještě sekundu nebo dvě. Nebo tři.</p>
-      <p>Ono je to celé napsané v Google sheetu (FE i BE), tak to může trvat.</p>
-      <p>Pokud místo jídelníčku vidíš Google přihlašovací obrazovku (některé prohlížeče blokují cookies v iframe) nebo to chceš mít hned, můžeš Luncher PE otevřít napřímo:</p>
-      <a href="https://script.google.com/a/macros/blogic.cz/s/AKfycbw4_Y3RRfN4KXfQTeL2eS_fpyZmzpWtHBDQrCm8YAiVfycWi6_xKvVPke4o2Ipoi9vt8Q/exec" target="_blank" rel="noopener">Otevřít v novém tabu →</a>
+
+    <div class="actions">
+      <a href="https://jurencak-bob.github.io/luncher/" class="btn btn-primary">Pokračovat na novou URL →</a>
+      <button type="button" class="btn btn-secondary" id="btn-copy">Zkopírovat novou URL</button>
     </div>
+
+    <div class="countdown">Automatické přesměrování za <span class="countdown-num" id="cd">12</span> s</div>
   </div>
 
   <script>
-    // Service Worker registration — PWA shell cache
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(function(err) {
-        console.warn('SW registration failed:', err);
-      });
-    }
+    // Countdown — synchronizovaný s meta refresh (12 s).
+    var seconds = 12;
+    var cdEl = document.getElementById('cd');
+    var iv = setInterval(function() {
+      seconds--;
+      if (cdEl) cdEl.textContent = Math.max(0, seconds);
+      if (seconds <= 0) clearInterval(iv);
+    }, 1000);
 
-    var loadingEl = document.getElementById('wrapper-loading');
-    var fallbackEl = document.getElementById('fallback-panel');
-    var iframeEl = document.getElementById('app-iframe');
-    var faded = false;
-
-    function fadeOut() {
-      if (faded) return;
-      faded = true;
-      loadingEl.classList.add('fade-out');
-      setTimeout(function() { loadingEl.style.display = 'none'; }, 450);
-    }
-
-    // menicka_view.html posílá window.parent.postMessage('jidlogic-ready', '*')
-    // hned po načtení — fade out wrapper overlay.
-    window.addEventListener('message', function(e) {
-      var data = e.data;
-      var msg = (data && data.type) ? data.type : data;
-      if (msg === 'jidlogic-ready' || msg === 'menicka-ready') fadeOut();
+    // Copy URL button
+    document.getElementById('btn-copy').addEventListener('click', function() {
+      var url = 'https://jurencak-bob.github.io/luncher/';
+      var btn = this;
+      var orig = btn.textContent;
+      var done = function(ok) {
+        btn.textContent = ok ? '✓ Zkopírováno' : 'Kopírování selhalo';
+        setTimeout(function() { btn.textContent = orig; }, 2000);
+      };
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(function() { done(true); }).catch(function() { done(false); });
+      } else {
+        // Fallback: select + execCommand (legacy browsers)
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = url; document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+          done(true);
+        } catch (e) { done(false); }
+      }
     });
-
-    // Fallback: pokud handshake nedorazí do 5 s (typicky GAS load 1-3 s,
-    // s rezervou ~2 s pro pomalejší síť), ukázat fallback panel s escape
-    // hatchem na přímý GAS link. Po dalších 5 s force fade-out, ať user
-    // vidí iframe content (sign-in, error). 5 s je kompromis: dost dlouho
-    // aby se to nespouštělo zbytečně, ale ne tak dlouho aby user paniřil.
-    setTimeout(function() {
-      if (!faded) fallbackEl.classList.add('show');
-    }, 5000);
-    setTimeout(function() {
-      if (!faded) fadeOut();
-    }, 10000);
   </script>
 </body>
 </html>
