@@ -84,6 +84,55 @@ clasp deploy --deploymentId "$DEPLOYMENT_ID" --description "$DESC" || {
 }
 
 echo ""
+
+# ─────────────────────────────────────────────────────────────────────
+# 3. Backup mirror sync — kopíruj source soubory do private repa
+#    jurencak-bob/jidlogic-source, commit + push.
+#    Pojistka pro případ ztráty přístupu k blogic.cz Google Workspace.
+#
+#    Repo žije v ~/Documents/Projekty/jidlogic-source/. Pokud chybí
+#    (nový stroj, neklonovaný), krok se přeskočí s warning — deploy
+#    samotný proběhne dokončený, jen backup chybí.
+# ─────────────────────────────────────────────────────────────────────
+BACKUP_DIR="$HOME/Documents/Projekty/jidlogic-source"
+if [ -d "$BACKUP_DIR/.git" ]; then
+  echo "→ backup sync → $BACKUP_DIR"
+
+  # Soubory k zálohování — vše, co clasp pushuje do GAS, plus deploy/doc
+  # helpery. Drž ve sync s README.md v backup repu.
+  BACKUP_FILES=(
+    Obedy.html obedy.js obedy.tests.js Menza.feed.js Help.html
+    Dashboard.html luncher.html lunchhunter.html
+    appsscript.json .clasp.json .claspignore
+    JidlogicDeploy.sh bump-sw.sh
+    JIDLOGIC-DOKUMENTACE.md TODO-napady.md
+    menza_historie.js
+  )
+
+  for f in "${BACKUP_FILES[@]}"; do
+    if [ -f "$f" ]; then
+      cp "$f" "$BACKUP_DIR/"
+    fi
+  done
+
+  (
+    cd "$BACKUP_DIR"
+    # Jen commit pokud něco fakt skopírováno se změnilo. `git diff --quiet`
+    # vrátí non-zero když jsou změny v staging/working tree → tehdy commit.
+    git add -A
+    if ! git diff --cached --quiet; then
+      git commit -m "Sync $DESC" || true
+      git push origin main || echo "⚠ backup push selhal (síť? auth?) — řešit ručně později"
+    else
+      echo "  (žádné změny — backup je up-to-date)"
+    fi
+  )
+else
+  echo "⚠ backup repo $BACKUP_DIR neexistuje — sync přeskočen."
+  echo "  Naklonuj přes: git clone https://github.com/jurencak-bob/jidlogic-source.git $BACKUP_DIR"
+fi
+
+echo ""
 echo "═══════════════════════════════════════════════════════════════"
 echo "✓ Deploy hotov."
 echo "  URL:        https://script.google.com/a/macros/blogic.cz/s/$DEPLOYMENT_ID/exec?app=obedy"
