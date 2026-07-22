@@ -41,3 +41,8 @@ node_modules/
 # jidlogic.menicka/ je samostatný private repo (https://github.com/jurencak-bob/lunchhunter).
 # V parent public repu (jidlogic) nesmí být. Klonuje se separátně do téhle složky.
 jidlogic.menicka/
+
+# --- Bezpečnost (doplněno) ---
+.env
+credentials.json
+token.json
