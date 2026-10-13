@@ -207,7 +207,8 @@ with sync_playwright() as p:
           "Co je nového: po obnovení se znovu neukáže")
 
     rows = pg.evaluate("[...document.querySelectorAll('.food-item')].map(e=>({so:e.classList.contains('sold-out'),"
-                       "meta:(e.querySelector('.food-meta')||{}).textContent||''}))")
+                       "meta:(e.querySelector('.food-meta')||{}).textContent||'',"
+                       "gram:(e.querySelector('.food-num-col .food-num-gram')||{}).textContent||''}))")
     sold_rows = [r for r in rows if r["so"]]
     check(len(sold_rows) == len(DATA["vyprodano"]), "vyprodaná jídla přeškrtnutá",
           f"{len(sold_rows)} z {len(DATA['vyprodano'])}")
@@ -215,8 +216,8 @@ with sync_playwright() as p:
     n_cnt = sum(1 for r in rows if re.search(r"zbýv|vyprodáno", r["meta"]))
     check(n_cnt == expected_meta("limit", 5), "kusy jen do 5 ks (výchozí)", f"vidět {n_cnt}, čekáno {expected_meta('limit', 5)}")
     with_g = sum(1 for it in DATA["days"][0]["items"] if it.get("gramaz"))
-    n_g = sum(1 for r in rows if re.search(r"\d+(,\d+)? (g|kg|ml|l|dcl)\b", r["meta"]))
-    check(n_g == with_g, "gramáž u všech jídel, která ji mají", f"{n_g} z {with_g}")
+    n_g = sum(1 for r in rows if re.search(r"\d+(,\d+)? (g|kg|ml|l|dcl)\b", r["gram"]))
+    check(n_g == with_g, "gramáž pod pillem u všech jídel, která ji mají", f"{n_g} z {with_g}")
     shot(pg, "02_mobil_menu", full=True)
 
     if sold_rows:
@@ -231,7 +232,8 @@ with sync_playwright() as p:
     n_all = pg.evaluate("[...document.querySelectorAll('.food-meta')].filter(e=>/zbýv|vyprodáno/.test(e.textContent)).length")
     check(n_all == expected_meta("vzdy", 5), "volba „vždy“ ukáže všechny počty", f"{n_all} z {expected_meta('vzdy', 5)}")
     pg.evaluate("toggleFoodMeta('gramaz'); toggleFoodMeta('pocet')"); pg.wait_for_timeout(300)
-    check(pg.evaluate("document.querySelectorAll('.food-meta').length") == 0, "vypnutí obou voleb řádek skryje")
+    check(pg.evaluate("document.querySelectorAll('.food-meta, .food-num-gram').length") == 0,
+          "vypnutí obou voleb skryje gramáž i kusy")
     pg.evaluate("toggleFoodMeta('gramaz'); toggleFoodMeta('pocet'); setPocetMode('limit')")
     pg.evaluate("toggleMenu()"); pg.wait_for_timeout(300)
     pg.evaluate("toggleTheme()"); pg.wait_for_timeout(300)
