@@ -1,6 +1,7 @@
 # Jídlogic — TODO / nápady k realizaci
 
-Export z paměti (`project_improvement_ideas.md`) — stav k 2026-05-15.
+Export z paměti (`project_improvement_ideas.md`) — stav k 2026-05-15, srovnáno s kódem 2026-10-08
+(#26 a #44 přesunuty do hotových, doplněna historie změn od května).
 Plná specifikace každého bodu je v memory; tady je kondenzát.
 
 > Nečíslováno chronologicky — čísla odpovídají interním ID v memory (jsou nesouvislá, jak se nápady přidávaly).
@@ -20,7 +21,7 @@ Plná specifikace každého bodu je v memory; tady je kondenzát.
 | #29 | Offline režim | Úroveň A: session-level queue + cache (3–4 h) | ~3–4 h |
 | #42 | Porovnání Jídlogic vs ext sheet | Systematický diff útrat/dobití, modal s tabulkou rozporů | ~5 h MVP |
 | #45 | Nativní PWA místo iframu | Strategický refactor: GAS JSON API + GH Pages frontend bez iframe | ~20 h |
-| #47 | Zapsat za uživatele | Admin zápis jídla za jiného (stub hotov ve verzi .30) | — |
+| #47 | Zapsat za uživatele | Admin zápis jídla za jiného. Stub z v20260424.32: položka v admin menu je viditelná, ale jen ukáže toast „připravuje se" → dodělat, nebo zatím skrýt | — |
 | #48 | RTG režim | Admin read-only impersonation (tiché, ne v nápovědě) | — |
 | #50 | Sjednocení tooltip patternu | Tech-debt cleanup, low-prio | ~2 h |
 
@@ -31,12 +32,10 @@ Další otevřené (nižší priorita / doplňkové):
 | #3 | Statistiky v sheetu | Průměrné ceny, nejčastější jídla, počet výpadků |
 | #17 | Role „Správce" (Fáze 2–5) | Fáze 1 hotová (badge); chybí Read/Write/Management/Audit |
 | #23 | Překladový list v Konfiguraci | List „🌐 Texty" + helper `t()` pro user-facing stringy |
-| #26 | Admin: vyrovnání kreditu | `obedyVyrovnejKredit` — admin nastaví reálný zůstatek |
 | #39 | Testy frontendu | Lightweight node + jsdom, 7 helperů × 4 cases ≈ 28 testů |
 | #40 | Globální error boundary | Window.error hook + „Nahlásit" mailto |
 | #41 | Read-only přehled sdíleného sheetu | Modal s tabulkou aktuálního týdne z ext sheetu |
 | #43 | Verze pod progress barem | Brand SVG + verze na loading overlay |
-| #44 | Tisícový separátor v inputech | NBSP v moneyinputech (focus-plain, blur-formatted) |
 
 ---
 
@@ -105,22 +104,6 @@ Klíče hierarchické (tečková notace). Kontext: `Jídlogic` / `Chat` / `E-mai
 **MVP scope:** ~16 klíčů — marker (`marker.name`, `marker.tooltip`, `marker.category_label`), tlačítka (`btn.confirm.*`), modal konfliktu, typy kreditu, guest banner.
 
 **Fáze 2:** Chat / e-mail (smallprint, linky, subject lines).
-
----
-
-### #26 — Admin: vyrovnání kreditu uživatele
-
-**Cíl:** Admin explicitně nastaví aktuální zůstatek libovolného usera. Systém dopočte rozdíl → zápis do Kreditu jako `vyrovnání`.
-
-**Use cases:** drift karta vs Jídlogic, onboarding s existujícím kreditem, po kvartální uzávěrce, korekce po bugu.
-
-**Backend:** `obedyVyrovnejKredit(cilovyEmail, cilovyStav, duvod)` — guard `jeSpravce_`, povinný důvod, LockService, zápis do Kreditu typu `vyrovnání` (nový typ ve validaci), mail uživateli o změně.
-
-**UI:** Modal v side-menu (admin-only). Dropdown uživatelů, aktuální stav, cílový stav, dopočet rozdílu (barevně), důvod (min ~10 znaků).
-
-**Edge cases:** target = current → no-op; admin sám sobě OK (redundantní mail); cílový stav = 0 nebo záporný OK; deaktivovaný user OK.
-
-**Závislost:** Fáze 1 z #17 (detekce `isAdmin`) — hotovo.
 
 ---
 
@@ -260,22 +243,6 @@ Odhad: ~25 min. Kosmetické, nízká priorita.
 
 ---
 
-### #44 — Tisícový separátor v inputech
-
-**Cíl:** NBSP mezi tisíci i v inputech peněz (korekce, stav karty, dobití). Dnes jen v display textech.
-
-**Varianta B (focus-plain, blur-formatted):**
-- `onblur` → reformat s NBSP („1 234,50")
-- `onfocus` → strip NBSP zpět („1234,50") + `input.select()`
-- Sanitize regex tolerantní k NBSP: `/[^\d, ]/g`
-- Submit posílá vždy plain (už dnes přes `parseFloat(raw.replace(',','.'))`)
-
-Edge cases: copy-paste z displaye, mobile keyboard `inputmode="decimal"`, Safari iOS setTimeout 0 finicky, caret position po blur.
-
-Odhad: ~50 min. Kosmetika, nízká–střední priorita.
-
----
-
 ### #45 — Nativní PWA místo iframu
 
 **Cíl:** Zrušit iframe architekturu („GH Pages wrapper → iframe na GAS HTML") a udělat plnohodnotné PWA s UI na GH Pages + GAS jen jako JSON API.
@@ -378,6 +345,26 @@ Minimální spec v memory: průměrné ceny, nejčastější jídla, počet výp
 | #36 | Soukromí v poznámkách ext sheetu (detail/anonym) | 2026-04-22 |
 | #37 | Animované přesýpací hodiny pro not-yet-loaded | 2026-04-22 |
 | #38 | Sjednocený toggle pro closed dny + dnes vždy | 2026-04-22 |
+| #26 | Admin: vyrovnání kreditu (`obedyVyrovnejKredit`, modal v admin menu, audit) | v20260424.19 |
+| #44 | Tisícový separátor v inputech (varianta B, `formatInputKc`) | v20260424.32 |
+| #52 base | Pricing lock-in při confirmu (follow-up otevřený) | v20260515.08 |
+| #53 base | Swipe carousel bez ghost preview (follow-up otevřený) | v20260515.11 |
+
+### Změny mimo číslovaný backlog (od 2026-05-28, zdroj: git log `jidlogic-source`)
+
+| Verze | Změna |
+|---|---|
+| v20260528.07 | JidlogicDeploy.sh: auto-sync zdrojáků do private repa `jidlogic-source` po každém deployi |
+| v20260601.01 | Menza feed: diff notifikace bez duplicitního záhlaví + české datum |
+| v20260701.01 | Luncher PE CTA v detailu zavřeného dne; HTML redesign mailu o ext úpravě |
+| v20260701.02 | Sjednocení Jídlogic mailů na HTML template (`jidlogicHtmlMail_`) |
+| v20260714.01 | Fix: korekce ceny se do Kreditu zapisovala s obráceným znaménkem |
+| v20260714.02 | Položka „Krabička 10 Kč" v sekci Oběd jinde |
+| v20260714.03 | Vlastní položka „Salát, zmrzka…" s vlastní cenou v sekci Obědy ostatní |
+| v20261008.01 | Fix: změna výběru ruší korekci ceny dne (dřív visela, např. Celkem -1 Kč u „oběd mimo menzu") |
+| v20261013.01 | Přeškrtnutí vyprodaných jídel: trigger `zkontrolujVyprodano` á 5 min v okně 10:50-14:00 (Po-Pá) čte `countAvailable` z API menzy → Script Property `VYPRODANO_DNES`; FE přeškrtne, vybrat jde dál |
+| v20261013.05 | Okno „Co je nového" (po načtení neviděné novinky, v menu celá historie); pole `NOVINKY` v Obedy.html |
+| v20261013.06 | Pod názvem jídla drobně gramáž (nový sloupec K v listu jídelníčku) a zbývající kusy dneška; v Nastavení zap/vyp každé + kusy vždy / jen do N (default 5), per zařízení |
 
 ---
 

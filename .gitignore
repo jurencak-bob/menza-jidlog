@@ -46,3 +46,8 @@ jidlogic.menicka/
 .env
 credentials.json
 token.json
+
+# script_python: logy běhů a výstupy UI smoke testu (kopie Obedy.html + screenshoty)
+script_python/log/
+script_python/ui_smoke_out/
+__pycache__/
