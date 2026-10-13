@@ -242,6 +242,17 @@ with sync_playwright() as p:
     pg.locator(".info-btn").first.click(); pg.wait_for_timeout(300)
     shot(pg, "05_mobil_tooltip")
 
+    # krabička bez jídla nejde uložit, s jídlem ano (v20261013.11)
+    kp = new_page(390, 844)
+    kp.evaluate("closeNovinkyModal()")
+    st = kp.evaluate("""(()=>{const it=DATA.days[selectedIndex].items;
+        const k=it.findIndex(x=>x.cislo===KRABICKA_CISLO), j=it.findIndex(x=>x.kategorie==='oběd');
+        applyQtyChange(k,1); const b=document.getElementById('btn-confirm'); const a=[b.disabled,b.textContent];
+        applyQtyChange(j,1); return a.concat([b.disabled,b.textContent]);})()""")
+    check(st[0] and "krabička" in st[1].lower(), "samotná krabička: tlačítko zablokované", st[1])
+    check(not st[2], "krabička + jídlo: tlačítko aktivní", st[3])
+    kp.context.close()
+
     for w in (320, 390):
         sp = new_page(w, 760)
         sp.evaluate("closeNovinkyModal(); toggleMenu()"); sp.wait_for_timeout(300)
