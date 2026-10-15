@@ -102,9 +102,8 @@ for(const it of items){ if(typeof it.pocet!=='number')continue;
   counts[key(it.kategorie,it.name)]=n; if(n===0)keys.push(key(it.kategorie,it.name)); }
 const strip=it=>({kategorie:it.kategorie,cislo:it.cislo,name:it.name,cena_stu:it.cena_stu,cena_plna:it.cena_plna,gramaz:it.gramaz});
 const extras=[
- {kategorie:'bez oběda',cislo:'__BEZ_OBEDA__',name:'Tento den oběd mimo menzu.',cena_stu:'0',cena_plna:'0',tooltip:'Nepovinná volba'},
- {kategorie:'bez oběda',cislo:'__KRABICKA__',name:'Krabička',cena_stu:'10',cena_plna:'10',tooltip:'Krabička'}];
-const vlastni={kategorie:'oběd ostatní',cislo:'__OSTATNI_VLASTNI__',name:'Salát, zmrzka…',cena_stu:'',cena_plna:'',tooltip:'Vlastní položka'};
+ {kategorie:'bez oběda',cislo:'__BEZ_OBEDA__',name:'Tento den oběd mimo menzu.',cena_stu:'0',cena_plna:'0',tooltip:'Nepovinná volba'}];
+const vlastni={kategorie:'oběd ostatní',cislo:'__OSTATNI_VLASTNI__',name:'Salát, zmrzka, krabička…',cena_stu:'',cena_plna:'',tooltip:'Vlastní položka'};
 let its=items.map(strip);let lo=-1;its.forEach((x,i)=>{if(x.kategorie==='oběd ostatní')lo=i});its.splice(lo+1,0,{...vlastni});
 const DATA={days:[{date:today,dayName:'Út',items:its.concat(extras),fetchedAt:'10:00'}],todayStr:today,menzaUrl:'',
  vyprodano:keys.sort(),pocty:counts,
@@ -242,16 +241,50 @@ with sync_playwright() as p:
     pg.locator(".info-btn").first.click(); pg.wait_for_timeout(300)
     shot(pg, "05_mobil_tooltip")
 
-    # krabička bez jídla nejde uložit, s jídlem ano (v20261013.11)
-    kp = new_page(390, 844)
+    # krabička už není samostatná položka; vlastní cena umí vzorec „=89+10" (v20261015.01)
+    kp = new_page(1280, 900, mobile=False)
     kp.evaluate("closeNovinkyModal()")
-    st = kp.evaluate("""(()=>{const it=DATA.days[selectedIndex].items;
-        const k=it.findIndex(x=>x.cislo===KRABICKA_CISLO), j=it.findIndex(x=>x.kategorie==='oběd');
-        applyQtyChange(k,1); const b=document.getElementById('btn-confirm'); const a=[b.disabled,b.textContent];
-        applyQtyChange(j,1); return a.concat([b.disabled,b.textContent]);})()""")
-    check(st[0] and "krabička" in st[1].lower(), "samotná krabička: tlačítko zablokované", st[1])
-    check(not st[2], "krabička + jídlo: tlačítko aktivní", st[3])
+    check(kp.evaluate("!DATA.days[selectedIndex].items.some(x=>x.cislo===KRABICKA_CISLO)"),
+          "krabička se nenabízí jako samostatná položka")
+    inp = kp.locator(".food-custom-price").first
+    inp.click(); inp.fill("=89+10"); kp.locator(".date-long").first.click(); kp.wait_for_timeout(200)
+    st = kp.evaluate("""(()=>{const e=document.querySelector('.food-custom-price'); const b=document.getElementById('btn-confirm');
+        const i=DATA.days[selectedIndex].items.findIndex(x=>x.cislo===VLASTNI_CISLO);
+        return [e.value, customPrices[i], customFormulas[i], b.disabled];})()""")
+    check(st[0] == "99" and st[1] == 99 and st[2] == "=89+10", "vzorec =89+10: po opuštění pole ukáže 99", str(st))
+    check(not st[3], "vzorec: tlačítko uložit aktivní", str(st))
+    inp.click(); kp.wait_for_timeout(100)
+    check(inp.input_value() == "=89+10", "vzorec: při editaci se ukáže zpět", inp.input_value())
+    inp.fill("=89+"); kp.wait_for_timeout(100)
+    check(kp.evaluate("document.querySelector('.food-custom-price').classList.contains('invalid')"),
+          "neplatný vzorec: pole červeně", inp.input_value())
+    inp.fill(""); inp.type("4a5,b"); kp.wait_for_timeout(100)
+    check(inp.input_value() == "45", "pole bere jen znaky z kalkulačky (4a5,b → 45)", inp.input_value())
+    check(not kp.evaluate("document.getElementById('calc-pad')?.classList.contains('open')||false"),
+          "počítač: bez „=“ se miniklávesnice neukáže")
+    inp.type("+10"); kp.wait_for_timeout(100)
+    check(inp.input_value() == "=45+10", "operátor bez „=“ doplní „=“ (45+10 → =45+10)", inp.input_value())
+    check(kp.evaluate("document.getElementById('calc-pad').classList.contains('open')"),
+          "počítač: po „=“ vyskočí miniklávesnice")
+    inp.press("Enter"); kp.wait_for_timeout(150)
+    check(inp.input_value() == "55" and not kp.evaluate("document.getElementById('calc-pad').classList.contains('open')"),
+          "Enter: zavře klávesnici a ukáže výsledek 55", inp.input_value())
     kp.context.close()
+
+    # dotyk: systémová klávesnice nahrazená miniklávesnicí, psaní jen přes ni (v20261015.02)
+    tp = new_page(390, 844, mobile=True)
+    tp.evaluate("closeNovinkyModal()")
+    tin = tp.locator(".food-custom-price").first
+    tin.tap(); tp.wait_for_timeout(250)
+    check(tp.evaluate("document.getElementById('calc-pad').classList.contains('open')") and tin.get_attribute("inputmode") == "none",
+          "mobil: klepnutí do pole otevře miniklávesnici místo systémové")
+    for k in ["=", "8", "9", "+", "1", "0", "back", "0"]:
+        tp.locator(f'#calc-pad .calc-key[data-k="{k}"]').tap(); tp.wait_for_timeout(40)
+    check(tin.input_value() == "=89+10", "mobil: =89+10 naťukané na miniklávesnici (vč. mazání)", tin.input_value())
+    tp.locator('#calc-pad .calc-key[data-k="enter"]').tap(); tp.wait_for_timeout(200)
+    check(tin.input_value() == "99", "mobil: Enter → 99", tin.input_value())
+    shot(tp, "08_mobil_kalkulacka")
+    tp.context.close()
 
     for w in (320, 390):
         sp = new_page(w, 760)
