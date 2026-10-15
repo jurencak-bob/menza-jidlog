@@ -271,6 +271,36 @@ with sync_playwright() as p:
           "Enter: zavře klávesnici a ukáže výsledek 55", inp.input_value())
     kp.context.close()
 
+    # neuložený výběr: připomínka, zachování při přepnutí dne a obnově dat (v20261015.04)
+    up = new_page(1280, 900, mobile=False)
+    up.evaluate("closeNovinkyModal()")
+    check(up.evaluate("Object.keys(drafts).length===0 && !document.getElementById('unsaved-bar')?.classList.contains('show')"),
+          "po startu žádné falešné „neuloženo“")
+    up.evaluate("""(()=>{const d0=DATA.days[0], p=d0.date.split('-'), y=new Date(+p[0],+p[1]-1,+p[2]-1);
+        const iso=y.getFullYear()+'-'+String(y.getMonth()+1).padStart(2,'0')+'-'+String(y.getDate()).padStart(2,'0');
+        DATA.days.push(Object.assign({}, d0, {date: iso})); computeSavedFingerprints(); buildOpenIndices(); renderDatepicker();})()""")
+    vi = up.locator(".food-custom-price").first
+    vi.click(); vi.type("=5+5"); vi.press("Enter"); up.wait_for_timeout(150)
+    up.evaluate("window.scrollTo(0,0)"); up.wait_for_timeout(400)
+    bar = up.evaluate("[document.getElementById('unsaved-bar').classList.contains('show'), document.querySelector('#unsaved-bar .ub-text').textContent]")
+    check(bar[0] and "není uložený" in bar[1], "rozepsáno a tlačítko mimo obrazovku: lišta „Výběr není uložený“", bar[1])
+    shot(up, "09_neulozeno_lista")
+    st = up.evaluate("""(()=>{selectDay(1); const t=document.getElementById('toast-msg').textContent;
+        const b=document.querySelector('#unsaved-bar .ub-text').textContent; return [t, b, Object.keys(drafts).length];})()""")
+    check("zůstal neuložený" in st[0], "přepnutí dne: upozornění, že výběr zůstal neuložený", st[0])
+    check("Neuložený výběr i na" in st[1], "lišta ukazuje den s neuloženým výběrem", st[1])
+    st = up.evaluate("""(()=>{selectDay(0); const i=DATA.days[0].items.findIndex(x=>x.cislo===VLASTNI_CISLO);
+        return [customPrices[i], customFormulas[i], document.getElementById('btn-confirm').disabled];})()""")
+    check(st[0] == 10 and st[1] == "=5+5" and not st[2], "návrat na den: rozepsaný výběr zůstal (10 Kč, =5+5)", str(st))
+    st = up.evaluate("""(()=>{selectDay(selectedIndex); const i=DATA.days[0].items.findIndex(x=>x.cislo===VLASTNI_CISLO);
+        return [customPrices[i], customFormulas[i]];})()""")
+    check(st[0] == 10 and st[1] == "=5+5", "obnova dat na pozadí: rozepsaný výběr se nesmaže", str(st))
+    up.evaluate("window.scrollTo(0,0)"); up.wait_for_timeout(300)
+    up.locator("#unsaved-bar button").click(); up.wait_for_timeout(600)
+    st = up.evaluate("[Object.keys(drafts).length, document.getElementById('unsaved-bar').classList.contains('show'), document.getElementById('btn-confirm').textContent.trim()]")
+    check(st[0] == 0 and not st[1] and "zaevidován" in st[2], "Potvrdit z lišty uloží a lišta zmizí", str(st))
+    up.context.close()
+
     # dotyk: systémová klávesnice nahrazená miniklávesnicí, psaní jen přes ni (v20261015.02)
     tp = new_page(390, 844, mobile=True)
     tp.evaluate("closeNovinkyModal()")
