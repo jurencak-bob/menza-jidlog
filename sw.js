@@ -1,4 +1,6 @@
 // Jídlogic — Service Worker (PWA shell cache)
+// v32 — 2026-10-18: text loaderu „Vítá tě Jídlogic" s brand gradient shimmerem
+// (fade-in + projíždějící lesk). Bump pro re-cache index.html.
 // v31 — 2026-10-18: nápověda při dlouhém čekání až po 8 s (na 5 s problikávala
 // i při normálním startu). Bump pro re-cache index.html.
 // v30 — 2026-10-18: pojistka wrapperu 12 s už od startu (doGet s bootstrapem
@@ -42,7 +44,7 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v31';
+var CACHE_NAME = 'jidlogic-shell-v32';
 var CORE_SHELL = [
   './',
   'index.html',

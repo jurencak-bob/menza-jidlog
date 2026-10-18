@@ -102,9 +102,43 @@
       75%  { content: '...'; }
       100% { content: ''; }
     }
+    /* „Vítá tě Jídlogic" s projíždějícím brand leskem (SW v32):
+       gradient fialová → světlá fialová → oranžová → zpět, klipnutý na text,
+       plynule přejíždí zleva doprava (seamless loop, kraje gradientu se
+       potkávají ve stejné barvě). K tomu jemný nástup fade + rise. */
+    .brand-shimmer {
+      display: inline-block;
+      font-weight: 700;
+      background: linear-gradient(100deg,
+        #6B2D8B 0%, #B07DD8 30%, #E67E22 50%, #B07DD8 70%, #6B2D8B 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      animation:
+        brand-in 0.7s ease-out both,
+        brand-shimmer-sweep 2.6s linear 0.7s infinite;
+    }
+    @keyframes brand-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes brand-shimmer-sweep {
+      to { background-position: 200% center; }
+    }
+    @media (prefers-color-scheme: dark) {
+      .brand-shimmer {
+        background-image: linear-gradient(100deg,
+          #C99FE0 0%, #E9D5F4 30%, #FFB347 50%, #E9D5F4 70%, #C99FE0 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+      }
+    }
     @media (prefers-reduced-motion: reduce) {
       .wrapper-loading-plate { animation: none; }
       .wrapper-loading-text::after { animation: none; content: '…'; }
+      .brand-shimmer { animation: none; }  /* statický gradient zůstává */
     }
     /* Nápověda při dlouhém čekání (v20261018.10) — default skrytá, ukáže ji
        JS po 5 s bez signálu z appky. */
@@ -269,7 +303,10 @@
               font-size="116" font-weight="900" fill="#6B2D8B">1</text>
       </svg>
     </div>
-    <div class="wrapper-loading-text">Otevírám Jídlogic</div>
+    <!-- Text ve spanu .brand-shimmer (SW v32): gradient se klipuje na text
+         (color: transparent), takže animované tečky zůstávají na parentu,
+         jinak by zprůhledněly taky. -->
+    <div class="wrapper-loading-text"><span class="brand-shimmer">Vítá tě Jídlogic</span></div>
     <!-- Nápověda při dlouhém čekání (v20261018.10): ukáže ji JS po 5 s, pokud
          appka do té doby neposlala žádný signál. Pojistka celého overlaye je 12 s. -->
     <div class="wrapper-loading-hint" id="wrapper-loading-hint">
