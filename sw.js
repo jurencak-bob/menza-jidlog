@@ -1,4 +1,7 @@
 // Jídlogic — Service Worker (PWA shell cache)
+// v30 — 2026-10-18: pojistka wrapperu 12 s už od startu (doGet s bootstrapem
+// trvá 2,5-4,5 s a 4s timeout prohrával závod → bílé okno) + nápověda
+// s přímým odkazem po 5 s bez signálu. Bump pro re-cache index.html.
 // v29 — 2026-10-18: wrapper zhasíná až na plný ready (vykreslené UI), raný
 // stage:'shell' jen prodlužuje fallback na 12 s. Řeší bílé okno mezi fade-outem
 // wrapperu a prvním paintem appky. Bump pro re-cache index.html.
@@ -37,7 +40,7 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v29';
+var CACHE_NAME = 'jidlogic-shell-v30';
 var CORE_SHELL = [
   './',
   'index.html',

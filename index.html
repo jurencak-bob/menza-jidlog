@@ -106,6 +106,18 @@
       .wrapper-loading-plate { animation: none; }
       .wrapper-loading-text::after { animation: none; content: '…'; }
     }
+    /* Nápověda při dlouhém čekání (v20261018.10) — default skrytá, ukáže ji
+       JS po 5 s bez signálu z appky. */
+    .wrapper-loading-hint {
+      display: none;
+      margin-top: 18px;
+      max-width: 320px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #888;
+      line-height: 1.5;
+    }
+    .wrapper-loading-hint a { color: #6B2D8B; font-weight: 600; }
 
     /* ─── Welcome modal (first-run only) ────────────────────────────
        Zobrazí se jen při prvním otevření PWA (localStorage flag).
@@ -258,6 +270,13 @@
       </svg>
     </div>
     <div class="wrapper-loading-text">Otevírám Jídlogic</div>
+    <!-- Nápověda při dlouhém čekání (v20261018.10): ukáže ji JS po 5 s, pokud
+         appka do té doby neposlala žádný signál. Pojistka celého overlaye je 12 s. -->
+    <div class="wrapper-loading-hint" id="wrapper-loading-hint">
+      Trvá to déle, než je zvyklé… Pokud se nic nestane, zkus
+      <a href="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy"
+         target="_blank" rel="noopener">otevřít Jídlogic přímo</a>.
+    </div>
   </div>
 
   <!-- Welcome modal — zobrazí se POUZE při prvním spuštění PWA.
@@ -379,16 +398,23 @@
         }
       }
 
-      /* v20261018.07 (SW v29): dvoufázový handshake.
+      /* v20261018.10 (SW v30): dvoufázový handshake.
          - stage:'shell' chodí na ZAČÁTKU exekuce skriptu Obedy.html — iframe
-           v té chvíli ještě nemá první paint (prohlížeč pak 1-2 s synchronně
-           parsuje a renderuje), takže zhasnout teď = bílé okno. Jen prodloužíme
-           fallback: GAS prokazatelně odpověděl, dej mu čas dorenderovat.
-         - plný ready (bez stage, od v20261018.07 s painted:true) posílá appka
-           až po vykreslení UI (requestAnimationFrame) → teprve teď fade.
-         Starší GAS verze posílaly plný ready z initUI taky, takže je wrapper
-         kompatibilní oběma směry. */
+           v té chvíli ještě nemá první paint, takže zhasnout teď = bílé okno.
+           Jen reset pojistky: GAS prokazatelně odpověděl, dej mu čas dorenderovat.
+         - plný ready (painted:true) posílá appka až po vykreslení UI
+           (double rAF) → teprve teď fade.
+         Pojistka je 12 s UŽ OD STARTU: doGet s bootstrapem legitimně trvá
+         2,5-4,5 s a žádný signál před jeho dokončením nechodí — kratší timeout
+         (dřív 3-4 s) pravidelně prohrával závod a zhasínal do bílé. Aby user
+         při skutečném selhání (login stránka, cookies, 5xx) nezíral do teček,
+         po 5 s se pod ně ukáže nápověda s přímým odkazem na GAS URL. */
       var fallbackTimer = null;
+      var hintTimer = null;
+      function showWrapperHint() {
+        var el = document.getElementById('wrapper-loading-hint');
+        if (el) el.style.display = 'block';
+      }
       window.addEventListener('message', function(e) {
         // Cross-origin message — data může být cokoliv. Ověř strukturu.
         var d = e && e.data;
@@ -398,13 +424,12 @@
           fallbackTimer = setTimeout(function() { fadeOutWrapperLoading('timeout-render'); }, 12000);
           return;
         }
+        clearTimeout(hintTimer);
         fadeOutWrapperLoading('ready');
       });
 
-      // Fallback — GAS vůbec neodpověděl naší appkou (cookie blocking, 5xx,
-      // Google sign-in stránka). 4 s; po shell signálu se nahrazuje 12s
-      // render-pojistkou výš.
-      fallbackTimer = setTimeout(function() { fadeOutWrapperLoading('timeout'); }, 4000);
+      fallbackTimer = setTimeout(function() { fadeOutWrapperLoading('timeout'); }, 12000);
+      hintTimer = setTimeout(showWrapperHint, 5000);
     })();
   </script>
 </body>
