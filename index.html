@@ -379,18 +379,32 @@
         }
       }
 
+      /* v20261018.07 (SW v29): dvoufázový handshake.
+         - stage:'shell' chodí na ZAČÁTKU exekuce skriptu Obedy.html — iframe
+           v té chvíli ještě nemá první paint (prohlížeč pak 1-2 s synchronně
+           parsuje a renderuje), takže zhasnout teď = bílé okno. Jen prodloužíme
+           fallback: GAS prokazatelně odpověděl, dej mu čas dorenderovat.
+         - plný ready (bez stage, od v20261018.07 s painted:true) posílá appka
+           až po vykreslení UI (requestAnimationFrame) → teprve teď fade.
+         Starší GAS verze posílaly plný ready z initUI taky, takže je wrapper
+         kompatibilní oběma směry. */
+      var fallbackTimer = null;
       window.addEventListener('message', function(e) {
         // Cross-origin message — data může být cokoliv. Ověř strukturu.
         var d = e && e.data;
-        if (d && typeof d === 'object' && d.type === 'jidlogic-ready') {
-          fadeOutWrapperLoading('handshake');
+        if (!(d && typeof d === 'object' && d.type === 'jidlogic-ready')) return;
+        if (d.stage === 'shell') {
+          clearTimeout(fallbackTimer);
+          fallbackTimer = setTimeout(function() { fadeOutWrapperLoading('timeout-render'); }, 12000);
+          return;
         }
+        fadeOutWrapperLoading('ready');
       });
 
-      // Fallback — iframe nedorazil / nereaguje. Zkráceno z 12 s na 3 s,
-      // protože fade je obvykle triggered postMessage skoro hned (<1 s po
-      // GAS response), 12 s byla zbytečně dlouhá čekačka při selhání.
-      setTimeout(function() { fadeOutWrapperLoading('timeout'); }, 3000);
+      // Fallback — GAS vůbec neodpověděl naší appkou (cookie blocking, 5xx,
+      // Google sign-in stránka). 4 s; po shell signálu se nahrazuje 12s
+      // render-pojistkou výš.
+      fallbackTimer = setTimeout(function() { fadeOutWrapperLoading('timeout'); }, 4000);
     })();
   </script>
 </body>
