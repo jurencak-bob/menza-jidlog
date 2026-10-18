@@ -272,7 +272,11 @@ with sync_playwright() as p:
     kp.context.close()
 
     # neuložený výběr: připomínka, zachování při přepnutí dne a obnově dat (v20261015.04)
-    up = new_page(1280, 900, mobile=False)
+    # Výška 600 px (ne 900): lišta se ukazuje jen když je btn-confirm mimo viewport.
+    # O víkendu má menu z API jen ~2 položky, stránka je krátká a při 900 px bylo
+    # tlačítko vidět → lišta se správně neukázala a test neměl co testovat (pád
+    # 2026-10-18). Při 600 px je tlačítko pod ohybem i s víkendovým menu.
+    up = new_page(1280, 600, mobile=False)
     up.evaluate("closeNovinkyModal()")
     check(up.evaluate("Object.keys(drafts).length===0 && !document.getElementById('unsaved-bar')?.classList.contains('show')"),
           "po startu žádné falešné „neuloženo“")
