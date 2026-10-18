@@ -428,8 +428,10 @@
         fadeOutWrapperLoading('ready');
       });
 
+      // Hint až po 8 s (v31): po vypnutí perf telemetrie je běžný start ~3-5 s,
+      // na 5 s hláška „trvá to déle" problikávala i při normálním načtení.
       fallbackTimer = setTimeout(function() { fadeOutWrapperLoading('timeout'); }, 12000);
-      hintTimer = setTimeout(showWrapperHint, 5000);
+      hintTimer = setTimeout(showWrapperHint, 8000);
     })();
   </script>
 </body>
