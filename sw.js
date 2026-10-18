@@ -1,4 +1,9 @@
 // Jídlogic — Service Worker (PWA shell cache)
+// v27 — 2026-10-18: handshake fix — wrapper doručuje ACK 'wrapper-hidden'
+// rekurzivně do vnořených GAS framů (contentWindow je hostframe, Obedy.html
+// je až v userframu). Bump pro re-cache index.html. Pozn.: 'jidlogic-ready'
+// z Obedy.html teď jde i na window.top, takže fade-out wrapperu je hned
+// po GAS response místo 3s timeoutu.
 // v16 — 2026-05-04: luncher.html — progress bar + delší fallback timeout
 // (3 s → 5 s pro panel, 8 s → 10 s pro forced fade-out) + reformulace textu
 // z alarmujícího „Načítání trvá příliš dlouho" na vlídnější „Trvá ti to
@@ -27,7 +32,7 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v26';
+var CACHE_NAME = 'jidlogic-shell-v27';
 var CORE_SHELL = [
   './',
   'index.html',

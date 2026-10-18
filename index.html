@@ -343,13 +343,33 @@
           el.style.display = 'none';
           // ACK zpět do iframe — Obedy.html teď spustí loading animation
           // od kroku 0 (bez ACK-u by běžela na pozadí zatímco wrapper visí).
+          //
+          // v20261018.01: GAS má vnořené framy — iframe.contentWindow je GAS
+          // hostframe, Obedy.html žije až v userframu POD ním. ACK jen na
+          // contentWindow nikdy nedorazil a Obedy startovala animaci až na
+          // svůj 600ms fallback. Cross-origin WindowProxy povoluje .frames,
+          // .length i .postMessage, takže ACK rozešleme rekurzivně do celého
+          // podstromu (depth limit jako pojistka proti patologickým stromům).
           try {
             var iframe = document.getElementById('app');
             if (iframe && iframe.contentWindow) {
-              iframe.contentWindow.postMessage({ type: 'wrapper-hidden' }, '*');
+              postToFrameTree(iframe.contentWindow, { type: 'wrapper-hidden' }, 4);
             }
           } catch (e) { /* no-op — iframe může být v blocked stavu */ }
         }, 450);
+      }
+
+      // Pošle msg do okna win a rekurzivně do všech jeho (i cross-origin)
+      // vnořených framů, max do hloubky depth. Každý krok v try/catch —
+      // sandboxed nebo zrušený frame může hodit, nesmí zastavit ostatní.
+      function postToFrameTree(win, msg, depth) {
+        try { win.postMessage(msg, '*'); } catch (e) { /* no-op */ }
+        if (depth <= 0) return;
+        var count = 0;
+        try { count = win.frames.length; } catch (e) { return; }
+        for (var i = 0; i < count; i++) {
+          try { postToFrameTree(win.frames[i], msg, depth - 1); } catch (e) { /* no-op */ }
+        }
       }
 
       window.addEventListener('message', function(e) {
