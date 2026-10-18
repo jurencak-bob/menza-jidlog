@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Jídlogic</title>
 
+  <!-- Preconnect na GAS (v20261018.05): iframe míří na script.google.com,
+       prohlížeč si DNS+TLS handshake odbude souběžně s parsováním wrapperu
+       místo až při requestu iframe. Ušetří ~100-300 ms na studeném startu
+       mobilu. Vnořený userframe běží na náhodné *.googleusercontent.com
+       subdoméně, tu předpřipojit nejde. -->
+  <link rel="preconnect" href="https://script.google.com">
+
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#6B2D8B">
