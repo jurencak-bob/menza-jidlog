@@ -1,4 +1,14 @@
 // Jídlogic — Service Worker (PWA shell cache)
+// v33 — 2026-10-19: OPRAVA zaseknutých aktualizací. CORE_SHELL odkazoval
+// 5 souborů smazaných cleanupem (5979828) → atomic cache.addAll() padal
+// na 404 → install KAŽDÉHO novějšího SW selhal a uživatelé zůstali navždy
+// na staré skořápce (v27-v32 se k nikomu nedostaly; přesně failure mode
+// popsaný u v10). Trojí pojistka:
+//   1. mrtvé položky vyhozeny z CORE_SHELL,
+//   2. install cachuje soubory PO JEDNOM (jeden 404 už nikdy nezablokuje
+//      aktualizaci celého SW),
+//   3. navigace jsou NETWORK-FIRST (cache jen offline fallback) — shell je
+//      vždy čerstvý, „stará verze do hard-refreshe" už nemůže nastat.
 // v32 — 2026-10-18: text loaderu „Vítá tě Jídlogic" s brand gradient shimmerem
 // (fade-in + projíždějící lesk). Bump pro re-cache index.html.
 // v31 — 2026-10-18: nápověda při dlouhém čekání až po 8 s (na 5 s problikávala
@@ -44,25 +54,25 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v32';
+var CACHE_NAME = 'jidlogic-shell-v33';
 var CORE_SHELL = [
   './',
   'index.html',
   'manifest.json',
   'luncher.html',
-  'luncher-manifest.json',
-  'luncher-icon.svg?v=20260504',
-  'luncher-apple-touch-icon.png?v=20260504',
-  'luncher-icon-192.png?v=20260504',
-  'luncher-icon-512.png?v=20260504',
   'icon.svg?v=20260422',
 ];
 
-// Install — cache jen minimální core shell (idempotentní, robustní)
+// Install — cache core shell PO JEDNOM (ne atomic addAll): chybějící soubor
+// se jen zaloguje a NIKDY nezablokuje instalaci nového SW (viz v33).
 self.addEventListener('install', function(e) {
   e.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(CORE_SHELL);
+      return Promise.all(CORE_SHELL.map(function(url) {
+        return cache.add(url).catch(function(err) {
+          console.warn('SW install: nepodařilo se cachovat ' + url, err);
+        });
+      }));
     })
   );
   self.skipWaiting();
@@ -81,11 +91,32 @@ self.addEventListener('activate', function(e) {
   self.clients.claim();
 });
 
-// Fetch — lokální shell = cache-first + on-demand fill. Cizí origin (GAS iframe)
+// Fetch — navigace (HTML shell) NETWORK-FIRST s cache fallbackem pro offline;
+// ostatní lokální assety cache-first + on-demand fill. Cizí origin (GAS iframe)
 // necháme projít na síť (nelze cachovat cross-origin content).
 self.addEventListener('fetch', function(e) {
   var url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;  // GAS, Google, QR API
+
+  // Navigace = vstupní HTML (index.html, luncher.html…): vždy zkusit síť,
+  // ať uživatelé dostanou novou verzi hned a bez hard-refreshe. GH Pages
+  // posílá max-age=600, takže je to rychlé; cache slouží jen offline.
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request).then(function(response) {
+        if (response && response.ok) {
+          var copy = response.clone();
+          caches.open(CACHE_NAME).then(function(cache) { cache.put(e.request, copy); });
+        }
+        return response;
+      }).catch(function() {
+        return caches.match(e.request).then(function(cached) {
+          return cached || caches.match('index.html');
+        });
+      })
+    );
+    return;
+  }
 
   e.respondWith(
     caches.match(e.request).then(function(cached) {
