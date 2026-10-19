@@ -21,7 +21,9 @@ appsscript.json
 # .md soubory v projektu (např. JIDLOGIC-DOKUMENTACE.md) se commitují,
 # jen soubory uvnitř těchto ignorovaných složek zůstávají lokální.
 .auto-memory/
-.claude/
+.claude/*
+# Projektové skilly (checklisty postupů) se verzují; settings.local.json ne.
+!.claude/skills/
 
 # Spreadsheet předlohy
 *.xlsx
