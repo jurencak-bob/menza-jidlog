@@ -71,6 +71,18 @@
       opacity: 0;
       pointer-events: none;
     }
+    /* Ikona + přivítání drží optický střed obrazovky (v20261019.01),
+       odpočet je ukotvený 10 % nad spodní hranou. */
+    .wrapper-loading-center {
+      position: absolute;
+      left: 0; right: 0; top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-left: 18px;
+      padding-right: 18px;
+    }
     .wrapper-loading-plate {
       width: 80px;
       height: 80px;
@@ -139,6 +151,7 @@
       .wrapper-loading-plate { animation: none; }
       .wrapper-loading-text::after { animation: none; content: '…'; }
       .brand-shimmer { animation: none; }  /* statický gradient zůstává */
+      .wrapper-countdown { animation: none; }
     }
     /* Nápověda při dlouhém čekání (v20261018.10) — default skrytá, ukáže ji
        JS po 5 s bez signálu z appky. */
@@ -152,6 +165,47 @@
       line-height: 1.5;
     }
     .wrapper-loading-hint a { color: #6B2D8B; font-weight: 600; }
+
+    /* ─── Odpočet „do spuštění aplikace zbývá" (v20261019.01) ───
+       Náhodný startovní čas (1-99 h) ubývající reálnou rychlostí; tisíciny
+       se překreslují při každém snímku, takže poslední číslice je šmouha.
+       Je to schválně: čas se tváří zběsile, i když start trvá 3-5 s.
+       Číslice jsou systémové mono (žádný font z CDN — nulový request navíc
+       a nic neproblikne), panel laděný do barev appky. */
+    .wrapper-countdown {
+      position: absolute;
+      left: 0; right: 0; bottom: 10%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding-left: 18px;
+      padding-right: 18px;
+      animation: wrapper-countdown-in 0.9s ease-out 0.3s both;
+    }
+    @keyframes wrapper-countdown-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .wrapper-countdown-label {
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: #9A9AA8;
+    }
+    .wrapper-countdown-digits {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-weight: 700;
+      font-size: 0.93rem;
+      letter-spacing: 0.1em;
+      font-variant-numeric: tabular-nums;
+      color: #6B2D8B;
+      background: #F1EBF7;
+      border: 1px solid #E0D3EC;
+      border-radius: 6px;
+      padding: 5px 9px;
+    }
 
     /* ─── Welcome modal (first-run only) ────────────────────────────
        Zobrazí se jen při prvním otevření PWA (localStorage flag).
@@ -258,6 +312,11 @@
       html, body { background: #1A1A2E; }
       .wrapper-loading { background: #1A1A2E; }
       .wrapper-loading-text { color: #AAB; }
+      .wrapper-countdown-label { color: #70708A; }
+      .wrapper-countdown-digits {
+        color: #FFC071; background: #2C2545; border-color: #413862;
+        text-shadow: 0 0 7px rgba(255, 179, 71, 0.35);
+      }
       .welcome-overlay { background: rgba(0, 0, 0, 0.7); }
       .welcome-box { background: #252545; }
       .welcome-box h1 { color: #B07DD8; }
@@ -292,6 +351,7 @@
        Jídlogic" (pulsující tečky). Fade-out triggered postMessage handshake
        z Obedy.html nebo fallback timeout 12 s. (v20260423.02) -->
   <div class="wrapper-loading" id="wrapper-loading">
+   <div class="wrapper-loading-center">
     <div class="wrapper-loading-plate" aria-hidden="true">
       <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
         <rect width="512" height="512" rx="112" fill="#F7F7FA"/>
@@ -313,6 +373,15 @@
       Trvá to déle, než je obvyklé… eště chvilku vydrž a pokud se nic nestane, zkus
       <a href="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy"
          target="_blank" rel="noopener">otevřít Jídlogic přímo</a>.
+    </div>
+   </div>
+
+    <!-- Odpočet do spuštění (v20261019.01): náhodný čas v hodinách, který
+         ubývá reálnou rychlostí. aria-hidden — pro odečítač je to dekorace,
+         ne informace (skutečná doba načítání to není). -->
+    <div class="wrapper-countdown" aria-hidden="true">
+      <div class="wrapper-countdown-label">do spuštění aplikace zbývá</div>
+      <div class="wrapper-countdown-digits" id="wrapper-countdown-digits">00:00:00:000</div>
     </div>
   </div>
 
@@ -393,11 +462,16 @@
        začne běžet — timeout je čistě safety pro selhání.
 
        Idempotence: fadeOutWrapperLoading() má guard přes `faded` flag. */
+    /* Nastaví ho IIFE odpočtu níž; fade-out ho zavolá, ať rAF nežere baterku
+       pod běžící appkou. */
+    var zastavOdpocet = null;
+
     (function setupWrapperLoadingFadeOut() {
       var faded = false;
       function fadeOutWrapperLoading(reason) {
         if (faded) return;
         faded = true;
+        if (zastavOdpocet) { try { zastavOdpocet(); } catch (e) { /* no-op */ } }
         var el = document.getElementById('wrapper-loading');
         if (!el) return;
         el.classList.add('fade-out');
@@ -469,6 +543,55 @@
       // na 5 s hláška „trvá to déle" problikávala i při normálním načtení.
       fallbackTimer = setTimeout(function() { fadeOutWrapperLoading('timeout'); }, 12000);
       hintTimer = setTimeout(showWrapperHint, 8000);
+    })();
+
+    /* ═══ Odpočet „do spuštění aplikace zbývá" (v20261019.01) ═══
+       Náhodný startovní čas 1-99 hodin, ubývá reálnou rychlostí. Tisíciny
+       jsou schválně: překreslují se při každém snímku, takže poslední
+       číslice je nečitelná šmouha a čas působí zběsile, i když se appka
+       načte do pěti vteřin. Čistá legrace, žádná skutečná předpověď.
+       Při zapnutém omezení pohybu se překresluje jen po sekundách. */
+    (function setupWrapperCountdown() {
+      var el = document.getElementById('wrapper-countdown-digits');
+      if (!el) return;
+
+      var hodin = 1 + Math.floor(Math.random() * 99);
+      var minut = Math.floor(Math.random() * 60);
+      var sekund = Math.floor(Math.random() * 60);
+      var zbyva = (hodin * 3600 + minut * 60 + sekund) * 1000 + Math.floor(Math.random() * 1000);
+
+      function ted() {
+        return (window.performance && performance.now) ? performance.now() : Date.now();
+      }
+      var t0 = ted();
+
+      function pad(n) { return (n < 10 ? '0' : '') + n; }
+      function pad3(n) { return (n < 10 ? '00' : n < 100 ? '0' : '') + n; }
+
+      function vykresli(sTisicinami) {
+        var ms = Math.max(0, zbyva - (ted() - t0));
+        el.textContent = pad(Math.floor(ms / 3600000)) + ':' +
+                         pad(Math.floor(ms / 60000) % 60) + ':' +
+                         pad(Math.floor(ms / 1000) % 60) + ':' +
+                         (sTisicinami ? pad3(Math.floor(ms) % 1000) : '000');
+      }
+
+      var omezitPohyb = !!(window.matchMedia &&
+                           window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+      if (omezitPohyb) {
+        vykresli(false);
+        var iv = setInterval(function() { vykresli(false); }, 1000);
+        zastavOdpocet = function() { clearInterval(iv); };
+      } else {
+        var raf = requestAnimationFrame(function tick() {
+          vykresli(true);
+          raf = requestAnimationFrame(tick);
+        });
+        zastavOdpocet = function() {
+          if (raf) { cancelAnimationFrame(raf); raf = null; }
+        };
+      }
     })();
   </script>
 </body>
