@@ -344,6 +344,30 @@ with sync_playwright() as p:
         shot(sp, f"06_nastaveni_{w}")
         sp.context.close()
 
+    # Průvodce novinkami (v20261020.13): po aktualizaci nabídka v Co je nového, 4 kroky, Esc, jen jednou, znovu z menu
+    gp = new_page(390, 844)
+    akce = gp.evaluate("[...document.querySelectorAll('#novinky-actions button')].map(b => b.textContent.trim())")
+    check(akce == ["Teď ne", "Ukázat v aplikaci"], "průvodce: Co je nového nabízí Ukázat v aplikaci / Teď ne", str(akce))
+    gp.click("#novinky-actions button.primary"); gp.wait_for_timeout(2500)
+    st = gp.evaluate("pruvodceStav_()")
+    check(st["bezi"] and st["n"] == 4 and st["sel"] == "#dzR #dz", "průvodce: běží, 4 kroky, začíná výběrem dne", str(st))
+    check(gp.evaluate("(()=>{const r=document.getElementById('pv-bubble').getBoundingClientRect(); return r.left>=0 && r.right<=innerWidth && r.top>=0 && r.bottom<=innerHeight})()"),
+          "průvodce: bublina celá v okně")
+    shot(gp, "10_pruvodce_krok1")
+    gp.click('#pv-bubble [data-pv="next"]'); gp.wait_for_timeout(300)
+    check(gp.evaluate("pruvodceStav_().krok") == 1, "průvodce: Další")
+    gp.keyboard.press("Escape"); gp.wait_for_timeout(300)
+    st = gp.evaluate("pruvodceStav_()")
+    check(not st["bezi"] and st["videno"], "průvodce: Esc ukončí a označí jako viděný", str(st))
+    gp.reload(); gp.wait_for_timeout(5000)
+    check(not gp.evaluate("pruvodceStav_().bezi") and not gp.evaluate("document.getElementById('novinky-overlay').classList.contains('open')"),
+          "průvodce: po obnovení se znovu nespustí")
+    gp.evaluate("toggleMenu()"); gp.wait_for_timeout(400)
+    gp.click("#menu-pruvodce"); gp.wait_for_timeout(2500)
+    check(gp.evaluate("pruvodceStav_().bezi"), "průvodce: znovu z menu")
+    gp.keyboard.press("Escape")
+    gp.context.close()
+
     # Výběr dne (v20261020.08): rámeček, šipky, Dnes, seznam dnů, odkaz na historii
     PRIDEJ_DNY = """(() => { const t = DATA.days[0], d0 = new Date(t.date + 'T12:00:00'), ab = ['Ne','Po','Út','St','Čt','Pá','So'];
       for (let k = 1; k <= 6; k++) { const d = new Date(d0.getTime() - k * 864e5), iso = d.toISOString().slice(0, 10), g = d.getDay();
