@@ -367,8 +367,8 @@
          (color: transparent), takže animované tečky zůstávají na parentu,
          jinak by zprůhledněly taky. -->
     <div class="wrapper-loading-text"><span class="brand-shimmer">Vítá tě Jídlogic</span></div>
-    <!-- Nápověda při dlouhém čekání (v20261018.10): ukáže ji JS po 5 s, pokud
-         appka do té doby neposlala žádný signál. Pojistka celého overlaye je 12 s. -->
+    <!-- Nápověda při dlouhém čekání: ukáže ji JS po 8 s. Overlay zhasne až
+         na signál „vykresleno" z appky, pojistka je 30 s (v20261020.07). -->
     <div class="wrapper-loading-hint" id="wrapper-loading-hint">
       Trvá to déle, než je obvyklé… eště chvilku vydrž a pokud se nic nestane, zkus
       <a href="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy"
@@ -468,9 +468,14 @@
 
     (function setupWrapperLoadingFadeOut() {
       var faded = false;
+      // Měření cesty start → appka (v20261020.07): ms od otevření wrapperu,
+      // posílá se do appky, ta je přidá do perf logu (jen při zapnutém měření).
+      var perfW = { shell: null, painted: null, fade: null, duvod: '' };
+      function msOdStartu() { try { return Math.round(performance.now()); } catch (e) { return null; } }
       function fadeOutWrapperLoading(reason) {
         if (faded) return;
         faded = true;
+        perfW.fade = msOdStartu(); perfW.duvod = reason || '';
         if (zastavOdpocet) { try { zastavOdpocet(); } catch (e) { /* no-op */ } }
         var el = document.getElementById('wrapper-loading');
         if (!el) return;
@@ -491,6 +496,10 @@
             var iframe = document.getElementById('app');
             if (iframe && iframe.contentWindow) {
               postToFrameTree(iframe.contentWindow, { type: 'wrapper-hidden' }, 4);
+              postToFrameTree(iframe.contentWindow, {
+                type: 'wrapper-perf', shell: perfW.shell, painted: perfW.painted, fade: perfW.fade,
+                duvod: perfW.duvod, sw: !!(navigator.serviceWorker && navigator.serviceWorker.controller)
+              }, 4);
             }
           } catch (e) { /* no-op — iframe může být v blocked stavu */ }
         }, 450);
@@ -515,11 +524,12 @@
            Jen reset pojistky: GAS prokazatelně odpověděl, dej mu čas dorenderovat.
          - plný ready (painted:true) posílá appka až po vykreslení UI
            (double rAF) → teprve teď fade.
-         Pojistka je 12 s UŽ OD STARTU: doGet s bootstrapem legitimně trvá
-         2,5-4,5 s a žádný signál před jeho dokončením nechodí — kratší timeout
-         (dřív 3-4 s) pravidelně prohrával závod a zhasínal do bílé. Aby user
-         při skutečném selhání (login stránka, cookies, 5xx) nezíral do teček,
-         po 5 s se pod ně ukáže nápověda s přímým odkazem na GAS URL. */
+         v20261020.07: pojistka 30 s (dřív 12 s). Při pomalém startu GAS
+         (studený start, 10 s a víc) 12 s zhasínalo overlay dřív, než appka
+         cokoli vykreslila → bílá stránka. Teď overlay zmizí na „painted";
+         pojistka je jen pro skutečné selhání (login stránka, cookies, 5xx),
+         na které už po 8 s upozorní nápověda s přímým odkazem na GAS URL. */
+      var POJISTKA_MS = 30000;
       var fallbackTimer = null;
       var hintTimer = null;
       function showWrapperHint() {
@@ -531,17 +541,19 @@
         var d = e && e.data;
         if (!(d && typeof d === 'object' && d.type === 'jidlogic-ready')) return;
         if (d.stage === 'shell') {
+          if (perfW.shell === null) perfW.shell = msOdStartu();
           clearTimeout(fallbackTimer);
-          fallbackTimer = setTimeout(function() { fadeOutWrapperLoading('timeout-render'); }, 12000);
+          fallbackTimer = setTimeout(function() { fadeOutWrapperLoading('timeout-render'); }, POJISTKA_MS);
           return;
         }
+        if (perfW.painted === null) perfW.painted = msOdStartu();
         clearTimeout(hintTimer);
         fadeOutWrapperLoading('ready');
       });
 
       // Hint až po 8 s (v31): po vypnutí perf telemetrie je běžný start ~3-5 s,
       // na 5 s hláška „trvá to déle" problikávala i při normálním načtení.
-      fallbackTimer = setTimeout(function() { fadeOutWrapperLoading('timeout'); }, 12000);
+      fallbackTimer = setTimeout(function() { fadeOutWrapperLoading('timeout'); }, POJISTKA_MS);
       hintTimer = setTimeout(showWrapperHint, 8000);
     })();
 
