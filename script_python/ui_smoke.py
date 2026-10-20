@@ -230,7 +230,7 @@ with sync_playwright() as p:
         const v = [...c.querySelectorAll(':scope > .food-item .food-price')].map(e => parseFloat(e.textContent.replace(/\\s/g,'').replace(',','.'))).filter(n => !isNaN(n));
         return v.every((x, i) => i === 0 || v[i-1] <= x); }); })()""")
     check(ceny_ok, "řazení podle ceny: uvnitř každé sekce vzestupně", f"{pred} → {po}")
-    pg.evaluate("zrusitRazeni()"); pg.wait_for_timeout(200)
+    pg.evaluate("nastavRazeni('vychozi'); zrusitFiltry()"); pg.wait_for_timeout(200)
 
     if sold_rows:
         pg.locator(".food-item.sold-out .food-meta").first.click(); pg.wait_for_timeout(300)
