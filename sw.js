@@ -1,6 +1,6 @@
-// v34 — 2026-10-20: načítací obrazovka zhasne až po vykreslení appky (pojistka
-//      30 s místo 12 s, dřív bílá stránka při pomalém startu); měření času startu.
 // Jídlogic — Service Worker (PWA shell cache)
+// v34 - 2026-10-20: načítací obrazovka zhasne až po vykreslení appky (pojistka
+//      30 s místo 12 s, dřív bílá stránka při pomalém startu); měření času startu.
 // v33 — 2026-10-19: OPRAVA zaseknutých aktualizací. CORE_SHELL odkazoval
 // 5 souborů smazaných cleanupem (5979828) → atomic cache.addAll() padal
 // na 404 → install KAŽDÉHO novějšího SW selhal a uživatelé zůstali navždy
