@@ -222,7 +222,7 @@ with sync_playwright() as p:
     shot(pg, "02_mobil_menu", full=True)
 
     # Lišta „Řadit a filtrovat" (v20261020.03): je vidět a řazení podle ceny přeřadí řádky
-    check(pg.is_visible("#qt .qt-toggle"), "lišta Řadit a filtrovat je nad jídelníčkem")
+    check(pg.is_visible("#qt .qt-sort"), "lišta Řadit a filtrovat je nad jídelníčkem")
     pred = pg.evaluate("[...document.querySelectorAll('#menu-card .food-item .food-num')].map(e=>e.textContent.trim()).join(',')")
     pg.evaluate("nastavRazeni('cena')"); pg.wait_for_timeout(200)
     po = pg.evaluate("[...document.querySelectorAll('#menu-card .food-item .food-num')].map(e=>e.textContent.trim()).join(',')")

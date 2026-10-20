@@ -36,10 +36,25 @@ Další otevřené (nižší priorita / doplňkové):
 | #40 | Globální error boundary | Window.error hook + „Nahlásit" mailto |
 | #41 | Read-only přehled sdíleného sheetu | Modal s tabulkou aktuálního týdne z ext sheetu |
 | #43 | Verze pod progress barem | Brand SVG + verze na loading overlay |
+| #54 | Hodnocení jídel hvězdičkami | Lidé hodnotí jídla 1-5 hvězdiček, u opakovaného jídla průměr; problém párování textu (viz detail) |
 
 ---
 
 ## Detaily otevřených bodů
+
+### #54 - Hodnocení jídel hvězdičkami (nápad Boba 2026-10-20)
+
+**Co:** u snědeného jídla si člověk uloží hodnocení (např. 1-5 hvězdiček, volitelně krátký komentář). Když se jídlo v menu objeví znovu, zobrazí se u něj průměr a počet hodnocení.
+
+**Hlavní riziko: párování stejného jídla.** Menza píše názvy pokaždé trochu jinak (přílohy, pořadí, gramáž, překlepy). Možné cesty, od nejjednodušší:
+1. Normalizovaný klíč jako u AI cache (`aiKlicJidla_`: malá písmena, mezery) + odstranění diakritiky (`normalizeForMatch_`). Zachytí jen téměř shodné texty.
+2. Klíč jen z hlavní části názvu (text před první čárkou, bez přílohy, viz zkrácení názvu pro chat) - „Smažený řízek, brambory" a „Smažený řízek, kaše" spadnou pod stejné jídlo. Záleží, jestli chceme hodnotit jídlo, nebo celou kombinaci.
+3. AI kanonizace: AI už jídla denně hodnotí, stejným voláním může vrátit i krátký kanonický název („smažený vepřový řízek"), ten se uloží do listu AI jídla a hodnocení se páruje přes něj. Nejrobustnější, ale závisí na stabilitě AI výstupu.
+4. Pojistka: admin ruční sloučení dvou klíčů (alias tabulka).
+
+**Data:** nový list „Hodnocení jídel" (datum, email, klíč, název, hvězdičky, komentář); hodnotit jde jen jídlo, které má člověk ve Výběru daného dne. Průměr počítat na BE a cachovat.
+
+**Otevřené otázky:** hodnotit i polévky? anonymně, nebo jmenovitě (vidí admin)? kdy nabídnout hodnocení (po obědě toast, nebo u minulých dnů)?
 
 ### #15 — AI zjednodušení názvů jídel v Chatu (Groq)
 
