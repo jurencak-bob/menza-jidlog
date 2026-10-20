@@ -1,3 +1,5 @@
+// v34 — 2026-10-20: načítací obrazovka zhasne až po vykreslení appky (pojistka
+//      30 s místo 12 s, dřív bílá stránka při pomalém startu); měření času startu.
 // Jídlogic — Service Worker (PWA shell cache)
 // v33 — 2026-10-19: OPRAVA zaseknutých aktualizací. CORE_SHELL odkazoval
 // 5 souborů smazaných cleanupem (5979828) → atomic cache.addAll() padal
@@ -54,7 +56,7 @@
 // atomic cache.addAll()). Před bylo v9 s plným bundle a race conditions
 // na GitHub Pages propagation mohla addAll hodit do fail stavu → SW
 // nezaktualizoval → user stuck na staré index.html.
-var CACHE_NAME = 'jidlogic-shell-v33';
+var CACHE_NAME = 'jidlogic-shell-v34';
 var CORE_SHELL = [
   './',
   'index.html',
