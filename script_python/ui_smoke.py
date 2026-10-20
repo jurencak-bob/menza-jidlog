@@ -221,6 +221,17 @@ with sync_playwright() as p:
     check(n_g == with_g, "gramáž pod názvem u všech jídel, která ji mají (řádkový režim)", f"{n_g} z {with_g}")
     shot(pg, "02_mobil_menu", full=True)
 
+    # Lišta „Řadit a filtrovat" (v20261020.03): je vidět a řazení podle ceny přeřadí řádky
+    check(pg.is_visible("#qt .qt-toggle"), "lišta Řadit a filtrovat je nad jídelníčkem")
+    pred = pg.evaluate("[...document.querySelectorAll('#menu-card .food-item .food-num')].map(e=>e.textContent.trim()).join(',')")
+    pg.evaluate("nastavRazeni('cena')"); pg.wait_for_timeout(200)
+    po = pg.evaluate("[...document.querySelectorAll('#menu-card .food-item .food-num')].map(e=>e.textContent.trim()).join(',')")
+    ceny_ok = pg.evaluate("""(() => { return [...document.querySelectorAll('#menu-card .category')].every(c => {
+        const v = [...c.querySelectorAll(':scope > .food-item .food-price')].map(e => parseFloat(e.textContent.replace(/\\s/g,'').replace(',','.'))).filter(n => !isNaN(n));
+        return v.every((x, i) => i === 0 || v[i-1] <= x); }); })()""")
+    check(ceny_ok, "řazení podle ceny: uvnitř každé sekce vzestupně", f"{pred} → {po}")
+    pg.evaluate("zrusitRazeni()"); pg.wait_for_timeout(200)
+
     if sold_rows:
         pg.locator(".food-item.sold-out .food-meta").first.click(); pg.wait_for_timeout(300)
         check(pg.evaluate("document.querySelector('.food-item.sold-out').classList.contains('selected')"),
