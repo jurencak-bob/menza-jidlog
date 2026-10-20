@@ -260,7 +260,7 @@ with sync_playwright() as p:
     check(kp.evaluate("!DATA.days[selectedIndex].items.some(x=>x.cislo===KRABICKA_CISLO)"),
           "krabička se nenabízí jako samostatná položka")
     inp = kp.locator(".food-custom-price").first
-    inp.click(); inp.fill("=89+10"); kp.locator(".date-long").first.click(); kp.wait_for_timeout(200)
+    inp.click(); inp.fill("=89+10"); kp.locator("#dzR").click(position={"x": 4, "y": 4}); kp.wait_for_timeout(200)
     st = kp.evaluate("""(()=>{const e=document.querySelector('.food-custom-price'); const b=document.getElementById('btn-confirm');
         const i=DATA.days[selectedIndex].items.findIndex(x=>x.cislo===VLASTNI_CISLO);
         return [e.value, customPrices[i], customFormulas[i], b.disabled];})()""")
@@ -295,7 +295,7 @@ with sync_playwright() as p:
           "po startu žádné falešné „neuloženo“")
     up.evaluate("""(()=>{const d0=DATA.days[0], p=d0.date.split('-'), y=new Date(+p[0],+p[1]-1,+p[2]-1);
         const iso=y.getFullYear()+'-'+String(y.getMonth()+1).padStart(2,'0')+'-'+String(y.getDate()).padStart(2,'0');
-        DATA.days.push(Object.assign({}, d0, {date: iso})); computeSavedFingerprints(); buildOpenIndices(); renderDatepicker();})()""")
+        DATA.days.push(Object.assign({}, d0, {date: iso})); computeSavedFingerprints(); buildOpenIndices(); renderVyberDne_();})()""")
     vi = up.locator(".food-custom-price").first
     vi.click(); vi.type("=5+5"); vi.press("Enter"); up.wait_for_timeout(150)
     up.evaluate("window.scrollTo(0,0)"); up.wait_for_timeout(400)
@@ -343,6 +343,35 @@ with sync_playwright() as p:
         check(r[1] <= r[0], f"Nastavení {w}px: řádek s počtem kusů nepřetéká", f"panel {r[0]}, prvek {r[1]}")
         shot(sp, f"06_nastaveni_{w}")
         sp.context.close()
+
+    # Výběr dne (v20261020.08): rámeček, šipky, Dnes, seznam dnů, odkaz na historii
+    PRIDEJ_DNY = """(() => { const t = DATA.days[0], d0 = new Date(t.date + 'T12:00:00'), ab = ['Ne','Po','Út','St','Čt','Pá','So'];
+      for (let k = 1; k <= 6; k++) { const d = new Date(d0.getTime() - k * 864e5), iso = d.toISOString().slice(0, 10), g = d.getDay();
+        DATA.days.push(g === 0 || g === 6 ? {date: iso, dayName: ab[g], items: [], closed: true, reason: 'weekend', reasonMessage: 'Víkend'}
+          : Object.assign({}, t, {date: iso, dayName: ab[g]})); }
+      const f = new Date(d0.getTime() + 864e5).toISOString().slice(0, 10);
+      DATA.days.unshift(Object.assign({}, t, {date: f}));   // budoucí den od backendu se nesmí ukázat
+      todayIndex = findTodayIndex(); buildOpenIndices(); selectDay(todayIndex); })()"""
+    for w in (360, 390):
+        vp = new_page(w, 800)
+        vp.evaluate("closeNovinkyModal()"); vp.evaluate(PRIDEJ_DNY); vp.wait_for_timeout(200)
+        check(vp.evaluate("!!document.querySelector('#dzR #dz [data-cal]') && !!document.querySelector('#dzR #day-stats') && !!document.querySelector('#dzR #qt')"),
+              f"výběr dne {w}px: datum, statistiky i řazení v jednom rámečku")
+        check(vp.evaluate("DATA.days[selectedIndex].date === DATA.todayStr && !document.querySelector('#dz [data-k=next]') && !document.querySelector('#dz [data-today]')"),
+              f"výběr dne {w}px: na dnešku bez › a bez Dnes (budoucí den se nenabízí)")
+        vp.click("#dz [data-k=prev]"); vp.wait_for_timeout(200)
+        check(vp.evaluate("DATA.days[selectedIndex].date < DATA.todayStr && !!document.querySelector('#dz [data-k=next]') && !!document.querySelector('#dz [data-today]')"),
+              f"výběr dne {w}px: ‹ jde na starší den, objeví se › a Dnes")
+        vp.click("#dz [data-today]"); vp.wait_for_timeout(200)
+        check(vp.evaluate("DATA.days[selectedIndex].date === DATA.todayStr"), f"výběr dne {w}px: Dnes vrátí na dnešek")
+        vp.click("#dz [data-cal]"); vp.wait_for_timeout(400)
+        st = vp.evaluate("[vyberDneStav_().open, document.getElementById('dzc-grid').className, document.querySelectorAll('#dzc .dzc-li').length, !document.getElementById('dzc-hist').hidden, document.documentElement.scrollWidth <= innerWidth]")
+        check(st[0] and st[1] == "dzc-list" and st[3] and st[4], f"výběr dne {w}px: klepnutí na datum otevře seznam dnů s odkazem na historii", str(st))
+        check(not vp.evaluate("[...document.querySelectorAll('#dzc [data-iso]')].some(e => e.dataset.iso > DATA.todayStr)"), f"výběr dne {w}px: seznam bez budoucích dnů")
+        shot(vp, f"09_vyber_dne_{w}")
+        vp.keyboard.press("Escape"); vp.wait_for_timeout(300)
+        check(not vp.evaluate("vyberDneStav_().open"), f"výběr dne {w}px: Esc zavře")
+        vp.context.close()
 
     dp = new_page(1280, 900, mobile=False)
     dp.evaluate("closeNovinkyModal()"); dp.wait_for_timeout(200)
