@@ -136,10 +136,14 @@ versions = {
 versions = {k: (m.group(1).strip() if m else None) for k, m in versions.items()}
 check(len(set(versions.values())) == 1 and None not in versions.values(),
       "verze shodná na 4 místech", ", ".join(f"{k}={v}" for k, v in versions.items()))
-nov = re.search(r"var NOVINKY = \[\s*\{ verze: '([^']+)'", html)
+# Záznamy s `od` v budoucnu (vůči dni mocku) jsou v appce neviditelné, kontrola je přeskočí.
+nov_blok = html[html.index("var NOVINKY = ["):]
+nov_zaznamy = re.findall(r"\{ verze: '([^']+)', datum: '[^']*'(?:, od: '([^']+)')?", nov_blok[:nov_blok.index("var NOVINKY_SEEN_KEY")])
+nov_aktivni = [v for v, od in nov_zaznamy if not od or od <= pick[0]]
+nov = nov_aktivni[0] if nov_aktivni else None
 cv = versions["CLIENT_VERSION"] or ""
-check(nov and nov.group(1) <= cv, "NOVINKY: nejnovější záznam není novější než CLIENT_VERSION",
-      f"NOVINKY[0]={nov.group(1) if nov else '?'}")
+check(nov and nov <= cv, "NOVINKY: nejnovější záznam není novější než CLIENT_VERSION",
+      f"NOVINKY[0]={nov or '?'}")
 
 # --- 4) harness HTML ---
 mock = """<script>
@@ -316,6 +320,18 @@ with sync_playwright() as p:
     up.locator("#unsaved-bar button").click(); up.wait_for_timeout(600)
     st = up.evaluate("[Object.keys(drafts).length, document.getElementById('unsaved-bar').classList.contains('show'), document.getElementById('btn-confirm').textContent.trim()]")
     check(st[0] == 0 and not st[1] and "zaevidován" in st[2], "Potvrdit z lišty uloží a lišta zmizí", str(st))
+
+    # oběd pro hosta (v20261021): vlastní položka celá pro hosta, Potvrdit se aktivuje
+    vi_idx = up.evaluate("DATA.days[selectedIndex].items.findIndex(x=>x.cislo===VLASTNI_CISLO)")
+    chip = f'#summary-body [data-hf="h{vi_idx}t"]'
+    check(up.is_visible(chip), "souhrn: u položky je přepínač Pro hosta")
+    up.click(chip); up.wait_for_timeout(200)
+    st = up.evaluate(f"""[document.querySelector('{chip}').getAttribute('aria-pressed'), document.getElementById('btn-confirm').disabled,
+        (document.getElementById('host-souhrn')||{{}}).textContent||'']""")
+    check(st[0] == "true" and not st[1] and "Za hosty" in st[2], "pro hosta: přepínač zapnutý, Potvrdit aktivní, rozpad částky", str(st))
+    shot(up, "10_pro_hosta")
+    up.click(chip); up.wait_for_timeout(200)
+    check(up.evaluate("document.getElementById('btn-confirm').disabled"), "pro hosta: vypnutí vrátí uložený stav")
     up.context.close()
 
     # dotyk: systémová klávesnice nahrazená miniklávesnicí, psaní jen přes ni (v20261015.02)
