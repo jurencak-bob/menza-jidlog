@@ -37,6 +37,7 @@ Další otevřené (nižší priorita / doplňkové):
 | #41 | Read-only přehled sdíleného sheetu | Modal s tabulkou aktuálního týdne z ext sheetu |
 | #43 | Verze pod progress barem | Brand SVG + verze na loading overlay |
 | #54 | Hodnocení jídel hvězdičkami | Lidé hodnotí jídla 1-5 hvězdiček, u opakovaného jídla průměr; problém párování textu (viz detail) |
+| #55 | Vlastní položka: přičíst, nebo nahradit | Volba: jedno pole se součtem, nebo víc vlastních položek s popisem viditelných v historii; případně Přičíst / Nahradit (viz detail) |
 
 ---
 
@@ -55,6 +56,23 @@ Další otevřené (nižší priorita / doplňkové):
 **Data:** nový list „Hodnocení jídel" (datum, email, klíč, název, hvězdičky, komentář); hodnotit jde jen jídlo, které má člověk ve Výběru daného dne. Průměr počítat na BE a cachovat.
 
 **Otevřené otázky:** hodnotit i polévky? anonymně, nebo jmenovitě (vidí admin)? kdy nabídnout hodnocení (po obědě toast, nebo u minulých dnů)?
+
+### #55 - Vlastní položka: přičíst, nebo nahradit (podnět 2026-10-22)
+
+**Co se stalo:** Petr měl 20. 10. uloženou vlastní položku „Salát, zmrzka, krabička…" za 20 Kč. O den později k tomu dni dopsal bagetu za 49 Kč do stejného pole, tím 20 Kč přepsal (celkem 143 místo 163). Opravil si to sám zadáním 20+49, takže to není chyba appky, jen past v ovládání.
+
+**Možnosti:**
+1. Při změně už uložené vlastní částky nabídnout volbu „Přičíst k 20 Kč / Nahradit".
+2. Povolit víc vlastních položek za den (oběd, bageta, kafe zvlášť), každá s vlastní částkou.
+3. Jen nápověda u pole („pole je jedno na den, pro další útratu napiš 20+49").
+
+**Bobův návrh (2026-10-22), preferovaná podoba:** člověk si vybere, jak přesně chce vlastní útratu evidovat:
+- **Rychle:** jedno pole jako dnes, klidně jako součet (20+49).
+- **Přesně:** víc vlastních položek za den, každá s vlastním popisem a částkou (např. „Salát 20 Kč", „Bageta 49 Kč"). Popisy se pak ukážou v historii, v poznámce ve sdíleném sheetu i ve statistikách, takže je zpětně vidět, co přesně měl.
+
+Technicky: vlastní položky jako samostatné řádky Výběru (dnes je jeden `__OSTATNI_VLASTNI__` na den), popis přes `jednoRadek_`, limit počtu položek na den; zvážit, jak se popis promítne do statistik (dnes je vlastní položka jen „extra").
+
+**Stav:** Bob 2026-10-22: zatím nechat v nápadech, Petr pochopil, jak appka funguje.
 
 ### #15 — AI zjednodušení názvů jídel v Chatu (Groq)
 
