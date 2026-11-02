@@ -365,6 +365,9 @@ with sync_playwright() as p:
     akce = gp.evaluate("[...document.querySelectorAll('#novinky-actions button')].map(b => b.textContent.trim())")
     check(akce == ["Teď ne", "Ukázat v aplikaci"], "průvodce: Co je nového nabízí Ukázat v aplikaci / Teď ne", str(akce))
     gp.click("#novinky-actions button.primary"); gp.wait_for_timeout(2500)
+    # Sváteční motiv může mít delší úvodní animaci (Dušičky 2. 11.), průvodce čeká na volnou obrazovku
+    gp.wait_for_function("!document.documentElement.classList.contains('ee-playing') && !pruvodceStav_().ceka", timeout=60000)
+    gp.wait_for_timeout(500)
     st = gp.evaluate("pruvodceStav_()")
     check(st["bezi"] and st["n"] == 4 and st["sel"] == "#dzR #dz", "průvodce: běží, 4 kroky, začíná výběrem dne", str(st))
     check(gp.evaluate("(()=>{const r=document.getElementById('pv-bubble').getBoundingClientRect(); return r.left>=0 && r.right<=innerWidth && r.top>=0 && r.bottom<=innerHeight})()"),
