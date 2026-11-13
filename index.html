@@ -166,6 +166,37 @@
     }
     .wrapper-loading-hint a { color: #6B2D8B; font-weight: 600; }
 
+    /* Selhané načtení (2026-11-13): místo šedé chybové stránky Chrome
+       vlastní hláška s tlačítkem. Do té doby wrapper sám zkouší znovu. */
+    .wrapper-error {
+      display: none;
+      margin-top: 18px;
+      max-width: 320px;
+      text-align: center;
+      color: #555;
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+    .wrapper-error.show { display: block; }
+    .wrapper-error-btn {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 11px 22px;
+      background: #6B2D8B;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .wrapper-error-link { display: block; margin-top: 12px; color: #6B2D8B; font-weight: 600; font-size: 0.85rem; }
+    .wrapper-loading.selhalo .wrapper-loading-plate { animation: none; opacity: 0.55; }
+    .wrapper-loading.selhalo .wrapper-loading-text::after { content: ''; animation: none; }
+    .wrapper-loading.selhalo .wrapper-countdown,
+    .wrapper-loading.selhalo .wrapper-loading-hint { display: none !important; }
+
     /* ─── Odpočet „do spuštění aplikace zbývá" (v20261019.01) ───
        Náhodný startovní čas (1-99 h) ubývající reálnou rychlostí; tisíciny
        se překreslují při každém snímku, takže poslední číslice je šmouha.
@@ -312,6 +343,9 @@
       html, body { background: #1A1A2E; }
       .wrapper-loading { background: #1A1A2E; }
       .wrapper-loading-text { color: #AAB; }
+      .wrapper-error { color: #C8C8D4; }
+      .wrapper-error-btn { background: #B07DD8; color: #1A1A2E; }
+      .wrapper-error-link { color: #C99FE0; }
       .wrapper-countdown-label { color: #70708A; }
       .wrapper-countdown-digits {
         color: #FFC071; background: #2C2545; border-color: #413862;
@@ -341,10 +375,21 @@
        bez ohledu na OS / browser settings. (v20260422.22) -->
   <iframe
     id="app"
-    src="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy"
     allow="clipboard-write; microphone"
     loading="eager"
   ></iframe>
+  <!-- src se nastavuje až tady (2026-11-13): posluchač load musí existovat
+       dřív, než iframe cokoli načte, jinak by rychlá chybová stránka
+       (síť, zablokované přihlášení Googlu) proklouzla bez povšimnutí. -->
+  <script>
+    (function() {
+      var f = document.getElementById('app');
+      window.__jlAppUrl = 'https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy';
+      window.__jlLoady = [];
+      f.addEventListener('load', function() { window.__jlLoady.push(Date.now()); if (window.__jlPriLoadu) window.__jlPriLoadu(); });
+      f.src = window.__jlAppUrl;
+    })();
+  </script>
 
   <!-- Wrapper loading overlay — pokrývá hluchých ~2 s mezi tím, co OS splash
        zmizí a GAS iframe doručí Obedy.html. Brand SVG + text „Otevírám
@@ -373,6 +418,13 @@
       Trvá to déle, než je obvyklé… eště chvilku vydrž a pokud se nic nestane, zkus
       <a href="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy"
          target="_blank" rel="noopener">otevřít Jídlogic přímo</a>.
+    </div>
+    <div class="wrapper-error" id="wrapper-error" role="alert">
+      Jídlogic se tentokrát nenačetl. Většinou stačí zkusit to znovu.
+      Když to nepomůže, otevři ho přímo, uvidíš, co hlásí Google.
+      <br><button type="button" class="wrapper-error-btn" id="wrapper-error-retry">Zkusit znovu</button>
+      <a class="wrapper-error-link" href="https://script.google.com/a/macros/blogic.cz/s/AKfycbxqAYO0PoeatQpr_Le8c5Eg1C1BUW81EA1dRDLyp2HtqP4-KHWaBCzA7-yCXuJd6OOm/exec?app=obedy"
+         target="_blank" rel="noopener">Otevřít Jídlogic přímo</a>
     </div>
    </div>
 
@@ -532,6 +584,99 @@
       var POJISTKA_MS = 30000;
       var fallbackTimer = null;
       var hintTimer = null;
+
+      /* ─── Selhané načtení iframu (2026-11-13) ───
+         Stížnosti: první spuštění „načítá" a skončí šedou stránkou Chrome,
+         druhé projde. Šedá stránka = chybová stránka v iframu (zablokované
+         přihlášení Googlu v rámu, síť ještě nenaběhla po probuzení…).
+         Změřeno: chybová stránka pošle load za 0,3-0,7 s a nemá vnořený
+         rám; skutečná GAS stránka pošle load až s hotovým vnořeným
+         userframem (frames.length >= 1). Wrapper to dřív nepoznal, čekal
+         30 s na appku a pak ukázal šedou stránku. Teď: chyba → sám zkusí
+         znovu (jako zavřít a otevřít appku), po vyčerpání pokusů vlastní
+         hláška s tlačítkem místo šedé stránky. */
+      var MAX_POKUSU = 3;
+      var PAUZY_MS = [1500, 3000, 5000];   // síť po probuzení telefonu naběhne i za pár sekund
+      var pokus = 0;
+      var loadVPokusu = false;    // load iframu v aktuálním pokusu (pomalý start ≠ selhání)
+      var odpojOnline = null;
+      var appOzvala = false;      // přišla aspoň stage:'shell' = GAS odpověděl
+      var selhalo = false;
+      var retryTimer = null;
+      var iframeEl = document.getElementById('app');
+      function nactiZnovu(rucne) {
+        clearTimeout(retryTimer); retryTimer = null;
+        if (odpojOnline) odpojOnline();
+        if (!iframeEl || (!rucne && (faded || appOzvala))) return;
+        appOzvala = false;
+        loadVPokusu = false;
+        var u = window.__jlAppUrl || iframeEl.src;
+        iframeEl.src = u + (u.indexOf('?') >= 0 ? '&' : '?') + '_r=' + Date.now();
+        clearTimeout(fallbackTimer);
+        fallbackTimer = setTimeout(priPojistce, POJISTKA_MS);
+      }
+      // 30 s bez signálu: když iframe ještě ani nedonačetl, je start jen pomalý
+      // (GAS doGet běží uvnitř odpovědi) → nepřerušovat, dát dalších 30 s.
+      var pojistkaProdlouzena = false;
+      function priPojistce() {
+        if (!loadVPokusu && !pojistkaProdlouzena) {
+          pojistkaProdlouzena = true;
+          showWrapperHint();
+          fallbackTimer = setTimeout(priPojistce, POJISTKA_MS);
+          return;
+        }
+        pojistkaProdlouzena = false;
+        naSelhani('timeout');
+      }
+      function ukazChybu() {
+        selhalo = true;
+        var w = document.getElementById('wrapper-loading');
+        if (w) w.classList.add('selhalo');
+        var e = document.getElementById('wrapper-error');
+        if (e) e.classList.add('show');
+        if (zastavOdpocet) { try { zastavOdpocet(); } catch (eZ) { /* no-op */ } }
+        try { document.getElementById('wrapper-error-retry').focus(); } catch (eF) { /* no-op */ }
+      }
+      function naSelhani(duvod) {
+        if (faded || appOzvala || retryTimer) return;
+        perfW.duvod = 'selhani-' + duvod + '-' + pokus;
+        if (pokus >= MAX_POKUSU) { ukazChybu(); return; }
+        var pauza = PAUZY_MS[pokus] || 5000;
+        pokus++;
+        if (navigator.onLine === false) {
+          // Offline: počkat na síť (max 10 s), pak to zkusit tak jako tak
+          var priOnline = function() { nactiZnovu(); };
+          window.addEventListener('online', priOnline);
+          odpojOnline = function() { window.removeEventListener('online', priOnline); odpojOnline = null; };
+          retryTimer = setTimeout(priOnline, 10000);
+          return;
+        }
+        retryTimer = setTimeout(function() { nactiZnovu(); }, pauza);
+      }
+      window.__jlPriLoadu = function() {
+        // Počáteční about:blank (než se nastaví src) je same-origin a čitelný;
+        // GAS i chybová stránka Chromu jsou cross-origin a čtení hodí výjimku.
+        try { if (iframeEl.contentWindow.location.href === 'about:blank') return; } catch (eB) { /* cross-origin = skutečný load */ }
+        loadVPokusu = true;
+        // Krátká rezerva: GAS může vnořený rám dovkládat těsně po load
+        setTimeout(function() {
+          if (faded || appOzvala) return;
+          var n = 0;
+          try { n = iframeEl.contentWindow.frames.length; } catch (eF) { n = 0; }
+          if (n === 0) naSelhani('load');
+        }, 400);
+      };
+      var tlacitkoZnovu = document.getElementById('wrapper-error-retry');
+      if (tlacitkoZnovu) tlacitkoZnovu.addEventListener('click', function() {
+        pokus = 0; selhalo = false;
+        var w = document.getElementById('wrapper-loading');
+        if (w) w.classList.remove('selhalo');
+        var e = document.getElementById('wrapper-error');
+        if (e) e.classList.remove('show');
+        nactiZnovu(true);
+      });
+      // load mohl proběhnout dřív, než se tenhle blok spustil
+      if (window.__jlLoady && window.__jlLoady.length) window.__jlPriLoadu();
       function showWrapperHint() {
         var el = document.getElementById('wrapper-loading-hint');
         if (el) el.style.display = 'block';
@@ -540,6 +685,9 @@
         // Cross-origin message — data může být cokoliv. Ověř strukturu.
         var d = e && e.data;
         if (!(d && typeof d === 'object' && d.type === 'jidlogic-ready')) return;
+        appOzvala = true;
+        clearTimeout(retryTimer); retryTimer = null;
+        if (odpojOnline) odpojOnline();
         if (d.stage === 'shell') {
           if (perfW.shell === null) perfW.shell = msOdStartu();
           clearTimeout(fallbackTimer);
@@ -553,8 +701,10 @@
 
       // Hint až po 8 s (v31): po vypnutí perf telemetrie je běžný start ~3-5 s,
       // na 5 s hláška „trvá to déle" problikávala i při normálním načtení.
-      fallbackTimer = setTimeout(function() { fadeOutWrapperLoading('timeout'); }, POJISTKA_MS);
-      hintTimer = setTimeout(showWrapperHint, 8000);
+      // Bez jakéhokoli signálu z appky do 30 s = selhání (znovu / hláška),
+      // ne zhasnutí do prázdné nebo šedé stránky.
+      fallbackTimer = setTimeout(priPojistce, POJISTKA_MS);
+      hintTimer = setTimeout(function() { if (!selhalo) showWrapperHint(); }, 8000);
     })();
 
     /* ═══ Odpočet „do spuštění aplikace zbývá" (v20261019.01) ═══
